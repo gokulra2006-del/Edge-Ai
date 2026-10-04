@@ -592,6 +592,11 @@ async function updateResponsePlan() {
     } finally { responsePlanInFlight = false; }
 }
 
+function openResponsePlan() {
+    switchPage("overview");
+    requestAnimationFrame(() => document.getElementById("responsePlanPanel")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+}
+
 function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>'"]/g, character => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
