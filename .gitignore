@@ -2,6 +2,7 @@
 .wheels/
 __pycache__/
 .pytest_cache/
+.pytest-tmp/
 data/new_dataset/
 models/new_dataset/runs/
 logs/training_*.log
