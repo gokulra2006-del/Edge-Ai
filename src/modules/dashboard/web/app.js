@@ -501,6 +501,7 @@ async function fetchLiveEdgeData() {
         if (!res.ok) throw new Error("Local API unreachable");
         const data = await res.json();
         processLivePayload(data);
+        updateResponsePlan();
     } catch (e) {
         const dot = document.getElementById("cloudStatusDot");
         const text = document.getElementById("cloudStatusText");
@@ -568,6 +569,27 @@ function processLivePayload(data) {
         else if (ev.event === "EMERGENCY_VEHICLE") playChime(880, 0.3);
     }
     lastEventClass = ev.event || "NORMAL";
+}
+
+let responsePlanInFlight = false;
+async function updateResponsePlan() {
+    if (responsePlanInFlight) return;
+    responsePlanInFlight = true;
+    try {
+        const response = await fetch("/api/response-plan");
+        if (!response.ok) throw new Error("Response plan unavailable");
+        const plan = await response.json();
+        const summary = document.getElementById("responsePlanSummary");
+        const mode = document.getElementById("responsePlanMode");
+        const actions = document.getElementById("responsePlanActions");
+        if (!summary || !mode || !actions) return;
+        summary.innerText = `${plan.event || "NORMAL"} · ${plan.severity || "NORMAL"} · ${plan.zone || "Zone unavailable"}`;
+        mode.innerText = plan.operator_confirmation_required ? "Operator confirmation required" : "Decision support";
+        actions.innerHTML = (plan.recommended_actions || []).map(action => `<div class="text-[11px] text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2">${escapeHtml(action)}</div>`).join("") || '<div class="text-[11px] text-slate-500">No emergency action is required for the current event.</div>';
+    } catch (_) {
+        const summary = document.getElementById("responsePlanSummary");
+        if (summary) summary.innerText = "Response plan is temporarily unavailable.";
+    } finally { responsePlanInFlight = false; }
 }
 
 function escapeHtml(value) {
