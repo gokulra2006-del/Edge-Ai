@@ -427,13 +427,9 @@ function showRoleAccessDeniedToast(targetPage, user) {
 
 // Initialize Dashboard upon DOM Load
 document.addEventListener("DOMContentLoaded", () => {
-    // Default to commander if first visit for seamless demo experience
-    if (!getCurrentUser()) {
-        setCurrentUser(SYSTEM_USERS.commander);
-    }
     checkAuthAndRender();
 
-    initChart();
+    if (window.Chart) initChart();
     initFirebaseOrFallback();
     fetchHistoricalEvents();
     fetchRecordings();
@@ -449,6 +445,10 @@ function initFirebaseOrFallback() {
     const DEFAULT_DB_URL = "https://edge-ai-524d4-default-rtdb.asia-southeast1.firebasedatabase.app";
     const savedDbUrl = localStorage.getItem("sentinel_firebase_db_url") || DEFAULT_DB_URL;
 
+    if (!window.firebase) {
+        startLocalPolling();
+        return;
+    }
     if (savedDbUrl && savedDbUrl.startsWith("https://")) {
         try {
             if (!firebase.apps.length) {
