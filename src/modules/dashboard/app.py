@@ -8,6 +8,7 @@ endpoints for live telemetry, scenario triggering, and Firebase synchronization.
 import json
 import os
 import sys
+import hmac
 from pathlib import Path
 import urllib.parse
 from typing import Optional
@@ -307,6 +308,24 @@ class DashboardHandler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
+
+        if path == "/api/auth/login":
+            length = int(self.headers.get("Content-Length", 0))
+            try:
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+                users_path = ROOT_DIR / "src" / "config" / "dashboard_users.local.json"
+                users = json.loads(users_path.read_text(encoding="utf-8"))
+                username = str(payload.get("username", "")).lower()
+                record = users.get(username, {})
+                allowed = {"COMMANDER", "OPERATOR", "ENGINEER", "VIEWER"}
+                valid = record.get("role") in allowed and hmac.compare_digest(str(record.get("password", "")), str(payload.get("password", "")))
+            except (OSError, ValueError, json.JSONDecodeError):
+                valid, record = False, {}
+            self.send_response(200 if valid else 401)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"role": record.get("role")} if valid else {"error": "invalid credentials"}).encode("utf-8"))
+            return
 
         # 1. Interactive Scenario Trigger
         if path == "/api/trigger_scenario":

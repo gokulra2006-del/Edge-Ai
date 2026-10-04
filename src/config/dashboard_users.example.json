@@ -1,0 +1,6 @@
+{
+  "commander": {"password": "set-a-unique-password", "role": "COMMANDER"},
+  "operator": {"password": "set-a-unique-password", "role": "OPERATOR"},
+  "engineer": {"password": "set-a-unique-password", "role": "ENGINEER"},
+  "viewer": {"password": "set-a-unique-password", "role": "VIEWER"}
+}

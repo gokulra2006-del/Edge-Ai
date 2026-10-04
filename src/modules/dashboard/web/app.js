@@ -92,7 +92,8 @@ const SYSTEM_USERS = {
 function getCurrentUser() {
     try {
         const stored = localStorage.getItem("sentinel_auth_user");
-        return stored ? JSON.parse(stored) : null;
+        const user = stored ? JSON.parse(stored) : null;
+        return user && user.authVersion === 2 ? user : null;
     } catch (e) {
         return null;
     }
@@ -100,50 +101,43 @@ function getCurrentUser() {
 
 function setCurrentUser(user) {
     if (user) {
-        localStorage.setItem("sentinel_auth_user", JSON.stringify(user));
+        localStorage.setItem("sentinel_auth_user", JSON.stringify({ ...user, authVersion: 2 }));
     } else {
         localStorage.removeItem("sentinel_auth_user");
     }
 }
 
-function handleLoginSubmit(event) {
+async function handleLoginSubmit(event) {
     if (event) event.preventDefault();
     const userInput = (document.getElementById("loginUsername").value || "").trim().toLowerCase();
+    const password = document.getElementById("loginPassword").value || "";
     const errEl = document.getElementById("loginError");
-
-    let matchedUser = SYSTEM_USERS[userInput];
-    if (!matchedUser) {
-        // Fallback generic role assignment
-        if (userInput.includes("admin") || userInput.includes("command")) matchedUser = SYSTEM_USERS.commander;
-        else if (userInput.includes("op") || userInput.includes("traffic")) matchedUser = SYSTEM_USERS.operator;
-        else if (userInput.includes("eng") || userInput.includes("hard")) matchedUser = SYSTEM_USERS.engineer;
-        else matchedUser = SYSTEM_USERS.viewer;
-    }
-
-    if (matchedUser) {
+    const matchedUser = SYSTEM_USERS[userInput];
+    if (matchedUser && password) {
         if (errEl) errEl.classList.add("hidden");
+        // Local development server validates configured passwords. The browser
+        // never contains them and no credentials are committed to Git.
+        const verified = await fetch("/api/auth/login", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({username: userInput, password})})
+            .then(response => response.ok ? response.json() : null).catch(() => null);
+        if (!verified || verified.role !== matchedUser.role) {
+            if (errEl) { errEl.innerText = "Incorrect username or password."; errEl.classList.remove("hidden"); }
+            return;
+        }
         setCurrentUser(matchedUser);
         checkAuthAndRender();
         // Redirect to overview upon login
         switchPage("overview", true);
     } else {
-        if (errEl) errEl.classList.remove("hidden");
+        if (errEl) { errEl.innerText = "Incorrect username or password."; errEl.classList.remove("hidden"); }
     }
 }
 
 function quickLogin(roleKey) {
-    const user = SYSTEM_USERS[roleKey] || SYSTEM_USERS.commander;
-    setCurrentUser(user);
-    checkAuthAndRender();
-    
-    // Auto-redirect if currently on a page disallowed for this newly selected role
-    const currentHash = window.location.hash.replace("#", "").toLowerCase();
-    if (!user.allowedPages.includes(currentHash)) {
-        switchPage("overview", true);
-    }
-
-    // Immediately re-fetch and re-render live data tailored for the newly active role
-    fetchLiveEdgeData();
+    logout();
+    const username = document.getElementById("loginUsername");
+    const password = document.getElementById("loginPassword");
+    if (username) username.value = SYSTEM_USERS[roleKey] ? roleKey : "";
+    if (password) password.focus();
 }
 
 function logout() {
