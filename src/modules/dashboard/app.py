@@ -132,6 +132,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(ALERT_MANAGER.get_latest_alerts()).encode("utf-8"))
 
+        elif path == "/api/response-plan":
+            from src.modules.autonomous_response.alert_manager import ALERT_MANAGER
+            state = FIREBASE_SYNC.get_full_live_state()
+            event = state.get("active_event", {})
+            plan = ALERT_MANAGER.response_plan(event.get("event", "NORMAL"), event.get("severity", "NORMAL"), event.get("zone", CONFIG.zone_name), event.get("id", ""))
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(plan).encode("utf-8"))
+
         # 7. Municipal Multi-Intersection Status
         elif path == "/api/intersections":
             from src.modules.autonomous_response.multi_intersection import MUNICIPAL_GRID

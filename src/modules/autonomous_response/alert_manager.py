@@ -173,6 +173,21 @@ class AlertDispatchManager:
         with self._lock:
             return list(reversed(self.dispatch_log[-limit:]))
 
+    def response_plan(self, event_type: str, severity: str, zone: str, incident_id: str = "") -> Dict[str, Any]:
+        """Return an auditable operator dispatch checklist; never contacts real services."""
+        type_upper = str(event_type).upper()
+        contacts = []
+        actions = ["Preserve sensor, audio, and camera evidence", "Record operator acknowledgement"]
+        if type_upper in {"ACCIDENT", "VEHICLE_ACCIDENT"}:
+            contacts = ["AMBULANCE", "POLICE"]
+            actions = ["Restrict affected lane", "Request ambulance through approved local procedure", "Inform police through approved local procedure", *actions]
+        elif type_upper in {"FIRE", "FIRE_HAZARD"}:
+            contacts = ["FIRE_SERVICE", "POLICE"]
+            actions = ["Hold traffic away from the hazard", "Request fire service through approved local procedure", *actions]
+        return {"incident_id": incident_id, "event": type_upper, "severity": severity, "zone": zone,
+                "mode": "SIMULATED_DECISION_SUPPORT", "operator_confirmation_required": True,
+                "contacts_to_notify": contacts, "recommended_actions": actions}
+
 
 # Global singleton instance
 ALERT_MANAGER = AlertDispatchManager(cooldown_seconds=30)
