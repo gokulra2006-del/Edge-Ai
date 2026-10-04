@@ -54,6 +54,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
             state = FIREBASE_SYNC.get_full_live_state()
             self.wfile.write(json.dumps(MODEL_ASSURANCE.summarize(state)).encode("utf-8"))
 
+        elif path == "/api/assessment":
+            from src.modules.assurance.assessment_service import assess_live_state
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(assess_live_state(FIREBASE_SYNC.get_full_live_state())).encode("utf-8"))
+
         # 2. Historical Incidents from SQLite Database
         elif path == "/api/events":
             self.send_response(200)
