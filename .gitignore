@@ -1,0 +1,33 @@
+.venv/
+.wheels/
+__pycache__/
+.pytest_cache/
+data/new_dataset/
+models/new_dataset/runs/
+logs/training_*.log
+logs/
+*.bak
+
+# Local agent settings, generated data, recordings, and downloaded source datasets.
+.agent/
+.agents/
+.claude/
+.codex/
+.cursor/
+.gemini/
+.impeccable/
+archive/
+CNR-EXT-Patches-150x150/
+ESC-50-master/
+FIRE n SMOKE DETECTION.v1i.yolov11/
+PennFudanPed/
+Road_Obstacle_Detection.v1i.yolov11/
+sireNNet/
+vehicles.v1i.yolov11/
+vehicles.v2-release.yolov11/
+sentinel_rpi_package.zip
+sentinel_rpi_package/
+data/recordings/
+data/*.db
+data/*.npz
+models/vision_runs/

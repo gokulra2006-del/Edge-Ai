@@ -1,0 +1,18 @@
+{
+  "packages": {
+    "torch": "2.14.1",
+    "torchvision": "0.29.1",
+    "ultralytics": "8.4.172",
+    "numpy": "2.3.5",
+    "scipy": "1.18.1",
+    "scikit-learn": "1.9.1",
+    "soundfile": "0.14.0",
+    "Pillow": "12.3.0"
+  },
+  "manifest_sha256": {
+    "audio": "69ed41a92a7e220bdf78c5dd9a8dd3b8c132b80bc313851c9bd6520b5d455bdb",
+    "fire_smoke": "69db12bdc64ac4bfd1ffe0b854b83352aadcd20f11819a3e51285cb014470d64",
+    "vehicle": "740796103673a256bed4da42d5c13845ce1b172d2d378d2e541217d98c619036"
+  },
+  "base_yolo_sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1"
+}

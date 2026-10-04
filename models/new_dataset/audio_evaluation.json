@@ -1,0 +1,72 @@
+{
+  "ambient": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 35.0
+  },
+  "crash": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 35.0
+  },
+  "horn": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 35.0
+  },
+  "siren": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 35.0
+  },
+  "accuracy": 1.0,
+  "macro avg": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 140.0
+  },
+  "weighted avg": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 140.0
+  },
+  "confusion_matrix": [
+    [
+      35,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      35,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      35,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      35
+    ]
+  ],
+  "classes": [
+    "ambient",
+    "crash",
+    "horn",
+    "siren"
+  ],
+  "evaluation_domain": "synthetic held-out recordings, not real-world validation"
+}

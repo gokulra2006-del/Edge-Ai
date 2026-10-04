@@ -1,0 +1,9 @@
+# Minimal Edge Dependencies (Raspberry Pi 4 / Development)
+# The core simulation architecture uses standard Python 3 (zero external dependencies required for simulation).
+# For full edge sensor/model deployment, install:
+numpy>=1.24.0
+scipy>=1.10.0
+# Optional for hardware / model inference:
+# tflite-runtime>=2.14.0
+# librosa>=0.10.0
+# opencv-python-headless>=4.8.0

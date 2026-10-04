@@ -1,0 +1,17 @@
+{
+  "name": "synthetic",
+  "synthetic": true,
+  "audio": "models/new_dataset/audio.pt",
+  "vision": [
+    "models/new_dataset/fire_smoke.pt",
+    "models/new_dataset/vehicle.pt"
+  ],
+  "imgsz": 160,
+  "confidence_threshold": 0.35,
+  "usage": "Synthetic demonstration/augmentation; not validated for physical emergency response.",
+  "sha256": {
+    "audio.pt": "1c8ff602fa279dc3410a639454dc5add5a526f06ac79e7f9f1aeb5d212411edb",
+    "fire_smoke.pt": "e2f742bd25da6f62b68e7fdea16bff587984003ee8b8961f73f96662c8ffdd0a",
+    "vehicle.pt": "718096b9571c42518ac444ba0d4f67675df8e86327438e25c72e962ea4a571a0"
+  }
+}

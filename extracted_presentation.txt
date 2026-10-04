@@ -1,0 +1,33 @@
+=== SLIDE 1 ===
+VIT CHENNAI · FINAL YEAR ENGINEERING PROJECT Edge-AI Multi-Sensor Urban Emergency Detection, Localization & Autonomous Response Raspberry Pi Based Intelligent Emergency Response Network PROJECT ID __________ TEAM Member 1 · Member 2 · Member 3 · Member 4 Raspberry Pi 3B+ Edge AI Machine Learning Sensor Fusion Computer Vision IoT
+
+=== SLIDE 2 ===
+02 — PROBLEM STATEMENT The Problem Road accidents, vehicle collisions, emergency-vehicle movement and hazardous incidents can go unnoticed or unreported for critical minutes. 01 Manual Reporting Response delays 02 Single Microphones Traffic and environmental noise 03 Camera-Only Systems Occlusion, poor visibility and lighting 04 Single-Sensor Systems Limited context and reliability 05 Alert-Only Systems Detection without autonomous response Develop a low-cost Edge-AI emergency intelligence network that combines acoustic, vibration and visual information to detect, verify, localize and classify emergencies — followed by an automated response.
+
+=== SLIDE 3 ===
+03 — MOTIVATION & APPLICATIONS Why This System? Real-time emergency detection without waiting for manual reporting Multi-sensor verification for improved reliability Local AI processing using edge computing Incident location and severity estimation Automatic traffic and emergency response Goal: reduce response time, reduce false positives, improve situational awareness. APPLICATIONS Smart City Intersections Emergency Vehicle Priority Accident-Prone Roads University & Industrial Campuses Parking & Restricted Areas Tunnels & Infrastructure Zones Distributed Urban Surveillance
+
+=== SLIDE 4 ===
+04 — EXISTING SYSTEMS & RESEARCH GAP From Detection to Autonomous Response EXISTING APPROACH MAJOR LIMITATION Manual Reporting Delayed response CCTV Surveillance Visibility / occlusion issues Acoustic Detection Background noise sensitivity Single-Sensor IoT Limited contextual information Cloud-Based AI Network dependency & latency Emergency Alerts Detection without autonomous response Research gap: current systems focus on individual detection methods rather than combining multiple sensing modalities. Detect → Verify → Locate → Assess → Respond
+
+=== SLIDE 5 ===
+05 — PROPOSED SYSTEM Proposed Edge-AI Multi-Sensor Network Urban Environment ↓ NODE A Microphone · Camera · IMU / Vibration NODE B Microphone · Camera · IMU / Vibration NODE C Microphone · Camera · IMU / Vibration ↓ Wi-Fi / Local Network ↓ Central Raspberry Pi ↓ Edge AI Engine → Sensor Fusion → Event Localization → Severity Analysis → Response Decision ↓ Traffic Control Barrier Control Emergency Alert
+
+=== SLIDE 6 ===
+06 — WORKING METHODOLOGY Six-Stage Intelligent Pipeline 01 SENSE MEMS microphones, IMU/vibration sensors and cameras collect environmental data. 02 DETECT Audio AI identifies sirens, crashes, horns and breaking glass. 03 VERIFY Camera and vibration data validate whether the event is genuine. 04 FUSE & LOCALIZE Multiple nodes combine to estimate the most probable event zone. 05 ASSESS Event confidence and severity determine response priority. 06 RESPOND Raspberry Pi controls signals, barriers, indicators and alerts. Sense → Detect → Verify → Localize → Assess → Respond
+
+=== SLIDE 7 ===
+07 — ML & SENSOR FUSION Edge-AI Detection & Multi-Sensor Intelligence ACOUSTIC ML PIPELINE Microphone ↓ Audio Pre-processing ↓ MFCC / Mel Spectrogram ↓ Lightweight ML Model ↓ Event Classification TARGET CLASSES Normal Traffic Ambulance Siren Fire Engine Siren Crash / Impact Breaking Glass Horn SENSOR FUSION Audio Confidence + Vibration Evidence + Camera Evidence ↓ Fusion Engine ↓ Event Confidence EXAMPLE Audio Crash — 87% Vibration Impact detected Camera Vehicle detected High-Confidence Accident Multi-sensor verification improves robustness compared with relying on a single sensor.
+
+=== SLIDE 8 ===
+08 — LOCALIZATION & RESPONSE Event Localization & Autonomous Response EVENT LOCALIZATION 62% Node A 94% Node B 76% Node C 31% Node D Most Probable Event Zone: Node B Distributed nodes observe the same event at different signal strengths and arrival times. TDOA (time difference of arrival) between synchronized microphones is a planned refinement for more precise sound-source localization. AUTONOMOUS RESPONSE Accident Detect → Locate → Restrict affected lane → Alert Ambulance Detect siren → Estimate route → Prioritize traffic signals Critical Event Verify → Increase priority → Activate emergency response
+
+=== SLIDE 9 ===
+09 — EMERGENCY GREEN CORRIDOR Dynamic Emergency Vehicle Priority Emergency Vehicle ↓ Acoustic AI Detection ↓ Vehicle / Event Verification ↓ Route Estimation ↓ Traffic Signal Controller ↓ Green → Green → Green Prioritize emergency vehicle route Temporarily modify traffic signals Close affected road section, open alternative route Restore normal traffic after event The system doesn't simply report an emergency — it changes the surrounding infrastructure's response.
+
+=== SLIDE 10 ===
+10 — HARDWARE, SOFTWARE & TEAM System Components & Team Architecture HARDWARE Raspberry Pi 3B+ INMP441 MEMS Microphone MPU6050 IMU / Vibration Sensor Raspberry Pi / USB Camera Temperature / Smoke Sensor SG90 Servo Motors Traffic LEDs OLED Display Buzzer SOFTWARE & AI Python OpenCV TensorFlow / TensorFlow Lite Librosa NumPy / Scikit-learn Flask / FastAPI SQLite / Supabase Web Dashboard TEAM DIVISION Member 1 Embedded + Sensor Network Member 2 Audio ML + Edge AI Member 3 Computer Vision + Localization Member 4 IoT + Autonomous Response
+
+=== SLIDE 11 ===
+11 — OUTCOMES & FUTURE SCOPE Expected Outcomes & Future Scope Detection Real-time classification of selected urban emergency sounds. Verification Improved reliability through audio, vibration and camera fusion. Localization Estimation of the most probable emergency zone using distributed nodes. Response Automatic traffic signal control, emergency priority and event alerts. EVALUATION METRICS Accuracy Precision / Recall F1-Score False Positive Rate Detection Latency Localization Error FUTURE SCOPE Solar-powered distributed sensor nodes Larger urban sensor networks Advanced sound-source localization 5G / LoRa communication Real-time traffic optimization Predictive urban risk mapping Integration with emergency dispatch systems Detect → Verify → Locate → Assess → Respond Edge AI + Sensor Fusion + Autonomous Infrastructure
+

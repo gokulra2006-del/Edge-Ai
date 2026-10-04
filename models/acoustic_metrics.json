@@ -1,0 +1,100 @@
+{
+  "overall_accuracy": 0.8176638176638177,
+  "macro_f1": 0.8220871958437521,
+  "confusion_matrix": [
+    [
+      74,
+      0,
+      8,
+      0,
+      0,
+      0
+    ],
+    [
+      28,
+      30,
+      19,
+      1,
+      0,
+      0
+    ],
+    [
+      3,
+      0,
+      82,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      83,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      11,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      3,
+      0,
+      7
+    ]
+  ],
+  "per_class": {
+    "ambulance": {
+      "precision": 0.6916,
+      "recall": 0.9024,
+      "f1_score": 0.7831,
+      "support": 82
+    },
+    "firetruck": {
+      "precision": 1.0,
+      "recall": 0.3846,
+      "f1_score": 0.5556,
+      "support": 78
+    },
+    "police": {
+      "precision": 0.7523,
+      "recall": 0.9647,
+      "f1_score": 0.8454,
+      "support": 85
+    },
+    "traffic": {
+      "precision": 0.954,
+      "recall": 0.9881,
+      "f1_score": 0.9708,
+      "support": 84
+    },
+    "glass_breaking": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 11
+    },
+    "car_horn": {
+      "precision": 1.0,
+      "recall": 0.6364,
+      "f1_score": 0.7778,
+      "support": 11
+    }
+  },
+  "classes": [
+    "ambulance",
+    "firetruck",
+    "police",
+    "traffic",
+    "glass_breaking",
+    "car_horn"
+  ]
+}

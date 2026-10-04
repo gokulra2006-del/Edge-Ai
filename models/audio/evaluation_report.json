@@ -1,0 +1,111 @@
+{
+  "model_file": "C:\\Users\\gokul\\Desktop\\PROJECTS\\Edge-AI\\models\\audio\\best_model.pt",
+  "overall_accuracy": 0.9167,
+  "macro_f1": 0.8846,
+  "latency_ms": {
+    "average": 1.56,
+    "p95": 2.78
+  },
+  "confusion_matrix": [
+    [
+      62,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      51,
+      8,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      50,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      3,
+      3,
+      67,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      7,
+      0
+    ],
+    [
+      4,
+      1,
+      1,
+      0,
+      0,
+      5
+    ]
+  ],
+  "per_class_metrics": {
+    "normal_traffic": {
+      "precision": 0.9254,
+      "recall": 1.0,
+      "f1_score": 0.9612,
+      "false_positive_rate": 0.0248,
+      "support": 62
+    },
+    "ambulance_siren": {
+      "precision": 0.9107,
+      "recall": 0.85,
+      "f1_score": 0.8793,
+      "false_positive_rate": 0.0245,
+      "support": 60
+    },
+    "firetruck_siren": {
+      "precision": 0.8065,
+      "recall": 0.9804,
+      "f1_score": 0.885,
+      "false_positive_rate": 0.0563,
+      "support": 51
+    },
+    "police_siren": {
+      "precision": 1.0,
+      "recall": 0.9178,
+      "f1_score": 0.9571,
+      "false_positive_rate": 0.0,
+      "support": 73
+    },
+    "breaking_glass": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "false_positive_rate": 0.0,
+      "support": 7
+    },
+    "car_horn": {
+      "precision": 1.0,
+      "recall": 0.4545,
+      "f1_score": 0.625,
+      "false_positive_rate": 0.0,
+      "support": 11
+    }
+  },
+  "classes": [
+    "normal_traffic",
+    "ambulance_siren",
+    "firetruck_siren",
+    "police_siren",
+    "breaking_glass",
+    "car_horn"
+  ]
+}

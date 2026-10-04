@@ -1,0 +1,225 @@
+{
+  "seed": 42,
+  "provenance": "procedurally generated synthetic data",
+  "archives": [
+    {
+      "name": "acoustic_part01_of06.zip",
+      "sha256": "bcaa492683c09c3bb971f5a045d18f3b51e254537f69414c6d8b72a90fac612c"
+    },
+    {
+      "name": "acoustic_part02_of06.zip",
+      "sha256": "2f4efcc1b913ced8d4e96dcba90a76a19bfaf6864c3497f844db6b3d6cab11fa"
+    },
+    {
+      "name": "acoustic_part03_of06.zip",
+      "sha256": "24d5db0dbae9b41776508042c153b6063a19ccf4ace1737d82b7f9cc9f005301"
+    },
+    {
+      "name": "acoustic_part04_of06.zip",
+      "sha256": "6f7ece65a146a22d0282c35f268f6bdc110b190665bb8f88ce7aaea42340aa6e"
+    },
+    {
+      "name": "acoustic_part05_of06.zip",
+      "sha256": "e9ff4ee687b247c83ad7502c0649647989bcceaad4a719969e0ca5e4ba7e3b3e"
+    },
+    {
+      "name": "acoustic_part06_of06.zip",
+      "sha256": "da7e946e4afcc79d5af1f71048291cc66a47463a2327caebff1b4943c26b6cd8"
+    },
+    {
+      "name": "fire_smoke_part01_of07.zip",
+      "sha256": "9b8cdfb8f9feb410fd000940dfa1519a20df82d7587c8b9da2df3761fb49a89b"
+    },
+    {
+      "name": "fire_smoke_part02_of07.zip",
+      "sha256": "8d321de6fb10e2db4c58e2b7e3a8765dfee36bfc210758cb01207092c4f1b34f"
+    },
+    {
+      "name": "fire_smoke_part03_of07.zip",
+      "sha256": "87901093fe08ae5ea308feac6e4e6fc6d9bffeb372696f279795f1af7efae11d"
+    },
+    {
+      "name": "fire_smoke_part04_of07.zip",
+      "sha256": "db225c7a2739f116fdcf6d5de9adf9d43d0cd55d7737b9505e235d8960b2fca0"
+    },
+    {
+      "name": "fire_smoke_part05_of07.zip",
+      "sha256": "61994fdcf1b08a08323d466ac7117766fafe2d334ef9b12daef8ddd6a3606111"
+    },
+    {
+      "name": "fire_smoke_part06_of07.zip",
+      "sha256": "fe9da75d96b8028a0fe87460b176a0c77740caa88a1328fda52337a3c887c8dd"
+    },
+    {
+      "name": "fire_smoke_part07_of07.zip",
+      "sha256": "9afcd305bf821f1ac6a33a9cd582d5972bade3f7e4bd13bf2c2be6d807298e6a"
+    },
+    {
+      "name": "vehicle_part01_of07.zip",
+      "sha256": "64bda1696b05bbc17f4e6d14a6aa95fc9d77f4c3e274d2a4ea6e9b27d99bb8d8"
+    },
+    {
+      "name": "vehicle_part02_of07.zip",
+      "sha256": "6c1cda82fa2893443e84507d349f932af177ba0650ff48b2bdbed8c6781529b0"
+    },
+    {
+      "name": "vehicle_part03_of07.zip",
+      "sha256": "1101b7b11c895920717c94ec762ca0708974e51010ad7f21eb16f3b8838ba90a"
+    },
+    {
+      "name": "vehicle_part04_of07.zip",
+      "sha256": "878c27d0087cce986c7a6f85b7d6f877e4fbeb6a415b575303e6cd4a6593da74"
+    },
+    {
+      "name": "vehicle_part05_of07.zip",
+      "sha256": "022e2d1605c78660b1cf55255cfae6afeb386b37ec86cba5bdca1b8ee49c6a45"
+    },
+    {
+      "name": "vehicle_part06_of07.zip",
+      "sha256": "4fefde43543d521603ba76cc86af85e3bc1376943201709fecca7c18f7276e52"
+    },
+    {
+      "name": "vehicle_part07_of07.zip",
+      "sha256": "da6fc5db7d70a53a5fdaf025ade4be560f34c35605518ddbdd8433a5cc061fea"
+    }
+  ],
+  "duplicate_archives": [
+    "fire_smoke_part07_of07_1.zip",
+    "vehicle_part05_of07_1.zip",
+    "vehicle_part06_of07_1.zip",
+    "vehicle_part07_of07_1.zip"
+  ],
+  "duplicate_members": 6,
+  "redundant_split_archive": "acoustic_emergency_audio.z01 + .zip: independent acoustic parts used instead",
+  "datasets": {
+    "audio": {
+      "columns": [
+        "filepath",
+        "label",
+        "duration_s",
+        "sample_rate"
+      ],
+      "samples": 920,
+      "classes": [
+        "ambient",
+        "crash",
+        "horn",
+        "siren"
+      ],
+      "class_distribution": {
+        "siren": 230,
+        "horn": 230,
+        "crash": 230,
+        "ambient": 230
+      },
+      "invalid": [],
+      "duplicates": [],
+      "split_counts": {
+        "train": 644,
+        "test": 140,
+        "val": 136
+      },
+      "sample_rates": [
+        16000
+      ],
+      "durations_s": [
+        4.0
+      ],
+      "peak_range": [
+        0.60015869140625,
+        0.899627685546875
+      ]
+    },
+    "fire_smoke": {
+      "samples": 1440,
+      "classes": [
+        "fire",
+        "smoke"
+      ],
+      "invalid": [],
+      "duplicates": [],
+      "split_counts": {
+        "train": 1180,
+        "test": 131,
+        "val": 129
+      },
+      "box_distribution": {
+        "fire": 1087,
+        "smoke": 1159
+      },
+      "background_images": 77,
+      "image_shapes": [
+        [
+          640,
+          640,
+          3
+        ]
+      ],
+      "per_split_boxes": {
+        "train": {
+          "fire": 884,
+          "smoke": 942
+        },
+        "val": {
+          "fire": 101,
+          "smoke": 108
+        },
+        "test": {
+          "fire": 102,
+          "smoke": 109
+        }
+      }
+    },
+    "vehicle": {
+      "samples": 1400,
+      "classes": [
+        "car",
+        "truck",
+        "bus",
+        "motorcycle"
+      ],
+      "invalid": [],
+      "duplicates": [],
+      "split_counts": {
+        "train": 1150,
+        "val": 122,
+        "test": 128
+      },
+      "box_distribution": {
+        "motorcycle": 633,
+        "car": 2308,
+        "bus": 490,
+        "truck": 768
+      },
+      "background_images": 0,
+      "image_shapes": [
+        [
+          640,
+          640,
+          3
+        ]
+      ],
+      "per_split_boxes": {
+        "train": {
+          "motorcycle": 526,
+          "car": 1882,
+          "bus": 408,
+          "truck": 623
+        },
+        "val": {
+          "car": 214,
+          "bus": 40,
+          "motorcycle": 52,
+          "truck": 66
+        },
+        "test": {
+          "bus": 42,
+          "motorcycle": 55,
+          "truck": 79,
+          "car": 212
+        }
+      }
+    }
+  },
+  "leakage_checks": "Decoded-content SHA256 deduplication before splitting; disjoint hashes per modality. No source recording groups exist: samples independently generated. Same-generator distribution is NOT real-world validation."
+}

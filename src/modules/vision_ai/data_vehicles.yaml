@@ -1,0 +1,8 @@
+# Vehicle Detection Dataset Config (YOLO11)
+path: C:/Users/gokul/Desktop/PROJECTS/Edge-AI/vehicles.v2-release.yolov11
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 12
+names: ['big bus', 'big truck', 'bus-l-', 'bus-s-', 'car', 'mid truck', 'small bus', 'small truck', 'truck-l-', 'truck-m-', 'truck-s-', 'truck-xl-']

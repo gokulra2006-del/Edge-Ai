@@ -1,0 +1,51 @@
+{
+  "metrics": {
+    "metrics/precision(B)": 0.8781525466329123,
+    "metrics/recall(B)": 0.7662349343407088,
+    "metrics/mAP50(B)": 0.8371341998262407,
+    "metrics/mAP50-95(B)": 0.4333152421102569,
+    "fitness": 0.4333152421102569
+  },
+  "per_class": [
+    {
+      "class": "fire",
+      "precision": 0.9167998389630775,
+      "recall": 0.8627450980392157,
+      "f1": 0.8889514959717123,
+      "mAP50": 0.9402564990570871,
+      "mAP50_95": 0.4378218011112356
+    },
+    {
+      "class": "smoke",
+      "precision": 0.839505254302747,
+      "recall": 0.6697247706422018,
+      "f1": 0.7450653042916223,
+      "mAP50": 0.7340119005953942,
+      "mAP50_95": 0.42880868310927794
+    }
+  ],
+  "confusion_matrix": [
+    [
+      52.0,
+      35.0,
+      3091.0
+    ],
+    [
+      50.0,
+      73.0,
+      15713.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0
+    ]
+  ],
+  "evaluation_domain": "synthetic held-out images, not real-world validation",
+  "classes": {
+    "0": "fire",
+    "1": "smoke"
+  },
+  "imgsz": 160,
+  "results_dir": "C:\\Users\\gokul\\Desktop\\PROJECTS\\Edge-AI\\models\\new_dataset\\runs\\fire_smoke_test"
+}

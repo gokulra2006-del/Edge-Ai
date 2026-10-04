@@ -1,0 +1,33 @@
+# ==============================================================================
+# SENTINEL-AI: Raspberry Pi 4 Production Hardware Dependencies
+# ==============================================================================
+# Target: Raspberry Pi 4 Model B (Raspberry Pi OS 64-bit Bookworm / Bullseye)
+#
+# System prerequisites before pip installation:
+#   sudo apt-get update
+#   sudo apt-get install -y python3-pip python3-dev python3-setuptools \
+#       i2c-tools libgpiod2 portaudio19-dev python3-pyaudio \
+#       python3-opencv libcap-dev
+# ==============================================================================
+
+# GPIO & Low-Level Hardware Buses
+RPi.GPIO>=0.7.1
+smbus2>=0.4.3
+pyserial>=3.5
+
+# Environmental & ADC Drivers
+adafruit-blinka>=8.0.0
+adafruit-circuitpython-dht>=4.0.0
+
+# Audio Processing (INMP441 I2S Microphone)
+pyaudio>=0.2.14
+
+# Computer Vision & Camera (CSI Ribbon / USB V4L2)
+opencv-python-headless>=4.8.0
+
+# Mathematical & Signal Processing
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Optional: Camera helper for modern Raspberry Pi OS Bookworm
+picamzero>=0.2.0

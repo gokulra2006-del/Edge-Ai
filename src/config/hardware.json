@@ -1,0 +1,78 @@
+{
+    "_comment": "SENTINEL-AI Raspberry Pi 4 Hardware Configuration. All thresholds are configurable.",
+
+    "alert_thresholds": {
+        "high_temperature_c": 50.0,
+        "high_humidity_pct": 90.0,
+        "gas_level_warning_voltage": 1.5,
+        "gas_level_critical_voltage": 2.5,
+        "imu_impact_g": 2.5,
+        "imu_tilt_deg": 45.0
+    },
+
+    "polling_intervals_seconds": {
+        "dht22": 2.0,
+        "gy87_imu": 0.1,
+        "gps": 1.0,
+        "ads1115_gas": 0.2,
+        "audio": 0.5,
+        "camera": 0.066,
+        "lcd": 1.0
+    },
+
+    "mq2_gas_sensor": {
+        "warmup_seconds": 60,
+        "voltage_divider_ratio": 0.333,
+        "ads1115_channel": 0,
+        "_note": "Readings are RELATIVE sensor levels, NOT calibrated PPM values"
+    },
+
+    "servo": {
+        "min_angle": 0,
+        "max_angle": 180,
+        "default_angle": 90,
+        "min_duty": 2.5,
+        "max_duty": 12.5,
+        "mid_duty": 7.5,
+        "pwm_frequency_hz": 50,
+        "_note": "Servo MUST use external 5V power. NEVER power from GPIO12."
+    },
+
+    "buzzer": {
+        "max_continuous_seconds": 15,
+        "default_beep_duration_ms": 200,
+        "default_beep_count": 1
+    },
+
+    "lcd": {
+        "columns": 16,
+        "rows": 2,
+        "mode": "4bit",
+        "_warning": "LCD is 5V powered. Pi GPIOs are 3.3V. Consider a level shifter for production."
+    },
+
+    "i2c": {
+        "bus_number": 1,
+        "device_path": "/dev/i2c-1",
+        "expected_addresses": {
+            "MPU6050": "0x68",
+            "HMC5883L": "0x1E",
+            "QMC5883L": "0x0D",
+            "BMP180": "0x77",
+            "ADS1115": "0x48"
+        },
+        "_note": "Not all addresses may be present. Software must detect, not assume."
+    },
+
+    "uart": {
+        "device": "/dev/serial0",
+        "baud_rate": 9600,
+        "timeout_seconds": 0.2
+    },
+
+    "camera": {
+        "device": "/dev/video0",
+        "resolution": [640, 480],
+        "fps": 15
+    }
+}
