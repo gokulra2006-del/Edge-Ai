@@ -250,7 +250,7 @@ class DatasetModelInferenceFeeder:
                 "source_file": sample_wav.name,
                 "dataset": "Synthetic supplied dataset" if self.profile["synthetic"] else dataset_name
             }
-        return {"class": "traffic", "confidence": 0.88, "source_file": "baseline_audio.wav", "dataset": "EdgeBaseline"}
+        return {"class": "ambient", "confidence": 0.88, "source_file": "baseline_audio.wav", "dataset": "EdgeBaseline"}
 
     def run_vision_inference(self, scenario: str = "NORMAL") -> Dict[str, Any]:
         """Runs true YOLO inference on a real dataset image matching the scenario context."""

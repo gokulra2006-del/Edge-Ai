@@ -202,7 +202,7 @@ class DeepInferenceRuleEngine:
         else:
             vision_pred = DATASET_INFERENCE_FEEDER.run_vision_inference(scenario_hint or "NORMAL")
 
-        a_class = str(audio_pred.get("class", "traffic")).lower()
+        a_class = str(audio_pred.get("class", "ambient")).lower()
         a_conf = float(audio_pred.get("confidence", 0.0))
 
         v_detected = [str(c).lower() for c in vision_pred.get("detected_classes", [])]
@@ -397,8 +397,9 @@ class DeepInferenceRuleEngine:
         event = "NORMAL"
         severity = "LOW"
         fused_conf = 0.90
+        nominal_audio_class = "ambient" if audio_pred.get("class") == "traffic" else audio_pred.get("class")
         reasoning = [
-            f"EdgeAcousticNet identified ambient sound as '{audio_pred.get('class')}' ({a_conf * 100:.1f}%) from dataset sample {audio_pred.get('source_file')}.",
+            f"EdgeAcousticNet identified ambient sound as '{nominal_audio_class}' ({a_conf * 100:.1f}%) from dataset sample {audio_pred.get('source_file')}.",
             f"YOLO11n-Edge detected standard urban vehicular presence on {vision_pred.get('source_frame')}.",
             f"Inertial and environmental readings nominal (accel: {accel_g:.2f}g, gas: {smoke_ppm:.1f} PPM, temp: {temperature_c:.1f}°C).",
             "Rule R0 triggered: Nominal cyclic signal timing maintained across all phases."

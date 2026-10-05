@@ -177,7 +177,7 @@
                     <button id="nav-btn-overview" onclick="switchPage('overview')" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition bg-blue-600 text-white shadow-sm shrink-0">
                         OVERVIEW
                     </button>
-                    <button id="nav-btn-response-plan" onclick="openResponsePlan()" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition text-rose-700 hover:text-rose-900 hover:bg-rose-50 shrink-0">
+                    <button id="nav-btn-emergency-plan" onclick="switchPage('emergency-plan')" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition text-rose-700 hover:text-rose-900 hover:bg-rose-50 shrink-0">
                         EMERGENCY PLAN
                     </button>
                     <button id="nav-btn-sensors" onclick="switchPage('sensors')" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100 shrink-0">
@@ -192,6 +192,7 @@
                     <button id="nav-btn-logs" onclick="switchPage('logs')" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100 shrink-0">
                         INCIDENT LOGS
                     </button>
+                    <button id="nav-btn-review" onclick="switchPage('review')" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100 shrink-0">REVIEW QUEUE</button>
                     <button id="nav-btn-dvr" onclick="switchPage('dvr')" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100 shrink-0">
                         BLACKBOX DVR
                     </button>
@@ -449,6 +450,8 @@
                                     <span id="heroConfidenceBadge" class="text-xs font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 tnum">
                                         CONFIDENCE: 90%
                                     </span>
+                                    <span id="heroTemporalState" class="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">TEMPORAL: CANDIDATE</span>
+                                    <span id="heroOodStatus" class="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-2 py-1 rounded border border-amber-200">OOD: REVIEW REQUIRED</span>
                                 </div>
                                 <p id="heroDescription" class="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed font-medium">
                                     Urban vehicular flow within standard traffic parameters. All actuators in standby.
@@ -478,11 +481,11 @@
 
                     <!-- Multimodal Sensor Explainability Matrix -->
                     <div id="explainabilityMatrixBox" class="pt-3 border-t border-slate-100 space-y-2">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                            <span class="font-mono font-bold text-slate-500 uppercase tracking-wider text-[11px]">
+                        <div class="space-y-1 min-w-0">
+                            <span class="block font-mono font-bold text-slate-500 uppercase tracking-wider text-[11px]">
                                 MULTIMODAL CONTRIBUTION WEIGHTS (WHY CLASSIFIED):
                             </span>
-                            <span id="explainableVerdictText" class="text-[11px] font-mono text-slate-700 font-semibold truncate">
+                            <span id="explainableVerdictText" class="block text-[11px] text-slate-700 leading-relaxed break-words">
                                 Multi-sensor agreement verified. Single-sensor noise rejected.
                             </span>
                         </div>
@@ -490,7 +493,7 @@
                             <div class="p-2 rounded-lg bg-slate-50 border border-slate-200">
                                 <div class="flex justify-between text-slate-500 mb-1">
                                     <span>IMU IMPACT</span>
-                                    <span id="pct-imu" class="font-bold text-slate-800 tnum">20.0%</span>
+                                    <span id="pct-imu" class="font-bold text-slate-800 tnum">not available</span>
                                 </div>
                                 <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                                     <div id="bar-imu" class="bg-blue-600 h-full rounded-full transition-all duration-300" style="width: 20%;"></div>
@@ -499,7 +502,7 @@
                             <div class="p-2 rounded-lg bg-slate-50 border border-slate-200">
                                 <div class="flex justify-between text-slate-500 mb-1">
                                     <span>ACOUSTIC</span>
-                                    <span id="pct-audio" class="font-bold text-slate-800 tnum">20.0%</span>
+                                    <span id="pct-audio" class="font-bold text-slate-800 tnum">not available</span>
                                 </div>
                                 <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                                     <div id="bar-audio" class="bg-indigo-600 h-full rounded-full transition-all duration-300" style="width: 20%;"></div>
@@ -508,7 +511,7 @@
                             <div class="p-2 rounded-lg bg-slate-50 border border-slate-200">
                                 <div class="flex justify-between text-slate-500 mb-1">
                                     <span>OPTICAL FLOW</span>
-                                    <span id="pct-vision" class="font-bold text-slate-800 tnum">20.0%</span>
+                                    <span id="pct-vision" class="font-bold text-slate-800 tnum">not available</span>
                                 </div>
                                 <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                                     <div id="bar-vision" class="bg-cyan-600 h-full rounded-full transition-all duration-300" style="width: 20%;"></div>
@@ -517,7 +520,7 @@
                             <div class="p-2 rounded-lg bg-slate-50 border border-slate-200">
                                 <div class="flex justify-between text-slate-500 mb-1">
                                     <span>GAS DENSITY</span>
-                                    <span id="pct-smoke" class="font-bold text-slate-800 tnum">20.0%</span>
+                                    <span id="pct-smoke" class="font-bold text-slate-800 tnum">not available</span>
                                 </div>
                                 <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                                     <div id="bar-smoke" class="bg-amber-600 h-full rounded-full transition-all duration-300" style="width: 20%;"></div>
@@ -526,7 +529,7 @@
                             <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 col-span-2 sm:col-span-1">
                                 <div class="flex justify-between text-slate-500 mb-1">
                                     <span>THERMAL</span>
-                                    <span id="pct-temp" class="font-bold text-slate-800 tnum">20.0%</span>
+                                    <span id="pct-temp" class="font-bold text-slate-800 tnum">not available</span>
                                 </div>
                                 <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                                     <div id="bar-temp" class="bg-rose-600 h-full rounded-full transition-all duration-300" style="width: 20%;"></div>
@@ -552,15 +555,14 @@
                         </p>
                     </div>
 
-                    <div id="responsePlanPanel" class="pt-3 border-t border-slate-100 space-y-2">
+                    <div id="responsePlanPanel" class="pt-3 border-t border-slate-100">
                         <div class="flex items-center justify-between gap-3">
                             <div>
-                                <h3 class="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">Emergency response plan</h3>
-                                <p id="responsePlanSummary" class="text-xs text-slate-600 mt-0.5">Loading the current operator response plan.</p>
+                                <h3 class="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">Emergency plan summary</h3>
+                                <p id="responsePlanSummary" class="text-xs text-slate-700 mt-1">Loading level and zone.</p>
                             </div>
-                            <span id="responsePlanMode" class="px-2 py-1 rounded border border-amber-200 bg-amber-50 text-[10px] font-mono font-bold text-amber-800 uppercase shrink-0">Decision support</span>
+                            <div class="flex items-center gap-2"><span id="responsePlanMode" class="px-2 py-1 rounded border border-amber-200 bg-amber-50 text-[10px] font-mono font-bold text-amber-800 uppercase shrink-0">Operator confirmation required</span><button onclick="switchPage('emergency-plan')" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold">View full plan</button></div>
                         </div>
-                        <div id="responsePlanActions" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
                     </div>
                 </section>
 
@@ -870,6 +872,25 @@
             <!-- ================================================================= -->
             <!-- VIEW 2: SENSORS MATRIX                                            -->
             <!-- ================================================================= -->
+            <div id="view-emergency-plan" class="page-view space-y-6 hidden">
+                <section class="p-6 rounded-2xl bg-white border border-slate-200 shadow-card space-y-5">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <div><h2 class="text-lg font-black text-slate-900">Emergency Response Plan</h2><p class="text-xs text-slate-500 mt-1">Decision support for the active incident. External dispatch always requires operator confirmation.</p></div>
+                        <span id="emergencyPlanConfirmation" class="px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">OPERATOR CONFIRMATION REQUIRED</span>
+                    </div>
+                    <div class="grid sm:grid-cols-3 gap-3"><div class="p-4 bg-slate-50 rounded-xl"><span class="text-[10px] text-slate-500 uppercase">Level</span><div id="emergencyPlanLevel" class="font-black text-rose-700 mt-1">Loading</div></div><div class="p-4 bg-slate-50 rounded-xl"><span class="text-[10px] text-slate-500 uppercase">Zone</span><div id="emergencyPlanZone" class="font-bold mt-1">Loading</div></div><div class="p-4 bg-slate-50 rounded-xl"><span class="text-[10px] text-slate-500 uppercase">Linked incident</span><div id="emergencyPlanIncident" class="font-mono font-bold mt-1">None</div></div></div>
+                    <ol id="responsePlanActions" class="space-y-2"></ol>
+                </section>
+            </div>
+
+            <div id="view-review" class="page-view space-y-6 hidden">
+                <section class="p-6 rounded-2xl bg-white border border-slate-200 shadow-card">
+                    <div class="flex items-center justify-between mb-5"><div><h2 class="text-lg font-black text-slate-900">Prediction Review Queue</h2><p class="text-xs text-slate-500 mt-1">Unknown, OOD, disputed, and low-confidence predictions awaiting human review.</p></div><button onclick="loadReviewQueue()" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold">Refresh queue</button></div>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4"><input id="reviewReasonFilter" class="border rounded-lg px-3 py-2 text-xs" placeholder="Reason code"><input id="reviewZoneFilter" class="border rounded-lg px-3 py-2 text-xs" placeholder="Zone"><input id="reviewModelFilter" class="border rounded-lg px-3 py-2 text-xs" placeholder="Model"><select id="reviewStatusFilter" class="border rounded-lg px-3 py-2 text-xs"><option value="">Any status</option><option value="pending">Pending</option><option value="reviewed">Reviewed</option></select><button onclick="loadReviewQueue()" class="rounded-lg bg-slate-900 text-white text-xs font-bold">Apply filters</button></div>
+                    <div id="reviewQueueList" class="space-y-3"><p class="text-sm text-slate-500">Loading review items…</p></div>
+                </section>
+            </div>
+
             <div id="view-sensors" class="page-view space-y-6 hidden">
                 <div class="p-5 rounded-2xl bg-cardSurface border border-cardBorder shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
@@ -1336,6 +1357,7 @@
                 </div>
 
                 <section id="incidentLogSection" class="p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4"><select id="incidentStatusFilter" class="border rounded-lg px-3 py-2 text-xs"><option value="">All statuses</option><option>OPEN</option><option>ACKNOWLEDGED</option><option>CONFIRMED</option><option>ESCALATED</option><option>CLOSED</option></select><input id="incidentZoneFilter" class="border rounded-lg px-3 py-2 text-xs" placeholder="Filter zone"><input id="incidentSeverityFilter" class="border rounded-lg px-3 py-2 text-xs" placeholder="Filter severity"><button onclick="loadIncidents()" class="rounded-lg bg-slate-900 text-white text-xs font-bold">Apply filters</button></div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead>
@@ -1357,6 +1379,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <div id="incidentDetailPanel" class="mt-5 p-5 rounded-xl bg-slate-50 border border-slate-200"><p class="text-sm text-slate-500">Select an incident to view its temporal timeline, risk, OOD reasons, evidence integrity, and operator actions.</p></div>
                 </section>
             </div>
 

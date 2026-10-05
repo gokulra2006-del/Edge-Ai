@@ -51,7 +51,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-blue-100 text-blue-800 border-blue-200",
         roleTitle: "Incident Commander Console",
         roleDesc: "Full municipal authority: emergency scenarios, traffic signals, barrier overrides, sensors matrix, and forensic dossier export.",
-        allowedPages: ["overview", "sensors", "actuators", "gis", "logs", "dvr", "datasets"],
+        allowedPages: ["overview", "emergency-plan", "sensors", "actuators", "gis", "logs", "review", "dvr", "datasets"],
         permissions: ["all", "scenarios", "signals", "ack", "telemetry", "hardware", "dvr", "datasets", "config"]
     },
     operator: {
@@ -62,7 +62,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-emerald-100 text-emerald-800 border-emerald-200",
         roleTitle: "Traffic Controller Console",
         roleDesc: "Municipal traffic signals, emergency corridor preemption, barrier controls, and incident audit log access.",
-        allowedPages: ["overview", "actuators", "gis", "logs"],
+        allowedPages: ["overview", "emergency-plan", "actuators", "gis", "logs", "review"],
         permissions: ["scenarios", "signals", "ack"]
     },
     engineer: {
@@ -73,7 +73,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-amber-100 text-amber-800 border-amber-200",
         roleTitle: "Hardware Engineer Console",
         roleDesc: "Physical sensor telemetry streams, hardware driver registry, calibration diagnostics, and master dataset explorer.",
-        allowedPages: ["overview", "sensors", "gis", "datasets"],
+        allowedPages: ["overview", "sensors", "gis", "logs", "review", "datasets"],
         permissions: ["telemetry", "hardware", "datasets", "config"]
     },
     viewer: {
@@ -84,7 +84,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-slate-100 text-slate-700 border-slate-200",
         roleTitle: "Public Observer Console",
         roleDesc: "Read-only situational awareness: live urban traffic status, AI assessment summary, and corridor spatial localization.",
-        allowedPages: ["overview", "gis"],
+        allowedPages: ["overview", "emergency-plan", "gis", "logs"],
         permissions: ["read"]
     }
 };
@@ -93,7 +93,7 @@ function getCurrentUser() {
     try {
         const stored = localStorage.getItem("sentinel_auth_user");
         const user = stored ? JSON.parse(stored) : null;
-        return user && user.authVersion === 2 ? user : null;
+        return user && user.authVersion === 3 ? user : null;
     } catch (e) {
         return null;
     }
@@ -101,7 +101,7 @@ function getCurrentUser() {
 
 function setCurrentUser(user) {
     if (user) {
-        localStorage.setItem("sentinel_auth_user", JSON.stringify({ ...user, authVersion: 2 }));
+        localStorage.setItem("sentinel_auth_user", JSON.stringify({ ...user, authVersion: 3 }));
     } else {
         localStorage.removeItem("sentinel_auth_user");
     }
@@ -123,7 +123,7 @@ async function handleLoginSubmit(event) {
             if (errEl) { errEl.innerText = "Incorrect username or password."; errEl.classList.remove("hidden"); }
             return;
         }
-        setCurrentUser(matchedUser);
+        setCurrentUser({ ...matchedUser, authToken: verified.token, operatorId: verified.operator_id });
         checkAuthAndRender();
         // Redirect to overview upon login
         switchPage("overview", true);
@@ -536,6 +536,11 @@ function processLivePayload(data) {
     const a = data.actuators || {};
     const ev = data.active_event || {};
     const user = getCurrentUser() || SYSTEM_USERS.commander;
+    const temporal = document.getElementById("heroTemporalState");
+    const ood = document.getElementById("heroOodStatus");
+    const oodDecision = data.ood_decision || ev.ood_decision || {};
+    if (temporal) temporal.innerText = `TEMPORAL: ${ev.temporal_state || data.temporal_state || "CANDIDATE"}`;
+    if (ood) ood.innerText = `OOD: ${oodDecision.status || ev.ood_status || "REVIEW REQUIRED"}`;
 
     // 0. Update Dedicated Public Observer View if active role is VIEWER
     if (user.role === "VIEWER") {
@@ -571,6 +576,11 @@ function processLivePayload(data) {
     lastEventClass = ev.event || "NORMAL";
 }
 
+function authHeaders(extra = {}) {
+    const user = getCurrentUser();
+    return { ...extra, ...(user?.authToken ? { Authorization: `Bearer ${user.authToken}` } : {}) };
+}
+
 let responsePlanInFlight = false;
 async function updateResponsePlan() {
     if (responsePlanInFlight) return;
@@ -582,10 +592,13 @@ async function updateResponsePlan() {
         const summary = document.getElementById("responsePlanSummary");
         const mode = document.getElementById("responsePlanMode");
         const actions = document.getElementById("responsePlanActions");
-        if (!summary || !mode || !actions) return;
+        if (!summary || !mode) return;
         summary.innerText = `${plan.event || "NORMAL"} · ${plan.severity || "NORMAL"} · ${plan.zone || "Zone unavailable"}`;
         mode.innerText = plan.operator_confirmation_required ? "Operator confirmation required" : "Decision support";
-        actions.innerHTML = (plan.recommended_actions || []).map(action => `<div class="text-[11px] text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2">${escapeHtml(action)}</div>`).join("") || '<div class="text-[11px] text-slate-500">No emergency action is required for the current event.</div>';
+        document.getElementById("emergencyPlanLevel").innerText = plan.severity || "NORMAL";
+        document.getElementById("emergencyPlanZone").innerText = plan.zone || "Unavailable";
+        document.getElementById("emergencyPlanIncident").innerText = plan.incident_id || "No linked incident";
+        if (actions) actions.innerHTML = (plan.recommended_actions || []).map((action,index) => `<li class="flex gap-3 p-3 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl"><span class="font-mono font-bold text-blue-700">${index+1}</span><span>${escapeHtml(action)}</span></li>`).join("") || '<li class="text-sm text-slate-500">No emergency action is required for the current event.</li>';
     } catch (_) {
         const summary = document.getElementById("responsePlanSummary");
         if (summary) summary.innerText = "Response plan is temporarily unavailable.";
@@ -593,8 +606,7 @@ async function updateResponsePlan() {
 }
 
 function openResponsePlan() {
-    switchPage("overview");
-    requestAnimationFrame(() => document.getElementById("responsePlanPanel")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    switchPage("emergency-plan");
 }
 
 function escapeHtml(value) {
@@ -939,18 +951,18 @@ function updateHeroBanner(ev, t, user) {
     }
 
     // Multimodal Sensor Contribution Breakdown
-    const contribs = ev.sensor_contributions || { imu: 20.0, audio: 20.0, vision: 20.0, smoke: 20.0, temp: 20.0 };
+    const contribs = ev.sensor_contributions || null;
     const verdictEl = document.getElementById("explainableVerdictText");
     if (verdictEl && ev.explainable_verdict) {
         verdictEl.innerText = ev.explainable_verdict;
     }
 
     ["imu", "audio", "vision", "smoke", "temp"].forEach(key => {
-        const pctVal = (contribs[key] !== undefined) ? contribs[key].toFixed(1) : "20.0";
+        const pctVal = (contribs && Number.isFinite(Number(contribs[key]))) ? Number(contribs[key]).toFixed(1) : null;
         const pctEl = document.getElementById(`pct-${key}`);
         const barEl = document.getElementById(`bar-${key}`);
-        if (pctEl) pctEl.innerText = `${pctVal}%`;
-        if (barEl) barEl.style.width = `${Math.min(100, Math.max(5, parseFloat(pctVal)))}%`;
+        if (pctEl) pctEl.innerText = pctVal === null ? "not available" : `${pctVal}%`;
+        if (barEl) barEl.style.width = pctVal === null ? "0%" : `${Math.min(100, Math.max(5, parseFloat(pctVal)))}%`;
     });
 
     // Alert Acknowledgment Button (Role Enforced: Commander & Operator)
@@ -1301,13 +1313,15 @@ function updateSensors(t) {
     }
 
     // Audio AI (Genuine Dataset Feeder & EdgeAcousticNet)
-    const audio = t.audio_prediction || { class: "traffic", confidence: 0.91 };
+    const audio = t.audio_prediction || { class: "UNKNOWN", confidence: 0, ood_status: "REVIEW_REQUIRED", reason_codes: ["MISSING_AUDIO_PREDICTION"] };
     const aClassEl = document.getElementById("telemetryAudioClass");
     const aConfEl = document.getElementById("telemetryAudioConf");
     const aBar = document.getElementById("audioConfBar");
     const aDsEl = document.getElementById("telemetryAudioDataset");
     const aFileEl = document.getElementById("telemetryAudioFile");
-    const aConf = Math.round((audio.confidence || 0.9) * 100);
+    const validAudioClass = ["ambient", "crash", "horn", "siren"].includes(String(audio.class || "").toLowerCase());
+    if (!validAudioClass) { audio.class = "UNKNOWN"; audio.ood_status = "REVIEW_REQUIRED"; audio.reason_codes = [...(audio.reason_codes || []), "OUT_OF_CLASS_LABEL"]; }
+    const aConf = Math.round((audio.confidence || 0) * 100);
 
     if (aClassEl) aClassEl.innerText = audio.class;
     if (aConfEl) aConfEl.innerText = `${aConf}%`;
@@ -1749,17 +1763,16 @@ async function acknowledgeCurrentIncident() {
 
     const ackBtn = document.getElementById("ackIncidentBtn");
     if (!ackBtn) return;
-    const incidentId = ackBtn.getAttribute("data-incident-id") || "";
-    const opName = user ? user.name : "CONTROL_ROOM_OPERATOR_1";
-    const opRole = user ? user.role : "COMMANDER";
-
     try {
+        const incidents = await fetch("/api/incidents").then(r => r.json());
+        const active = incidents.find(item => ["OPEN", "ESCALATED", "REVIEW_REQUIRED"].includes(item.status));
+        if (!active) { ackBtn.innerText = "NO ACTIVE INCIDENT"; ackBtn.disabled = true; return; }
         ackBtn.innerText = "Acknowledging...";
-        const res = await fetch(`/api/acknowledge_alert?id=${encodeURIComponent(incidentId)}&operator=${encodeURIComponent(opName)}&role=${encodeURIComponent(opRole)}`, {
-            method: "POST"
+        const res = await fetch(`/api/incidents/${encodeURIComponent(active.incident_id)}/acknowledge`, {
+            method: "POST", headers: authHeaders({"Content-Type":"application/json"}), body: JSON.stringify({version: active.version})
         });
         if (res.ok) {
-            ackBtn.innerText = "ACKNOWLEDGED BY " + opRole;
+            ackBtn.innerText = "ACKNOWLEDGED BY " + user.role;
             ackBtn.className = "action-btn px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider transition shadow-sm font-mono cursor-default";
             setTimeout(() => {
                 if (ackBtn.innerText.includes("ACKNOWLEDGED")) {
@@ -1777,13 +1790,15 @@ async function acknowledgeCurrentIncident() {
 /* 7. CLIENT-SIDE SPA ROUTING & COLLAPSIBLE SIDEBAR                          */
 /* ========================================================================= */
 
-const VALID_PAGES = ["overview", "sensors", "actuators", "gis", "logs", "dvr", "datasets"];
+const VALID_PAGES = ["overview", "emergency-plan", "sensors", "actuators", "gis", "logs", "review", "dvr", "datasets"];
 const PAGE_TITLES = {
     overview: "DASHBOARD OVERVIEW",
+    "emergency-plan": "EMERGENCY RESPONSE PLAN",
     sensors: "SENSORS MATRIX",
     actuators: "ACTUATORS RESPONSE",
     gis: "GIS & REAL-TIME CHARTS",
     logs: "HISTORICAL INCIDENT LOGS",
+    review: "PREDICTION REVIEW QUEUE",
     dvr: "BLACKBOX VIDEO DVR",
     datasets: "MASTER DATASET CATALOG"
 };
@@ -1858,6 +1873,9 @@ function switchPage(pageId, updateHash = true) {
     if (breadcrumb && PAGE_TITLES[pageId]) {
         breadcrumb.innerText = PAGE_TITLES[pageId];
     }
+    if (pageId === "emergency-plan") updateResponsePlan();
+    if (pageId === "logs") loadIncidents();
+    if (pageId === "review") loadReviewQueue();
 
     // 5. Page-specific triggers
     if (pageId === "gis" && chartInstance) {
@@ -2000,6 +2018,52 @@ function updateDriverBadge(elId, state) {
     } else {
         el.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-800";
     }
+}
+
+async function loadIncidents() {
+    const params = new URLSearchParams();
+    const status=document.getElementById("incidentStatusFilter")?.value, zone=document.getElementById("incidentZoneFilter")?.value, severity=document.getElementById("incidentSeverityFilter")?.value;
+    if(status) params.set("status",status); if(zone) params.set("zone_id",zone); if(severity) params.set("severity",severity);
+    const incidents=await fetch(`/api/incidents?${params}`).then(r=>r.json()).catch(()=>[]);
+    const tbody=document.getElementById("eventsTableBody"); if(!tbody) return;
+    tbody.innerHTML=incidents.length?incidents.map((item,index)=>`<tr class="hover:bg-slate-50 cursor-pointer" onclick="showIncidentDetail('${escapeHtml(item.incident_id)}')"><td class="py-3 px-3">${index+1}</td><td class="py-3 px-3">${escapeHtml(item.created_at)}</td><td class="py-3 px-3 font-bold">${escapeHtml(item.event_type)}</td><td class="py-3 px-3">—</td><td class="py-3 px-3">${escapeHtml(item.severity||item.risk_level||"UNASSESSED")}</td><td class="py-3 px-3">${escapeHtml(item.zone_id)}</td><td class="py-3 px-3">${escapeHtml(item.status)}</td><td class="py-3 px-3 text-right">View details</td></tr>`).join(""):'<tr><td colspan="8" class="py-8 text-center text-slate-500">No governed incidents match these filters.</td></tr>';
+}
+
+async function showIncidentDetail(id) {
+    const item=await fetch(`/api/incidents/${encodeURIComponent(id)}`).then(r=>r.json()); const panel=document.getElementById("incidentDetailPanel"); if(!panel)return;
+    const risk=item.risk_breakdown_json?JSON.parse(item.risk_breakdown_json):null;
+    const reasons=JSON.parse(item.ood_reasons_json||"[]");
+    const assurance=(item.assurance_states||[]).at(-1);
+    panel.innerHTML=`<div class="flex justify-between gap-3"><div><h3 class="font-black text-slate-900">${escapeHtml(item.incident_id)} · ${escapeHtml(item.status)}</h3><p class="text-xs text-slate-500">${escapeHtml(item.event_type)} in ${escapeHtml(item.zone_id)} · version ${item.version}</p></div><span class="text-xs font-bold text-amber-800">${escapeHtml(item.ood_status||"OOD not recorded")} ${reasons.length?`· ${reasons.map(escapeHtml).join(", ")}`:""}</span></div>
+    <div class="grid md:grid-cols-2 gap-4 mt-4"><div><h4 class="text-xs font-bold uppercase text-slate-500">Temporal timeline</h4>${(item.incident_events||[]).map(e=>`<div class="text-xs mt-2 p-2 bg-white rounded border">${escapeHtml(e.event_type)} · ${escapeHtml(e.timestamp)}</div>`).join("")||'<p class="text-xs mt-2">No transitions</p>'}</div><div><h4 class="text-xs font-bold uppercase text-slate-500">Risk and assurance</h4><pre class="text-[10px] whitespace-pre-wrap mt-2 bg-white p-2 rounded border">${escapeHtml(JSON.stringify({risk:risk||"not available",assurance:assurance||"not available"},null,2))}</pre></div></div>
+    <div class="mt-4"><h4 class="text-xs font-bold uppercase text-slate-500">Evidence integrity</h4>${(item.evidence||[]).map(e=>`<div class="mt-2 p-2 bg-white border rounded-lg flex justify-between gap-2 text-xs"><span>${escapeHtml(e.kind)} · ${escapeHtml(e.source_path)}</span><span class="font-bold ${e.hash_verified?'text-emerald-700':'text-rose-700'}">${e.hash_verified?'HASH VERIFIED':'HASH FAILED / MISSING'}</span></div>`).join("")||'<p class="text-xs mt-2">No evidence files attached</p>'}</div>
+    <div class="mt-4"><h4 class="text-xs font-bold uppercase text-slate-500">Predictions and feedback</h4>${(item.predictions||[]).map(p=>`<div class="mt-2 p-2 bg-white border rounded-lg flex justify-between gap-2"><span class="text-xs">${escapeHtml(p.label)} · ${Math.round(p.confidence*100)}% · ${escapeHtml(p.model_id||"model unknown")} ${p.model_version?`v${escapeHtml(p.model_version)}`:""}<br><b>${escapeHtml(p.usage_restriction||"UNVERIFIED")}</b></span><span class="flex gap-1">${["CORRECT","INCORRECT","UNSURE"].map(label=>`<button onclick="submitFeedback(${p.id},'${label}')" class="px-2 py-1 border rounded text-[9px] font-bold">${label}</button>`).join("")}</span></div>`).join("")||'<p class="text-xs mt-2">No predictions</p>'}</div>
+    <div class="mt-4"><h4 class="text-xs font-bold uppercase text-slate-500">Actions and notes</h4>${[...(item.operator_actions||[]),...(item.incident_notes||[])].map(a=>`<div class="text-xs mt-2">${escapeHtml(a.action||"NOTE")} · ${escapeHtml(a.operator_id)} · ${escapeHtml(a.note||a.payload_json||"")}</div>`).join("")||'<p class="text-xs mt-2">No operator actions</p>'}</div>`;
+    const legal={OPEN:["acknowledge","false-alarm","notes"],REVIEW_REQUIRED:["acknowledge","false-alarm","notes"],ACKNOWLEDGED:["confirm","false-alarm","escalate","resolve","notes"],CONFIRMED:["escalate","resolve","notes"],ESCALATED:["acknowledge","resolve","notes"],FALSE_ALARM:["resolve","notes"],CLOSED:["notes"]};
+    const role=getCurrentUser()?.role; const permitted=role==="COMMANDER"?["acknowledge","confirm","false-alarm","escalate","resolve","notes"]:role==="OPERATOR"?["acknowledge","confirm","false-alarm","notes"]:[]; const actions=(legal[item.status]||[]).filter(x=>permitted.includes(x));
+    if(actions.length) panel.innerHTML+=`<div class="mt-4 flex flex-wrap gap-2">${actions.map(action=>`<button onclick="incidentAction('${escapeHtml(item.incident_id)}','${action}',${item.version})" class="px-3 py-2 rounded-lg border bg-white text-[10px] font-bold uppercase">${action.replaceAll("-"," ")}</button>`).join("")}</div>`;
+}
+
+async function incidentAction(id,action,version){
+    const needsNote=["false-alarm","resolve","notes"].includes(action); const note=needsNote?prompt(action==="resolve"?"Resolution summary":"Reason or note")||"":""; if(needsNote&&!note)return;
+    const response=await fetch(`/api/incidents/${encodeURIComponent(id)}/${action}`,{method:"POST",headers:authHeaders({"Content-Type":"application/json"}),body:JSON.stringify({version,note})});
+    if(response.ok)showIncidentDetail(id);else alert((await response.json()).error||"Action failed");
+}
+
+async function loadReviewQueue() {
+    const params=new URLSearchParams(); for(const [key,id] of [["reason","reviewReasonFilter"],["zone","reviewZoneFilter"],["model","reviewModelFilter"],["status","reviewStatusFilter"]]){const value=document.getElementById(id)?.value;if(value)params.set(key,value)}
+    const items=await fetch(`/api/review-queue?${params}`).then(r=>r.json()).catch(()=>[]); const list=document.getElementById("reviewQueueList"); if(!list)return;
+    list.innerHTML=items.length?items.map(item=>`<article class="p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-3"><div><div class="font-bold text-slate-900">${escapeHtml(item.label)} · ${escapeHtml(item.model_id||"model unknown")}</div><div class="text-xs text-slate-500 mt-1">${escapeHtml(item.zone_id)} · priority ${item.priority} · ${(item.reason_codes||[]).map(escapeHtml).join(", ")||"low confidence"}</div><div class="text-[10px] text-slate-500 mt-1">${escapeHtml(item.evidence_kind||"evidence not attached")} ${item.evidence_path?`· <a class="text-blue-600 font-bold" href="/api/incidents/${encodeURIComponent(item.incident_id)}/evidence.zip">download evidence package</a>`:""} · ${item.claimed_by?`claimed by ${escapeHtml(item.claimed_by)}`:"unclaimed"}</div></div><div class="flex flex-wrap gap-2"><button onclick="claimReview(${item.id})" class="px-2 py-1 rounded border bg-white text-[10px] font-bold" ${item.claimed_by?'disabled':''}>CLAIM</button>${["CORRECT","INCORRECT","UNSURE"].map(label=>`<button onclick="submitFeedback(${item.id},'${label}')" class="px-2 py-1 rounded border bg-white text-[10px] font-bold">${label}</button>`).join("")}</div></article>`).join(""):'<p class="text-sm text-slate-500">No predictions currently need review.</p>';
+}
+
+async function claimReview(id) {
+    const response=await fetch(`/api/predictions/${id}/claim`,{method:"POST",headers:authHeaders({"Content-Type":"application/json"}),body:"{}"});
+    if(response.ok) loadReviewQueue(); else alert((await response.json()).error||"Claim failed");
+}
+
+async function submitFeedback(id,label) {
+    const response=await fetch(`/api/predictions/${id}/feedback`,{method:"POST",headers:authHeaders({"Content-Type":"application/json"}),body:JSON.stringify({label})});
+    if(response.ok) loadReviewQueue(); else alert((await response.json()).error||"Feedback failed");
 }
 
 async function setHardwareMode(mode, fault = "DISCONNECT") {

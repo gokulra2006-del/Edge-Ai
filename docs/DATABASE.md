@@ -34,4 +34,15 @@ Synthetic profiles remain `RESEARCH_ONLY`; model entries carry the same usage re
 
 ## Phase 2 migration
 
-Migration 3 adds isk_level and isk_breakdown_json to incidents. Migrations remain append-only; old data and tables are retained.
+Migration 3 adds `risk_level` and `risk_breakdown_json` to incidents. Migrations remain append-only; old data and tables are retained.
+
+## Phase 3 migration
+
+Migration 4 adds optimistic-concurrency versioning, acknowledgement/resolution durations, temporal/OOD fields, demo and severity metadata, plus append-only `incident_notes`, `prediction_feedback`, and `review_claims` tables.
+
+```mermaid
+erDiagram
+  INCIDENTS ||--o{ INCIDENT_NOTES : receives
+  PREDICTIONS ||--o{ PREDICTION_FEEDBACK : reviews
+  PREDICTIONS ||--o| REVIEW_CLAIMS : assigned
+```

@@ -25,6 +25,9 @@ def utc_now() -> str:
 class IncidentStatus(str, Enum):
     OPEN = "OPEN"
     ACKNOWLEDGED = "ACKNOWLEDGED"
+    CONFIRMED = "CONFIRMED"
+    ESCALATED = "ESCALATED"
+    FALSE_ALARM = "FALSE_ALARM"
     CLOSED = "CLOSED"
     REVIEW_REQUIRED = "REVIEW_REQUIRED"
 
@@ -93,6 +96,34 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     ALTER TABLE incidents ADD COLUMN risk_level TEXT;
     ALTER TABLE incidents ADD COLUMN risk_breakdown_json TEXT;
     """),
+    (4, """
+    ALTER TABLE incidents ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+    ALTER TABLE incidents ADD COLUMN acknowledged_seconds REAL;
+    ALTER TABLE incidents ADD COLUMN resolution_seconds REAL;
+    ALTER TABLE incidents ADD COLUMN temporal_state TEXT;
+    ALTER TABLE incidents ADD COLUMN ood_status TEXT;
+    ALTER TABLE incidents ADD COLUMN ood_reasons_json TEXT;
+    ALTER TABLE incidents ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE incidents ADD COLUMN severity TEXT;
+    CREATE TABLE IF NOT EXISTS incident_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, incident_id TEXT NOT NULL,
+      timestamp TEXT NOT NULL, operator_id TEXT NOT NULL, operator_role TEXT NOT NULL,
+      note TEXT NOT NULL, FOREIGN KEY(incident_id) REFERENCES incidents(incident_id)
+    );
+    CREATE TABLE IF NOT EXISTS prediction_feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, prediction_id INTEGER NOT NULL,
+      label TEXT NOT NULL, corrected_class TEXT, operator_id TEXT NOT NULL,
+      operator_role TEXT NOT NULL, timestamp TEXT NOT NULL, comment TEXT,
+      FOREIGN KEY(prediction_id) REFERENCES predictions(id)
+    );
+    CREATE TABLE IF NOT EXISTS review_claims (
+      prediction_id INTEGER PRIMARY KEY, operator_id TEXT NOT NULL,
+      operator_role TEXT NOT NULL, claimed_at TEXT NOT NULL,
+      FOREIGN KEY(prediction_id) REFERENCES predictions(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_feedback_prediction ON prediction_feedback(prediction_id);
+    CREATE INDEX IF NOT EXISTS idx_notes_incident ON incident_notes(incident_id);
+    """),
 )
 
 
@@ -141,6 +172,16 @@ class SQLiteWriter:
     def submit(self, operation: Callable[[sqlite3.Connection], None]) -> bool:
         try: self.queue.put_nowait(operation); return True
         except queue.Full: self.failures.append("writer queue full"); _WRITER_FAILURES.append("writer queue full"); return False
+    def submit_wait(self, operation: Callable[[sqlite3.Connection], Any], timeout: float = 3.0) -> Any:
+        completed = threading.Event(); result: dict[str, Any] = {}
+        def wrapped(connection: sqlite3.Connection) -> None:
+            try: result["value"] = operation(connection)
+            except Exception as exc: result["error"] = exc
+            finally: completed.set()
+        if not self.submit(wrapped): raise RuntimeError("writer queue unavailable")
+        if not completed.wait(timeout): raise TimeoutError("database writer timed out")
+        if "error" in result: raise result["error"]
+        return result.get("value")
     def _run(self) -> None:
         while not self._stop.is_set() or not self.queue.empty():
             try: op = self.queue.get(timeout=.1)
@@ -188,6 +229,10 @@ class IncidentRepository:
         return self.writer.submit(lambda c: c.execute("INSERT INTO predictions(incident_id,timestamp,label,confidence,model_id,payload_json) VALUES(?,?,?,?,?,?)", (incident_id,utc_now(),label,confidence,model_id,json.dumps(payload or {},sort_keys=True))))
     def add_operator_action(self, incident_id: str, operator_id: str, action: str, approved: bool, payload: dict[str, Any] | None = None) -> bool:
         return self.writer.submit(lambda c: c.execute("INSERT INTO operator_actions(incident_id,timestamp,operator_id,action,approved,payload_json) VALUES(?,?,?,?,?,?)", (incident_id,utc_now(),operator_id,action,int(approved),json.dumps(payload or {},sort_keys=True))))
+    def add_note(self, incident_id: str, operator_id: str, operator_role: str, note: str) -> bool:
+        return self.writer.submit(lambda c: c.execute("INSERT INTO incident_notes(incident_id,timestamp,operator_id,operator_role,note) VALUES(?,?,?,?,?)", (incident_id,utc_now(),operator_id,operator_role,note)))
+    def add_feedback(self, prediction_id: int, label: str, corrected_class: str | None, operator_id: str, operator_role: str, comment: str | None) -> bool:
+        return self.writer.submit(lambda c: c.execute("INSERT INTO prediction_feedback(prediction_id,label,corrected_class,operator_id,operator_role,timestamp,comment) VALUES(?,?,?,?,?,?,?)", (prediction_id,label,corrected_class,operator_id,operator_role,utc_now(),comment)))
     def add_assurance_state(self, incident_id: str, model_id: str | None, state: str, payload: dict[str, Any] | None = None) -> bool:
         return self.writer.submit(lambda c: c.execute("INSERT INTO assurance_states(incident_id,timestamp,model_id,state,payload_json) VALUES(?,?,?,?,?)", (incident_id,utc_now(),model_id,state,json.dumps(payload or {},sort_keys=True))))
     def attach_evidence(self, incident_id: str, kind: str, source: Path) -> bool:
@@ -198,7 +243,7 @@ class IncidentRepository:
     def close_incident(self, incident_id: str, outcome: str) -> bool:
         return self.writer.submit(lambda c: c.execute("UPDATE incidents SET status=?, outcome=?, updated_at=? WHERE incident_id=?", (IncidentStatus.CLOSED.value,outcome,utc_now(),incident_id)))
     def rows(self, table: str, incident_id: str) -> list[dict[str, Any]]:
-        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states"}
+        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes"}
         if table not in allowed: raise ValueError("invalid table")
         key = "incident_id"; return [dict(r) for r in self._read(f"SELECT * FROM {table} WHERE {key}=? ORDER BY id" if table != "incidents" else "SELECT * FROM incidents WHERE incident_id=?", (incident_id,))]
     def close(self) -> None: self.writer.close()

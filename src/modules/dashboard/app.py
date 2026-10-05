@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import hmac
+import secrets
 from pathlib import Path
 import urllib.parse
 from typing import Optional
@@ -22,13 +23,30 @@ from src.config.settings import CONFIG
 from src.modules.dashboard.firebase_sync import FIREBASE_SYNC
 from src.modules.dashboard.live_streamer import STREAMER
 from src.modules.database.db_manager import DatabaseManager
+from src.modules.database.governed_store import IncidentRepository
+from src.modules.incident_management.workflow import OperatorWorkflow, ReviewQueue, PermissionDenied, VersionConflict, WorkflowError
 from src.modules.logging.logger import LOGGER
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
+GOVERNED_REPOSITORY = IncidentRepository(Path(CONFIG.db_path))
+OPERATOR_WORKFLOW = OperatorWorkflow(GOVERNED_REPOSITORY, ROOT_DIR / "logs" / "simulated_dispatch.jsonl")
+REVIEW_QUEUE = ReviewQueue(GOVERNED_REPOSITORY)
+AUTH_SESSIONS: dict[str, dict[str, str]] = {}
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
     db = DatabaseManager()
+
+    def _json(self, value, status=200):
+        self.send_response(status); self.send_header("Content-Type", "application/json"); self.send_header("Access-Control-Allow-Origin", "*"); self.end_headers()
+        self.wfile.write(json.dumps(value, default=str).encode("utf-8"))
+
+    def _payload(self):
+        length = int(self.headers.get("Content-Length", 0)); return json.loads(self.rfile.read(length) or b"{}")
+
+    def _actor(self):
+        token = self.headers.get("Authorization", "").removeprefix("Bearer ")
+        return AUTH_SESSIONS.get(token)
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -70,6 +88,25 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(json.dumps(system_health()).encode("utf-8"))
+
+        elif path == "/api/incidents":
+            self._json(OPERATOR_WORKFLOW.list_incidents({k:v[0] for k,v in urllib.parse.parse_qs(parsed.query).items()}))
+
+        elif path.startswith("/api/incidents/") and path.endswith("/evidence.zip"):
+            incident_id = path.split("/")[3]; archive = ROOT_DIR / "data" / "evidence" / f"{incident_id}.zip"
+            if not archive.exists(): self._json({"error":"Evidence package not found"},404); return
+            self.send_response(200); self.send_header("Content-Type","application/zip"); self.send_header("Content-Disposition",f'attachment; filename="{incident_id}.zip"'); self.end_headers(); self.wfile.write(archive.read_bytes())
+
+        elif path.startswith("/api/incidents/"):
+            try: self._json(OPERATOR_WORKFLOW.get_incident(path.split("/")[3]))
+            except WorkflowError as exc: self._json({"error":str(exc)},404)
+
+        elif path == "/api/review-queue":
+            self._json(REVIEW_QUEUE.list({k:v[0] for k,v in urllib.parse.parse_qs(parsed.query).items()}))
+
+        elif path == "/api/retraining-manifest":
+            query=urllib.parse.parse_qs(parsed.query); fmt=query.get("format",["json"])[0]; body=REVIEW_QUEUE.export(fmt,query.get("include_demo",["false"])[0].lower()=="true")
+            self.send_response(200); self.send_header("Content-Type","text/csv" if fmt=="csv" else "application/json"); self.end_headers(); self.wfile.write(body.encode("utf-8"))
 
         # 2. Historical Incidents from SQLite Database
         elif path == "/api/events":
@@ -343,7 +380,39 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_response(200 if valid else 401)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps({"role": record.get("role")} if valid else {"error": "invalid credentials"}).encode("utf-8"))
+            if valid:
+                token=secrets.token_urlsafe(24); AUTH_SESSIONS[token]={"operator_id":username,"role":record.get("role")}
+                response={"role":record.get("role"),"token":token,"operator_id":username}
+            else: response={"error":"invalid credentials"}
+            self.wfile.write(json.dumps(response).encode("utf-8"))
+            return
+
+        if path.startswith("/api/incidents/"):
+            actor=self._actor()
+            if not actor: self._json({"error":"Authentication required"},401); return
+            parts=path.strip("/").split("/")
+            if len(parts)==4:
+                incident_id,action=parts[2],parts[3].replace("-","_")
+                if action == "notes": action = "note"
+                try:
+                    payload=self._payload(); result=OPERATOR_WORKFLOW.act(incident_id,action,actor["operator_id"],actor["role"],int(payload.get("version",0)),str(payload.get("note",payload.get("reason",payload.get("resolution_summary","")))))
+                    self._json(result)
+                except PermissionDenied as exc: self._json({"error":str(exc)},403)
+                except VersionConflict as exc: self._json({"error":str(exc)},409)
+                except (WorkflowError,ValueError) as exc: self._json({"error":str(exc)},400)
+                return
+
+        if path.startswith("/api/predictions/"):
+            actor=self._actor()
+            if not actor: self._json({"error":"Authentication required"},401); return
+            parts=path.strip("/").split("/"); prediction_id=int(parts[2])
+            try:
+                payload=self._payload()
+                if parts[3]=="feedback": REVIEW_QUEUE.feedback(prediction_id,payload.get("label",""),actor["operator_id"],actor["role"],payload.get("corrected_class"),payload.get("comment")); self._json({"status":"recorded"})
+                elif parts[3]=="claim": self._json({"claimed":REVIEW_QUEUE.claim(prediction_id,actor["operator_id"],actor["role"])})
+                else: self._json({"error":"Unknown review action"},404)
+            except PermissionDenied as exc: self._json({"error":str(exc)},403)
+            except WorkflowError as exc: self._json({"error":str(exc)},400)
             return
 
         # 1. Interactive Scenario Trigger
@@ -355,6 +424,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
             active_ev = result.get("active_event", {})
             if active_ev.get("event") != "NORMAL":
                 try:
+                    governed_id, _ = GOVERNED_REPOSITORY.create_incident(active_ev.get("event", "UNKNOWN"), active_ev.get("zone", "ZONE_B_INTERSECTION"))
+                    GOVERNED_REPOSITORY.writer.drain()
+                    active_ev["id"] = governed_id
+                    GOVERNED_REPOSITORY.add_event(governed_id, "scenario_trigger", active_ev, dedupe_key=f"scenario:{active_ev.get('event')}:{active_ev.get('timestamp','')}")
+                    GOVERNED_REPOSITORY.add_prediction(governed_id, active_ev.get("event", "UNKNOWN"), float(active_ev.get("confidence", 0)), "live-fusion", {"reason_codes": active_ev.get("ood_reasons", []), "ood_status": active_ev.get("ood_status")})
                     self.db.log_event(
                         event_type=active_ev.get("event"),
                         confidence=active_ev.get("confidence", 0.9),

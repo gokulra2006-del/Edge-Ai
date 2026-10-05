@@ -381,6 +381,12 @@ class LiveEdgeStreamer:
                 scenario_hint="NORMAL"
             )
 
+            # The acoustic model's legacy taxonomy calls the nominal class
+            # ``traffic``. Expose it as ``ambient`` in operational telemetry so
+            # it cannot be confused with a traffic-control event.
+            if decision.deep_learning["acoustic_model"]["predicted_class"] == "traffic":
+                decision.deep_learning["acoustic_model"]["predicted_class"] = "ambient"
+
             telemetry = {
                 "temperature": temp_val,
                 "smoke_level": smoke_val,
@@ -435,7 +441,9 @@ class LiveEdgeStreamer:
                 "severity": decision.severity,
                 "zone": "ZONE_B_INTERSECTION",
                 "verified": True,
-                "sensor_contributions": temporal_res.get("sensor_contributions", {}),
+                # A nominal observation has no incident attribution. Equal
+                # percentages would be presentation placeholders, not evidence.
+                "sensor_contributions": {},
                 "explainable_verdict": " • ".join(decision.explainable_reasoning),
                 "evidence_chain": decision.explainable_reasoning,
                 "description": "Normal urban vehicular traffic evaluated by Deep Learning Rule Engine (Rule R0).",

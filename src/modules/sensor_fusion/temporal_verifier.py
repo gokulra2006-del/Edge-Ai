@@ -174,13 +174,9 @@ class TemporalFusionVerifier:
                 "temp": 0.03
             }
         else:
-            raw_contribs = {
-                "imu": 0.20,
-                "audio": 0.20,
-                "vision": 0.20,
-                "smoke": 0.20,
-                "temp": 0.20
-            }
+            # Nominal operation has no event attribution. Equal 20% values were
+            # presentation placeholders and must not be presented as evidence.
+            raw_contribs = {}
 
         total_contrib = sum(raw_contribs.values()) or 1.0
         sensor_contributions = {
@@ -253,4 +249,3 @@ class TemporalFusionVerifier:
 
 # Global singleton instance
 TEMPORAL_VERIFIER = TemporalFusionVerifier(window_size=5, persistence_threshold=2)
-
