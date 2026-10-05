@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from src.config.model_profile import model_profile
+from src.config.governance_config import load_governance_config
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -120,6 +121,7 @@ class ModelAssuranceService:
 
         return {
             "profile": profile.get("name", "legacy"),
+            "usage_restriction": load_governance_config().usage_restriction,
             "synthetic_data": synthetic,
             "status": status,
             "guidance": guidance,

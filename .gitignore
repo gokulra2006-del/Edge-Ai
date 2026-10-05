@@ -33,3 +33,8 @@ data/recordings/
 data/*.db
 data/*.npz
 models/vision_runs/
+
+# Phase 1 local smoke and test artifacts.
+.pytest-phase1/
+data/evidence/
+data/phase1_trigger.txt
