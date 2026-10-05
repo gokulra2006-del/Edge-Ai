@@ -31,3 +31,7 @@ erDiagram
 `EvidenceExporter` creates `evidence/<incident_id>/manifest.json` and an optional ZIP. The manifest contains the incident timeline, predictions, operator actions, copied source files, and SHA-256 values. `verify()` recomputes every packaged-file hash before accepting it.
 
 Synthetic profiles remain `RESEARCH_ONLY`; model entries carry the same usage restriction. Missing evaluation measures are stored as `UNVERIFIED`, never inferred. Startup checksum mismatches mark the model `REVIEW_REQUIRED` and record a deployment event.
+
+## Phase 2 migration
+
+Migration 3 adds isk_level and isk_breakdown_json to incidents. Migrations remain append-only; old data and tables are retained.

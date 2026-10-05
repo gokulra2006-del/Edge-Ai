@@ -2,6 +2,7 @@
 from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List
+from src.modules.sensor_fusion.decision_logic import OODDecision
 
 
 READINESS = {"SUPPORTED": 1.0, "CAUTION": .72, "REVIEW_REQUIRED": .45, "UNMEASURED": .35}
@@ -9,7 +10,9 @@ READINESS = {"SUPPORTED": 1.0, "CAUTION": .72, "REVIEW_REQUIRED": .45, "UNMEASUR
 
 class AdvancedFusionEngine:
     def __init__(self, config: Dict[str, Any]):
+        self.root_config = config
         self.config = config["fusion"]
+        self.ood = OODDecision(config.get("ood", {"minimum_max_softmax": 0.0, "minimum_margin": 0.0, "maximum_entropy": 99, "maximum_darkness": 99, "maximum_blur": 99, "minimum_audio_rms": 0.0, "maximum_clipping": 99, "conflict_margin": 1}), synthetic=True)
 
     def fuse(self, telemetry: Dict[str, Any], assurance: Dict[str, Any]) -> Dict[str, Any]:
         audio, vision = telemetry.get("audio_prediction", {}), telemetry.get("vision_prediction", {})
@@ -27,8 +30,9 @@ class AdvancedFusionEngine:
         weights = self.config["weights"]
         confidence = sum(weights[k] * (evidence[k] if k != "reliability" else r) for k in weights)
         if len(modalities) < self.config["minimum_modalities"]: confidence *= .72
-        contradiction = ["single-modality evidence" ] if len(modalities) < 2 else []
+        ood = self.ood.assess([float(audio.get("confidence",0)), float(vision.get("confidence",0))], str(audio.get("class", "")) or None, str(vision.get("class", "")) or None, telemetry.get("input_quality", {}))
+        contradiction = (["single-modality evidence"] if len(modalities) < 2 else []) + ood["reason_codes"]
         return {"incident_type": event if primary >= .4 else "NORMAL", "fusion_confidence": round(min(1, confidence), 4),
                 "contributing_modalities": modalities, "individual_confidences": evidence, "model_reliability": round(r, 3),
                 "supporting_evidence": [f"{k}: {v:.0%}" for k,v in evidence.items() if v >= .5],
-                "contradicting_evidence": contradiction, "timestamp": datetime.now(timezone.utc).isoformat()}
+                "contradicting_evidence": contradiction, "ood_decision": ood, "timestamp": datetime.now(timezone.utc).isoformat()}

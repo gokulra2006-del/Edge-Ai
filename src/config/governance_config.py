@@ -59,3 +59,18 @@ def load_governance_config(path: Path | None = None) -> GovernanceConfig:
         evidence_root=evidence_root,
         usage_restriction=restriction,
     )
+
+def load_decision_config(path: Path | None = None) -> dict[str, Any]:
+    """Return validated Phase 2 thresholds from the established config file."""
+    config_path = path or Path(__file__).resolve().parent / "advanced_platform.json"
+    document = json.loads(config_path.read_text(encoding="utf-8"))
+    rules, ood, zone = document.get("temporal_rules"), document.get("ood"), document.get("zone_risk")
+    if not isinstance(rules, dict) or "default" not in rules: raise ValueError("temporal_rules.default is required")
+    for name, rule in rules.items():
+        if not isinstance(rule, dict) or float(rule.get("threshold", -1)) < 0 or float(rule.get("observe_timeout_seconds", -1)) < 0 or float(rule.get("clear_timeout_seconds", -1)) < 0: raise ValueError(f"invalid temporal rule: {name}")
+    if not isinstance(ood, dict) or any(float(v) < 0 for v in ood.values() if isinstance(v,(int,float))): raise ValueError("invalid ood settings")
+    if not isinstance(zone, dict) or zone.get("default_zone_type") not in set(zone.get("zone_types",{}).values()): raise ValueError("invalid default zone type")
+    matrix=zone.get("severity_matrix",{}); types=set(zone["zone_types"].values())
+    for event, values in matrix.items():
+        if not types.issubset(values) or any(v not in {"LOW","MEDIUM","HIGH","CRITICAL"} for v in values.values()): raise ValueError(f"missing or invalid severity matrix entry: {event}")
+    return document

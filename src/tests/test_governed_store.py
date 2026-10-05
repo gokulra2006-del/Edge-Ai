@@ -18,7 +18,7 @@ def test_migrations_rerun_and_legacy_upgrade(tmp_path):
         con.execute("INSERT INTO emergency_events VALUES(1,'collision','Z1','2026-10-05T00:00:00+00:00')")
     MigrationRunner(db).run(); MigrationRunner(db).run()
     with sqlite3.connect(db) as con:
-        assert con.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 2
+        assert con.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 3
         assert con.execute("SELECT incident_id FROM incidents WHERE incident_id='LEGACY-1'").fetchone()[0] == "LEGACY-1"
         assert con.execute("SELECT event_type FROM emergency_events").fetchone()[0] == "collision"
 
@@ -80,4 +80,3 @@ def test_registry_checksum_mismatch_sets_review_required(tmp_path):
         assert r._read("SELECT status FROM models WHERE model_id='m1'")[0]["status"] == "REVIEW_REQUIRED"
         assert r._read("SELECT status FROM deployments WHERE model_id='m1'")[0]["status"] == "REVIEW_REQUIRED"
     finally: r.close()
-

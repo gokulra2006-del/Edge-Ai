@@ -89,6 +89,10 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     CREATE UNIQUE INDEX IF NOT EXISTS idx_events_dedupe
       ON incident_events(incident_id, dedupe_key) WHERE dedupe_key IS NOT NULL;
     """),
+    (3, """
+    ALTER TABLE incidents ADD COLUMN risk_level TEXT;
+    ALTER TABLE incidents ADD COLUMN risk_breakdown_json TEXT;
+    """),
 )
 
 
@@ -124,7 +128,7 @@ class MigrationRunner:
             incident_id = f"LEGACY-{old_id}"
             timestamp = row["timestamp"] if "timestamp" in columns and row["timestamp"] else utc_now()
             zone = row["zone_id"] if "zone_id" in columns and row["zone_id"] else "LEGACY"
-            con.execute("INSERT OR IGNORE INTO incidents VALUES(?,?,?,?,?,?,?,?)", (incident_id, str(uuid4()), row["event_type"], zone, IncidentStatus.CLOSED.value, timestamp, timestamp, "Migrated legacy event"))
+            con.execute("INSERT OR IGNORE INTO incidents(incident_id,incident_uuid,event_type,zone_id,status,created_at,updated_at,outcome) VALUES(?,?,?,?,?,?,?,?)", (incident_id, str(uuid4()), row["event_type"], zone, IncidentStatus.CLOSED.value, timestamp, timestamp, "Migrated legacy event"))
 
 
 class SQLiteWriter:
@@ -175,7 +179,7 @@ class IncidentRepository:
         day = timestamp[:10].replace("-", "")
         seq = len(self._read("SELECT incident_id FROM incidents WHERE incident_id LIKE ?", (f"INC-{day}-%",))) + 1
         incident_id = f"INC-{day}-{seq:04d}"; incident_uuid = str(uuid4())
-        self.writer.submit(lambda c: c.execute("INSERT INTO incidents VALUES(?,?,?,?,?,?,?,?)", (incident_id, incident_uuid, event_type, zone_id, IncidentStatus.OPEN.value, timestamp, timestamp, None)))
+        self.writer.submit(lambda c: c.execute("INSERT INTO incidents(incident_id,incident_uuid,event_type,zone_id,status,created_at,updated_at,outcome) VALUES(?,?,?,?,?,?,?,?)", (incident_id, incident_uuid, event_type, zone_id, IncidentStatus.OPEN.value, timestamp, timestamp, None)))
         return incident_id, False
     def add_event(self, incident_id: str, event_type: str, payload: dict[str, Any], timestamp: str | None = None, dedupe_key: str | None = None) -> bool:
         ts = timestamp or utc_now(); body = json.dumps(payload, sort_keys=True)
@@ -184,9 +188,13 @@ class IncidentRepository:
         return self.writer.submit(lambda c: c.execute("INSERT INTO predictions(incident_id,timestamp,label,confidence,model_id,payload_json) VALUES(?,?,?,?,?,?)", (incident_id,utc_now(),label,confidence,model_id,json.dumps(payload or {},sort_keys=True))))
     def add_operator_action(self, incident_id: str, operator_id: str, action: str, approved: bool, payload: dict[str, Any] | None = None) -> bool:
         return self.writer.submit(lambda c: c.execute("INSERT INTO operator_actions(incident_id,timestamp,operator_id,action,approved,payload_json) VALUES(?,?,?,?,?,?)", (incident_id,utc_now(),operator_id,action,int(approved),json.dumps(payload or {},sort_keys=True))))
+    def add_assurance_state(self, incident_id: str, model_id: str | None, state: str, payload: dict[str, Any] | None = None) -> bool:
+        return self.writer.submit(lambda c: c.execute("INSERT INTO assurance_states(incident_id,timestamp,model_id,state,payload_json) VALUES(?,?,?,?,?)", (incident_id,utc_now(),model_id,state,json.dumps(payload or {},sort_keys=True))))
     def attach_evidence(self, incident_id: str, kind: str, source: Path) -> bool:
         source = Path(source); digest = sha256(source.read_bytes()).hexdigest()
         return self.writer.submit(lambda c: c.execute("INSERT INTO evidence(incident_id,timestamp,kind,source_path,sha256) VALUES(?,?,?,?,?)", (incident_id,utc_now(),kind,str(source),digest)))
+    def update_incident_risk(self, incident_id: str, level: str, breakdown: dict[str, Any]) -> bool:
+        return self.writer.submit(lambda c: c.execute("UPDATE incidents SET risk_level=?, risk_breakdown_json=?, updated_at=? WHERE incident_id=?", (level,json.dumps(breakdown,sort_keys=True),utc_now(),incident_id)))
     def close_incident(self, incident_id: str, outcome: str) -> bool:
         return self.writer.submit(lambda c: c.execute("UPDATE incidents SET status=?, outcome=?, updated_at=? WHERE incident_id=?", (IncidentStatus.CLOSED.value,outcome,utc_now(),incident_id)))
     def rows(self, table: str, incident_id: str) -> list[dict[str, Any]]:
@@ -248,4 +256,3 @@ class ModelRegistry:
             )
             created.append(model_id)
         return created
-

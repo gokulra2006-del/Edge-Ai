@@ -1,7 +1,147 @@
 {
-  "fusion": {"weights": {"audio": 0.30, "vision": 0.30, "sensors": 0.25, "reliability": 0.15}, "minimum_modalities": 2},
-  "temporal": {"window_size": 6, "positive_frames": 3, "minimum_average_confidence": 0.60, "consecutive_positive": 2, "decay_seconds": 15},
-  "risk": {"weights": {"fusion": 0.36, "persistence": 0.20, "reliability": 0.18, "modalities": 0.14, "zone": 0.12}, "thresholds": {"LOW": 31, "MEDIUM": 51, "HIGH": 71, "CRITICAL": 86}},
-  "zones": {"ZONE_B_INTERSECTION": {"risk_multiplier": 1.0}, "SERVER_ROOM": {"risk_multiplier": 1.35}, "RESTRICTED_AREA": {"risk_multiplier": 1.2}},
-  "governance": {"merge_window_seconds": 120, "writer_queue_size": 256, "evidence_root": "data/evidence", "usage_restriction": "RESEARCH_ONLY: synthetic-trained models require real-world validation and operator confirmation."}
+  "fusion": {
+    "weights": {
+      "audio": 0.3,
+      "vision": 0.3,
+      "sensors": 0.25,
+      "reliability": 0.15
+    },
+    "minimum_modalities": 2
+  },
+  "temporal": {
+    "window_size": 6,
+    "positive_frames": 3,
+    "minimum_average_confidence": 0.6,
+    "consecutive_positive": 2,
+    "decay_seconds": 15
+  },
+  "risk": {
+    "weights": {
+      "fusion": 0.36,
+      "persistence": 0.2,
+      "reliability": 0.18,
+      "modalities": 0.14,
+      "zone": 0.12
+    },
+    "thresholds": {
+      "LOW": 31,
+      "MEDIUM": 51,
+      "HIGH": 71,
+      "CRITICAL": 86
+    }
+  },
+  "zones": {
+    "ZONE_B_INTERSECTION": {
+      "risk_multiplier": 1.0
+    },
+    "SERVER_ROOM": {
+      "risk_multiplier": 1.35
+    },
+    "RESTRICTED_AREA": {
+      "risk_multiplier": 1.2
+    }
+  },
+  "governance": {
+    "merge_window_seconds": 120,
+    "writer_queue_size": 256,
+    "evidence_root": "data/evidence",
+    "usage_restriction": "RESEARCH_ONLY: synthetic-trained models require real-world validation and operator confirmation."
+  },
+  "temporal_rules": {
+    "smoke": {
+      "threshold": 0.6,
+      "clear_timeout_seconds": 15,
+      "positive_frames": 3,
+      "observe_timeout_seconds": 8,
+      "window": 5
+    },
+    "crash": {
+      "threshold": 0.7,
+      "stationary_within_seconds": 8,
+      "clear_timeout_seconds": 20,
+      "observe_timeout_seconds": 5
+    },
+    "fire": {
+      "threshold": 0.65,
+      "clear_timeout_seconds": 15,
+      "positive_frames": 3,
+      "observe_timeout_seconds": 8,
+      "window": 5
+    },
+    "siren": {
+      "threshold": 0.65,
+      "consecutive_windows": 3,
+      "clear_timeout_seconds": 10,
+      "observe_timeout_seconds": 6
+    },
+    "default": {
+      "threshold": 0.6,
+      "clear_timeout_seconds": 12,
+      "positive_frames": 3,
+      "observe_timeout_seconds": 8,
+      "window": 5
+    },
+    "horn": {
+      "threshold": 0.7,
+      "consecutive_windows": 3,
+      "clear_timeout_seconds": 10,
+      "observe_timeout_seconds": 6
+    }
+  },
+  "ood": {
+    "maximum_darkness": 0.85,
+    "conflict_margin": 0.35,
+    "minimum_margin": 0.15,
+    "maximum_entropy": 1.1,
+    "minimum_max_softmax": 0.55,
+    "minimum_audio_rms": 0.02,
+    "maximum_blur": 0.9,
+    "maximum_clipping": 0.98
+  },
+  "zone_risk": {
+    "default_zone_type": "road",
+    "zone_types": {
+      "RESTRICTED_AREA": "restricted_area",
+      "ZONE_B_INTERSECTION": "road",
+      "SERVER_ROOM": "server_room"
+    },
+    "weights": {
+      "zone_severity": 0.3,
+      "temporal_state": 0.2,
+      "fused_confidence": 0.35,
+      "corroboration": 0.15
+    },
+    "severity_matrix": {
+      "ambulance": {
+        "road": "HIGH",
+        "restricted_area": "HIGH",
+        "server_room": "MEDIUM"
+      },
+      "vehicle": {
+        "road": "MEDIUM",
+        "restricted_area": "HIGH",
+        "server_room": "HIGH"
+      },
+      "smoke": {
+        "road": "HIGH",
+        "restricted_area": "HIGH",
+        "server_room": "CRITICAL"
+      },
+      "fire": {
+        "road": "HIGH",
+        "restricted_area": "CRITICAL",
+        "server_room": "CRITICAL"
+      },
+      "siren": {
+        "road": "MEDIUM",
+        "restricted_area": "HIGH",
+        "server_room": "MEDIUM"
+      },
+      "crash": {
+        "road": "CRITICAL",
+        "restricted_area": "HIGH",
+        "server_room": "HIGH"
+      }
+    }
+  }
 }

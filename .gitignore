@@ -38,3 +38,8 @@ models/vision_runs/
 .pytest-phase1/
 data/evidence/
 data/phase1_trigger.txt
+
+data/phase1_keyframe.jpg
+data/phase1_trigger.wav
+data/phase2_smoke.db
+.pytest-phase2*/
