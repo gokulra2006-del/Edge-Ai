@@ -51,7 +51,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-blue-100 text-blue-800 border-blue-200",
         roleTitle: "Incident Commander Console",
         roleDesc: "Full municipal authority: emergency scenarios, traffic signals, barrier overrides, sensors matrix, and forensic dossier export.",
-        allowedPages: ["overview", "emergency-plan", "sensors", "actuators", "gis", "logs", "review", "dvr", "datasets"],
+        allowedPages: ["overview", "emergency-plan", "system-health", "sensors", "actuators", "gis", "logs", "review", "dvr", "datasets"],
         permissions: ["all", "scenarios", "signals", "ack", "telemetry", "hardware", "dvr", "datasets", "config"]
     },
     operator: {
@@ -62,7 +62,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-emerald-100 text-emerald-800 border-emerald-200",
         roleTitle: "Traffic Controller Console",
         roleDesc: "Municipal traffic signals, emergency corridor preemption, barrier controls, and incident audit log access.",
-        allowedPages: ["overview", "emergency-plan", "actuators", "gis", "logs", "review"],
+        allowedPages: ["overview", "emergency-plan", "system-health", "actuators", "gis", "logs", "review"],
         permissions: ["scenarios", "signals", "ack"]
     },
     engineer: {
@@ -73,7 +73,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-amber-100 text-amber-800 border-amber-200",
         roleTitle: "Hardware Engineer Console",
         roleDesc: "Physical sensor telemetry streams, hardware driver registry, calibration diagnostics, and master dataset explorer.",
-        allowedPages: ["overview", "sensors", "gis", "logs", "review", "datasets"],
+        allowedPages: ["overview", "system-health", "sensors", "gis", "logs", "review", "datasets"],
         permissions: ["telemetry", "hardware", "datasets", "config"]
     },
     viewer: {
@@ -1790,10 +1790,11 @@ async function acknowledgeCurrentIncident() {
 /* 7. CLIENT-SIDE SPA ROUTING & COLLAPSIBLE SIDEBAR                          */
 /* ========================================================================= */
 
-const VALID_PAGES = ["overview", "emergency-plan", "sensors", "actuators", "gis", "logs", "review", "dvr", "datasets"];
+const VALID_PAGES = ["overview", "emergency-plan", "system-health", "sensors", "actuators", "gis", "logs", "review", "dvr", "datasets"];
 const PAGE_TITLES = {
     overview: "DASHBOARD OVERVIEW",
     "emergency-plan": "EMERGENCY RESPONSE PLAN",
+    "system-health": "SYSTEM HEALTH & MONITORING",
     sensors: "SENSORS MATRIX",
     actuators: "ACTUATORS RESPONSE",
     gis: "GIS & REAL-TIME CHARTS",
@@ -1874,6 +1875,7 @@ function switchPage(pageId, updateHash = true) {
         breadcrumb.innerText = PAGE_TITLES[pageId];
     }
     if (pageId === "emergency-plan") updateResponsePlan();
+    if (pageId === "system-health") loadSystemHealth();
     if (pageId === "logs") loadIncidents();
     if (pageId === "review") loadReviewQueue();
 
@@ -2088,3 +2090,187 @@ async function setHardwareMode(mode, fault = "DISCONNECT") {
 // Poll hardware diagnostics
 setInterval(fetchHardwareStatus, 6000);
 setTimeout(fetchHardwareStatus, 1500);
+
+/* ========================================================================= */
+/* 8. PHASE 4: SYSTEM HEALTH, STREAMS, DRIFT & OUTBOX PANEL                  */
+/* ========================================================================= */
+
+async function loadSystemHealth() {
+    try {
+        const [healthRes, driftRes, streamsRes, outboxRes] = await Promise.all([
+            fetch("/api/monitoring/health").then(r => r.ok ? r.json() : null),
+            fetch("/api/monitoring/drift").then(r => r.ok ? r.json() : null),
+            fetch("/api/monitoring/streams").then(r => r.ok ? r.json() : null),
+            fetch("/api/monitoring/outbox").then(r => r.ok ? r.json() : null)
+        ]);
+
+        if (healthRes) renderHealthComponents(healthRes);
+        if (driftRes) renderDriftPanel(driftRes);
+        if (streamsRes) renderStreamsPanel(streamsRes);
+        if (outboxRes) renderOutboxPanel(outboxRes);
+    } catch (e) {
+        console.error("loadSystemHealth error:", e);
+    }
+}
+
+function renderHealthComponents(data) {
+    const badge = document.getElementById("healthAssuranceBadge");
+    if (badge) {
+        badge.innerText = `ASSURANCE: ${data.assurance_level}`;
+        badge.className = `px-3 py-1.5 rounded-lg font-mono font-black text-xs uppercase border ${data.assurance_level === "FULL" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-800 border-amber-200"}`;
+    }
+
+    const grid = document.getElementById("healthComponentsGrid");
+    if (!grid) return;
+    const comps = data.components || {};
+    const avail = data.availability_pct || {};
+
+    grid.innerHTML = Object.entries(comps).map(([k, c]) => {
+        const isOk = c.status === "OK";
+        const isDeg = c.status === "DEGRADED";
+        const statColor = isOk ? "text-emerald-700 bg-emerald-50 border-emerald-200" : isDeg ? "text-amber-800 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+        const pct = avail[k] !== undefined ? `${avail[k]}%` : "100%";
+        return `
+            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="font-mono text-xs font-bold text-slate-800 uppercase">${k}</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${statColor}">${c.status}</span>
+                </div>
+                <div class="text-[11px] text-slate-600 font-medium">${c.message}</div>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-200 text-[10px] font-mono text-slate-500">
+                    <span>Avail: <strong class="text-slate-800">${pct}</strong></span>
+                    <span>Seen: ${c.last_seen ? c.last_seen.split("T")[1].slice(0, 8) : "N/A"}</span>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderDriftPanel(driftData) {
+    const container = document.getElementById("driftModelsList");
+    if (!container) return;
+
+    container.innerHTML = Object.entries(driftData).map(([mId, d]) => {
+        const isStable = d.status === "STABLE";
+        const isWatch = d.status === "WATCH";
+        const badgeColor = isStable ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isWatch ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-rose-50 text-rose-700 border-rose-200";
+        const m = d.metrics || {};
+        const psi = m.psi !== undefined ? m.psi : "N/A";
+        const priorShift = m.max_prior_shift !== undefined ? m.max_prior_shift : "N/A";
+
+        return `
+            <div class="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono text-xs font-bold text-slate-900">${mId}</span>
+                        ${d.research_only ? '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 text-[9px] font-mono font-bold">RESEARCH_ONLY</span>' : ''}
+                        ${d.insufficient_data ? '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[9px] font-mono">INSUFFICIENT DATA</span>' : ''}
+                    </div>
+                    <span class="px-2.5 py-0.5 rounded text-[11px] font-mono font-black border ${badgeColor}">${d.status}</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+                    <div class="p-2 bg-slate-50 rounded-lg">Samples: <strong>${m.samples || 0}</strong></div>
+                    <div class="p-2 bg-slate-50 rounded-lg">Mean Conf: <strong>${m.mean_confidence || 'N/A'}</strong></div>
+                    <div class="p-2 bg-slate-50 rounded-lg">PSI: <strong>${psi}</strong></div>
+                    <div class="p-2 bg-slate-50 rounded-lg">Max Shift: <strong>${priorShift}</strong></div>
+                </div>
+                <div class="text-[11px] text-slate-500 font-mono">
+                    Reasons: ${d.reasons && d.reasons.length ? d.reasons.join(", ") : "Baseline in nominal tolerance"}
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderStreamsPanel(streamsData) {
+    const cam = streamsData.camera || {};
+    const aud = streamsData.audio || {};
+    const camStream = cam.stream || {};
+    const audStream = aud.stream || {};
+
+    const camFps = document.getElementById("streamCamFps");
+    const camStatus = document.getElementById("streamCamStatus");
+    const camReconnect = document.getElementById("streamCamReconnect");
+    const audStatus = document.getElementById("streamAudStatus");
+    const audReconnect = document.getElementById("streamAudReconnect");
+
+    if (camFps) camFps.innerText = `${camStream.fps || 0} FPS`;
+    if (camStatus) camStatus.innerText = camStream.status || "UNKNOWN";
+    if (camReconnect) camReconnect.innerText = `Reconnects: ${camStream.reconnect_count || 0}`;
+
+    if (audStatus) audStatus.innerText = audStream.status || "UNKNOWN";
+    if (audReconnect) audReconnect.innerText = `Reconnects: ${audStream.reconnect_count || 0}`;
+
+    const edgeFps = document.getElementById("edgeFpsBadge");
+    if (edgeFps && camStream.fps) {
+        edgeFps.innerText = `${camStream.fps} FPS`;
+    }
+    const sirenBtn = document.getElementById("sirenSoundIcon");
+    if (sirenBtn && audStream.status) {
+        sirenBtn.innerText = audStream.status === "OK" ? "AUDIO: ON" : "AUDIO: OFF";
+    }
+}
+
+function renderOutboxPanel(outboxData) {
+    const counts = outboxData.counts || {};
+    const pEl = document.getElementById("outboxPendingCount");
+    const sEl = document.getElementById("outboxSyncedCount");
+    const dEl = document.getElementById("outboxDeadLetterCount");
+
+    if (pEl) pEl.innerText = counts.PENDING || 0;
+    if (sEl) sEl.innerText = counts.SYNCED || 0;
+    if (dEl) dEl.innerText = counts.DEAD_LETTER || 0;
+
+    const list = document.getElementById("outboxRowsList");
+    if (!list) return;
+    const rows = outboxData.recent || [];
+    if (!rows.length) {
+        list.innerHTML = '<div class="text-xs text-slate-400 font-mono">Outbox is clean. No pending queued telemetry.</div>';
+        return;
+    }
+    list.innerHTML = rows.map(r => `
+        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs font-mono">
+            <div>
+                <span class="font-bold text-slate-800">${r.payload_type}</span>
+                <span class="text-slate-400 text-[10px] ml-2">Attempts: ${r.attempts}</span>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${r.status === 'SYNCED' ? 'bg-emerald-100 text-emerald-800' : r.status === 'DEAD_LETTER' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}">${r.status}</span>
+        </div>
+    `).join("");
+}
+
+async function controlStream(stream, action) {
+    const user = getCurrentUser() || SYSTEM_USERS.commander;
+    if (!["COMMANDER", "OPERATOR"].includes(user.role)) {
+        alert(`Stream control restricted to Commander and Operator roles. Current: ${user.roleTitle}`);
+        return;
+    }
+    const res = await fetch("/api/monitoring/stream/control", {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ stream, action })
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Control failed");
+    } else {
+        loadSystemHealth();
+    }
+}
+
+async function changeStreamSource(stream) {
+    const user = getCurrentUser() || SYSTEM_USERS.commander;
+    if (!["COMMANDER", "OPERATOR"].includes(user.role)) {
+        alert("Source configuration restricted to Commander and Operator roles.");
+        return;
+    }
+    const sel = document.getElementById(stream === "camera" ? "cameraSourceSelect" : "audioSourceSelect");
+    if (!sel) return;
+    const source = sel.value;
+    await fetch("/api/monitoring/stream/source", {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ stream, source })
+    });
+    loadSystemHealth();
+}

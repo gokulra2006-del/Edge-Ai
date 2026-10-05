@@ -45,3 +45,4 @@ data/phase2_smoke.db
 .pytest-phase2*/
 .pytest-phase3*/
 data/*.db-*
+data/test_tmp/

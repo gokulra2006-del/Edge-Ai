@@ -33,6 +33,15 @@ OPERATOR_WORKFLOW = OperatorWorkflow(GOVERNED_REPOSITORY, ROOT_DIR / "logs" / "s
 REVIEW_QUEUE = ReviewQueue(GOVERNED_REPOSITORY)
 AUTH_SESSIONS: dict[str, dict[str, str]] = {}
 
+from src.modules.assurance.drift_monitor import ModelDriftMonitor
+from src.modules.assurance.device_health import HealthMonitor, OfflineSyncOutbox
+from src.modules.hardware.stream_service import CAMERA_STREAM, AUDIO_STREAM
+
+DRIFT_MONITOR = ModelDriftMonitor(GOVERNED_REPOSITORY)
+HEALTH_MONITOR = HealthMonitor(GOVERNED_REPOSITORY)
+OUTBOX = OfflineSyncOutbox(GOVERNED_REPOSITORY)
+DRIFT_MONITOR.ensure_default_baselines()
+
 
 class DashboardHandler(BaseHTTPRequestHandler):
     db = DatabaseManager()
@@ -88,6 +97,30 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(json.dumps(system_health()).encode("utf-8"))
+
+        elif path == "/api/monitoring/health":
+            self._json(HEALTH_MONITOR.poll())
+
+        elif path == "/api/monitoring/drift":
+            self._json(DRIFT_MONITOR.summary())
+
+        elif path == "/api/monitoring/streams":
+            self._json({
+                "camera": {
+                    "health": HEALTH_MONITOR.last_status.get("camera", "OK"),
+                    "stream": CAMERA_STREAM.get_health().__dict__,
+                },
+                "audio": {
+                    "health": HEALTH_MONITOR.last_status.get("microphone", "OK"),
+                    "stream": AUDIO_STREAM.get_health().__dict__,
+                }
+            })
+
+        elif path == "/api/monitoring/outbox":
+            self._json({
+                "counts": OUTBOX.status_summary(),
+                "recent": [dict(r) for r in GOVERNED_REPOSITORY._read("SELECT id, idempotency_key, target, payload_type, attempts, next_attempt_at, status, priority, last_error FROM sync_outbox ORDER BY id DESC LIMIT 20")]
+            })
 
         elif path == "/api/incidents":
             self._json(OPERATOR_WORKFLOW.list_incidents({k:v[0] for k,v in urllib.parse.parse_qs(parsed.query).items()}))
@@ -412,7 +445,58 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 elif parts[3]=="claim": self._json({"claimed":REVIEW_QUEUE.claim(prediction_id,actor["operator_id"],actor["role"])})
                 else: self._json({"error":"Unknown review action"},404)
             except PermissionDenied as exc: self._json({"error":str(exc)},403)
-            except WorkflowError as exc: self._json({"error":str(exc)},400)
+        if path == "/api/monitoring/stream/control":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "OPERATOR"):
+                self._json({"error": f"{role} is not permitted to control streams"}, 403)
+                return
+            payload = self._payload()
+            target_stream = payload.get("stream", "camera").lower()
+            action = payload.get("action", "start").lower()
+            source = payload.get("source")
+
+            service = CAMERA_STREAM if target_stream == "camera" else AUDIO_STREAM
+            if action == "start":
+                if source:
+                    service.set_source(source)
+                service.start()
+            elif action == "stop":
+                service.stop()
+            else:
+                self._json({"error": "Unknown stream action"}, 400)
+                return
+
+            # Record audit trail
+            GOVERNED_REPOSITORY.writer.submit(
+                lambda db, op=actor["operator_id"], act=f"stream_{action}_{target_stream}", dj=json.dumps(payload): (
+                    db.execute(
+                        "INSERT INTO operator_actions(incident_id,timestamp,operator_id,action,approved,payload_json) VALUES(?,?,?,?,?,?)",
+                        ("SYSTEM", utc_now(), op, act, 1, dj)
+                    )
+                )
+            )
+            self._json({"status": "SUCCESS", "stream": target_stream, "action": action, "health": service.get_health().__dict__})
+            return
+
+        if path == "/api/monitoring/stream/source":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "OPERATOR"):
+                self._json({"error": f"{role} is not permitted to configure stream source"}, 403)
+                return
+            payload = self._payload()
+            target_stream = payload.get("stream", "camera").lower()
+            source = payload.get("source", "mock")
+            service = CAMERA_STREAM if target_stream == "camera" else AUDIO_STREAM
+            service.set_source(source)
+            self._json({"status": "SUCCESS", "stream": target_stream, "source": source})
             return
 
         # 1. Interactive Scenario Trigger

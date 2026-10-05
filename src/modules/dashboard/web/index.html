@@ -199,6 +199,9 @@
                     <button id="nav-btn-datasets" onclick="switchPage('datasets')" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100 shrink-0">
                         DATASETS
                     </button>
+                    <button id="nav-btn-system-health" onclick="switchPage('system-health')" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100 shrink-0">
+                        SYSTEM HEALTH
+                    </button>
                 </div>
 
                 <!-- Breadcrumb -->
@@ -283,6 +286,14 @@
                         <div class="text-[10px] font-normal text-slate-500">6 Unified Edge Datasets (37K items)</div>
                     </div>
                     <span class="text-[10px] font-mono text-slate-400 px-1.5 py-0.5 rounded">07</span>
+                </button>
+
+                <button id="side-nav-system-health" onclick="switchPage('system-health')" class="side-nav-item btn-press w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition">
+                    <div>
+                        <div class="font-bold">System Health & Resilience</div>
+                        <div class="text-[10px] font-normal text-slate-500">Drift, streams, outbox & device status</div>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-400 px-1.5 py-0.5 rounded">08</span>
                 </button>
 
                 <div id="sideScenarioSection">
@@ -1464,6 +1475,147 @@
                     <div id="datasetsMatrixGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                         <div class="p-5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
                             <span class="text-slate-400">Loading datasets catalog...</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ================================================================= -->
+            <!-- VIEW 9: SYSTEM HEALTH & RESILIENCE (PHASE 4)                      -->
+            <!-- ================================================================= -->
+            <div id="view-system-health" class="space-y-6 hidden">
+                <!-- Page Title Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-cardBorder">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span>
+                            <h2 class="text-sm font-black text-slate-900 uppercase tracking-widest font-mono">System Health, Drift & Resilience</h2>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">Multi-modal Streaming Controls &middot; Model Drift Monitoring &middot; Offline-First Sync Outbox</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span id="healthAssuranceBadge" class="px-3 py-1.5 rounded-lg font-mono font-black text-xs uppercase border bg-emerald-50 text-emerald-700 border-emerald-200">
+                            ASSURANCE: FULL
+                        </span>
+                        <button onclick="loadSystemHealth()" class="btn-press px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-mono font-bold transition shadow-sm text-xs">
+                            REFRESH HEALTH
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Camera & Audio Streaming Controls -->
+                <section class="p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div>
+                            <h3 class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+                                Real-Time Ingestion Streams (Feature 10)
+                            </h3>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Bounded buffers with latest-frame-wins &amp; acoustic ring buffers</p>
+                        </div>
+                        <span class="text-[10px] font-mono font-bold text-slate-400 uppercase">Role-Guarded (Cmdr / Operator)</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Camera Stream Card -->
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold font-mono text-xs text-slate-900">EDGE CAMERA STREAM</span>
+                                <span id="streamCamStatus" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-200 text-slate-800">UNKNOWN</span>
+                            </div>
+                            <div class="flex items-center justify-between text-xs font-mono text-slate-600">
+                                <span>Throughput: <strong id="streamCamFps" class="text-blue-600">0 FPS</strong></span>
+                                <span id="streamCamReconnect">Reconnects: 0</span>
+                            </div>
+                            <div class="flex items-center gap-2 pt-2 border-t border-slate-200">
+                                <select id="cameraSourceSelect" onchange="changeStreamSource('camera')" class="text-xs font-mono p-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 flex-1">
+                                    <option value="simulation">Mock Simulation Stream</option>
+                                    <option value="0">USB Webcam (Index 0)</option>
+                                    <option value="rtsp://127.0.0.1:8554/live">RTSP Live Feed</option>
+                                </select>
+                                <button onclick="controlStream('camera', 'start')" class="btn-press px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-mono font-bold text-xs">START</button>
+                                <button onclick="controlStream('camera', 'stop')" class="btn-press px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-mono font-bold text-xs">STOP</button>
+                            </div>
+                        </div>
+
+                        <!-- Audio Stream Card -->
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold font-mono text-xs text-slate-900">EDGE ACOUSTIC STREAM</span>
+                                <span id="streamAudStatus" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-200 text-slate-800">UNKNOWN</span>
+                            </div>
+                            <div class="flex items-center justify-between text-xs font-mono text-slate-600">
+                                <span>Input Quality: <strong class="text-emerald-600">Nominal Windows</strong></span>
+                                <span id="streamAudReconnect">Reconnects: 0</span>
+                            </div>
+                            <div class="flex items-center gap-2 pt-2 border-t border-slate-200">
+                                <select id="audioSourceSelect" onchange="changeStreamSource('audio')" class="text-xs font-mono p-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 flex-1">
+                                    <option value="simulation">Mock Acoustic Stream</option>
+                                    <option value="mic_default">Default Audio Device</option>
+                                </select>
+                                <button onclick="controlStream('audio', 'start')" class="btn-press px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-mono font-bold text-xs">START</button>
+                                <button onclick="controlStream('audio', 'stop')" class="btn-press px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-mono font-bold text-xs">STOP</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Device Hardware Components Health Grid -->
+                <section class="p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div>
+                            <h3 class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+                                Subsystem Availability &amp; Hardware Health (Feature 9)
+                            </h3>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Safe probes with fallback handling, storage space, and DB writer queue</p>
+                        </div>
+                        <span class="text-xs text-slate-400 font-mono">SQLite State-Change Journal</span>
+                    </div>
+
+                    <div id="healthComponentsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-400 text-xs font-mono">
+                            Loading component health matrix...
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Model Drift Monitoring Section -->
+                <section class="p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div>
+                            <h3 class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+                                Model Drift &amp; Statistical Assurance (Feature 7)
+                            </h3>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Rolling-window Population Stability Index (PSI), Prior Shift &amp; OOD Rate</p>
+                        </div>
+                        <span class="text-xs text-slate-400 font-mono">No Auto-Swap Guard</span>
+                    </div>
+
+                    <div id="driftModelsList" class="space-y-3">
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-400 text-xs font-mono">
+                            Loading model drift baselines...
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Offline-First Sync Outbox Section -->
+                <section class="p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div>
+                            <h3 class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+                                Offline-First Sync Outbox (Feature 9)
+                            </h3>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Idempotent replay queue with exponential backoff &amp; audit row protection</p>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs font-mono">
+                            <span class="text-slate-600">Pending: <strong id="outboxPendingCount" class="text-amber-600">0</strong></span>
+                            <span class="text-slate-600">Synced: <strong id="outboxSyncedCount" class="text-emerald-600">0</strong></span>
+                            <span class="text-slate-600">Dead-Letter: <strong id="outboxDeadLetterCount" class="text-rose-600">0</strong></span>
+                        </div>
+                    </div>
+
+                    <div id="outboxRowsList" class="space-y-2">
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-400">
+                            Loading sync outbox queue...
                         </div>
                     </div>
                 </section>

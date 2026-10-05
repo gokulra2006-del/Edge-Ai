@@ -1,0 +1,6 @@
+# Optional dependencies for real hardware and physical capture devices.
+# If these are not installed, the platform operates gracefully in mock / file-replay mode,
+# reporting DOWN with reason code 'dependency_missing'.
+
+opencv-python>=4.8.0
+pyaudio>=0.2.14

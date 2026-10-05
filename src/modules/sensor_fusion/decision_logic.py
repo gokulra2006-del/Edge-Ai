@@ -81,13 +81,17 @@ class ZoneAwareRiskEngine:
         matrix=self.c['severity_matrix']; event=event_type if event_type in matrix else 'vehicle'; baseline=matrix[event][zone_type]
         corroboration=min(1,(int(bool(sensors.get('gas')))+int(bool(sensors.get('temperature')))+int(bool(sensors.get('imu'))))/3)
         temporal={'CANDIDATE':.2,'OBSERVING':.4,'CONFIRMED':.75,'ESCALATED':1,'CLEARED':0}.get(temporal_state,.2); weights=self.c['weights']
-        factors={'fused_confidence':fused,'zone_severity':self.LEVEL[baseline],'temporal_state':temporal,'corroboration':corroboration}
+        # Feature 9: Graceful degradation adapter - reduce fused confidence coverage if degraded
+        coverage_factor = {'FULL': 1.0, 'VISION_ONLY': 0.75, 'AUDIO_ONLY': 0.75, 'SENSORS_ONLY': 0.65, 'DEGRADED': 0.8}.get(str(sensors.get('assurance_level', 'FULL')), 1.0)
+        adapted_fused = round(fused * coverage_factor, 4)
+        factors={'fused_confidence':adapted_fused,'zone_severity':self.LEVEL[baseline],'temporal_state':temporal,'corroboration':corroboration}
         contributions={k:round(weights[k]*factors[k],6) for k in weights}; score=sum(contributions.values()); level=next((x for x,v in self.LEVEL.items() if score<=v),'CRITICAL')
-        breakdown={'zone_type':zone_type,'baseline_severity':baseline,'factors':factors,'weights':weights,'contributions':contributions,'score':score,'final_level':level,'warning':warning}
+        breakdown={'zone_type':zone_type,'baseline_severity':baseline,'factors':factors,'weights':weights,'contributions':contributions,'score':score,'final_level':level,'warning':warning,'assurance_level':sensors.get('assurance_level','FULL')}
         if self.repository and self.incident_id:
             self.repository.update_incident_risk(self.incident_id, level, breakdown)
         if self.repository and self.incident_id and self.last.get(self.incident_id)!=level:
             self.repository.add_event(self.incident_id,'risk_change',{'from_level':self.last.get(self.incident_id),'to_level':level,'risk_breakdown':breakdown},dedupe_key=f'risk:{level}')
         if self.incident_id: self.last[self.incident_id]=level
         return breakdown
+
 

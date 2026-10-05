@@ -143,5 +143,55 @@
         "server_room": "HIGH"
       }
     }
+  },
+  "monitoring": {
+    "drift": {
+      "rolling_window_samples": 50,
+      "minimum_samples_guard": 10,
+      "snapshot_interval_seconds": 60,
+      "retention_snapshots": 100,
+      "thresholds": {
+        "psi_watch": 0.1,
+        "psi_drift_warning": 0.25,
+        "class_prior_shift_warning": 0.3,
+        "ood_rate_warning": 0.2,
+        "false_alarm_rate_warning": 0.15,
+        "disagreement_rate_review": 0.35
+      }
+    },
+    "health": {
+      "poll_interval_seconds": 5,
+      "storage_warning_bytes": 1000000000,
+      "storage_critical_bytes": 250000000,
+      "writer_queue_warning_depth": 192,
+      "sensor_heartbeat_timeout_seconds": 15
+    },
+    "streams": {
+      "camera": {
+        "default_source": "mock",
+        "target_fps": 15.0,
+        "buffer_max_frames": 2,
+        "reconnect_backoff_base_seconds": 1.0,
+        "reconnect_backoff_max_seconds": 16.0
+      },
+      "audio": {
+        "default_source": "mock",
+        "sample_rate": 16000,
+        "window_duration_seconds": 4.0,
+        "hop_duration_seconds": 2.0,
+        "ring_buffer_seconds": 12.0,
+        "clipping_threshold": 0.98,
+        "silence_rms_threshold": 0.005,
+        "reconnect_backoff_base_seconds": 1.0,
+        "reconnect_backoff_max_seconds": 16.0
+      }
+    },
+    "outbox": {
+      "max_rows_cap": 500,
+      "max_attempts": 5,
+      "backoff_base_seconds": 1.0,
+      "backoff_max_seconds": 60.0,
+      "jitter_factor": 0.2
+    }
   }
 }

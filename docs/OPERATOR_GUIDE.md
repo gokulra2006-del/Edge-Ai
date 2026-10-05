@@ -26,7 +26,11 @@ Every transition includes the operator, role, timestamp, previous and new state,
 | Mark false alarm / add note | Yes | Yes | No | No |
 | Escalate / resolve | Yes | No | No | No |
 | Review queue and model registry | Yes | Yes | Yes | No |
+| Stream Controls (Camera / Audio Start / Stop) | Yes | Yes | No (View only) | No |
+| View System Health & Drift Dashboard | Yes | Yes | Yes | Yes |
 
 The Review Queue prioritizes unknown, OOD-flagged, low-confidence, and disputed predictions. Reviewers claim an item before adding `CORRECT`, `INCORRECT`, or `UNSURE` feedback. Changed feedback creates another row, preserving history. JSON and CSV manifests include only reviewed feedback and exclude demo incidents by default. Export never starts training.
 
 The Emergency Plan is available at `#emergency-plan`. Browser back, forward, and reload preserve the current page. The Incident Logs page lists governed incidents and opens a detail panel containing temporal events, stored risk, OOD state, evidence, and the append-only audit trail.
+
+The System Health & Resilience page is available at `#system-health`. It provides real-time visibility into subsystem availability, live camera/audio stream parameters and controls, model drift stability indices (PSI), and the offline-first sync outbox queue.

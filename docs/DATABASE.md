@@ -46,3 +46,19 @@ erDiagram
   PREDICTIONS ||--o{ PREDICTION_FEEDBACK : reviews
   PREDICTIONS ||--o| REVIEW_CLAIMS : assigned
 ```
+
+## Phase 4 migration
+
+Migration 5 introduces dynamic system resilience, model drift tracking, and offline-first queue persistence:
+- **`assurance_level`**: Added to `incidents` and `predictions` (`FULL`, `VISION_ONLY`, `AUDIO_ONLY`, `SENSORS_ONLY`, `DEGRADED`).
+- **`model_baselines`**: Captures fixed-bin confidence histograms, class priors, OOD rates, false alarm rates, and `RESEARCH_ONLY` restrictions.
+- **`drift_snapshots`**: Records periodic evaluations of Population Stability Index (PSI), max prior shifts, and drift status (`STABLE`, `WATCH`, `DRIFT_WARNING`, `REVIEW_REQUIRED`).
+- **`device_health_events`**: Transition-only ledger of hardware, storage, and database availability changes.
+- **`sync_outbox`**: Offline-first idempotent queue with exponential backoff, jitter, dead-letter state, and priority-aware compaction policies.
+
+```mermaid
+erDiagram
+  MODELS ||--o{ MODEL_BASELINES : calibrates
+  MODELS ||--o{ DRIFT_SNAPSHOTS : monitors
+  INCIDENTS ||--o{ SYNC_OUTBOX : queues
+```

@@ -124,6 +124,59 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     CREATE INDEX IF NOT EXISTS idx_feedback_prediction ON prediction_feedback(prediction_id);
     CREATE INDEX IF NOT EXISTS idx_notes_incident ON incident_notes(incident_id);
     """),
+    (5, """
+    ALTER TABLE incidents ADD COLUMN assurance_level TEXT NOT NULL DEFAULT 'FULL';
+    ALTER TABLE predictions ADD COLUMN assurance_level TEXT NOT NULL DEFAULT 'FULL';
+    CREATE TABLE IF NOT EXISTS model_baselines (
+      model_id TEXT PRIMARY KEY,
+      confidence_histogram_json TEXT NOT NULL,
+      ood_rate REAL NOT NULL,
+      class_prior_json TEXT NOT NULL,
+      false_alarm_rate REAL NOT NULL,
+      source TEXT NOT NULL,
+      sample_count INTEGER NOT NULL,
+      usage_restriction TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS drift_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      model_id TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      status TEXT NOT NULL,
+      reasons_json TEXT NOT NULL,
+      metrics_json TEXT NOT NULL,
+      sample_count INTEGER NOT NULL,
+      insufficient_data INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_drift_snapshots_model ON drift_snapshots(model_id, timestamp);
+    CREATE TABLE IF NOT EXISTS device_health_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      component TEXT NOT NULL,
+      previous_status TEXT,
+      current_status TEXT NOT NULL,
+      reason_code TEXT NOT NULL,
+      message TEXT NOT NULL,
+      details_json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_health_events_comp ON device_health_events(component, timestamp);
+    CREATE TABLE IF NOT EXISTS sync_outbox (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      target TEXT NOT NULL,
+      payload_type TEXT NOT NULL,
+      payload_ref TEXT,
+      payload_json TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      next_attempt_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      priority TEXT NOT NULL DEFAULT 'NORMAL',
+      last_error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_sync_outbox_status ON sync_outbox(status, next_attempt_at);
+    """),
 )
 
 
@@ -212,7 +265,7 @@ class IncidentRepository:
         MigrationRunner(self.db_path).run(); self.writer = SQLiteWriter(self.db_path, self.config.writer_queue_size)
     def _read(self, sql: str, args: tuple = ()) -> list[sqlite3.Row]:
         with _connection(self.db_path) as con: return list(con.execute(sql, args))
-    def create_incident(self, event_type: str, zone_id: str, timestamp: str | None = None) -> tuple[str, bool]:
+    def create_incident(self, event_type: str, zone_id: str, timestamp: str | None = None, assurance_level: str = "FULL") -> tuple[str, bool]:
         timestamp = timestamp or utc_now()
         cutoff = datetime.fromisoformat(timestamp).timestamp() - self.config.merge_window_seconds
         for row in self._read("SELECT incident_id, created_at FROM incidents WHERE event_type=? AND zone_id=? AND status<>? ORDER BY created_at DESC", (event_type, zone_id, IncidentStatus.CLOSED.value)):
@@ -220,13 +273,13 @@ class IncidentRepository:
         day = timestamp[:10].replace("-", "")
         seq = len(self._read("SELECT incident_id FROM incidents WHERE incident_id LIKE ?", (f"INC-{day}-%",))) + 1
         incident_id = f"INC-{day}-{seq:04d}"; incident_uuid = str(uuid4())
-        self.writer.submit(lambda c: c.execute("INSERT INTO incidents(incident_id,incident_uuid,event_type,zone_id,status,created_at,updated_at,outcome) VALUES(?,?,?,?,?,?,?,?)", (incident_id, incident_uuid, event_type, zone_id, IncidentStatus.OPEN.value, timestamp, timestamp, None)))
+        self.writer.submit(lambda c: c.execute("INSERT INTO incidents(incident_id,incident_uuid,event_type,zone_id,status,created_at,updated_at,outcome,assurance_level) VALUES(?,?,?,?,?,?,?,?,?)", (incident_id, incident_uuid, event_type, zone_id, IncidentStatus.OPEN.value, timestamp, timestamp, None, assurance_level)))
         return incident_id, False
     def add_event(self, incident_id: str, event_type: str, payload: dict[str, Any], timestamp: str | None = None, dedupe_key: str | None = None) -> bool:
         ts = timestamp or utc_now(); body = json.dumps(payload, sort_keys=True)
         return self.writer.submit(lambda c: c.execute("INSERT OR IGNORE INTO incident_events(incident_id,timestamp,event_type,payload_json,dedupe_key) VALUES(?,?,?,?,?)", (incident_id,ts,event_type,body,dedupe_key)))
-    def add_prediction(self, incident_id: str, label: str, confidence: float, model_id: str | None, payload: dict[str, Any] | None = None) -> bool:
-        return self.writer.submit(lambda c: c.execute("INSERT INTO predictions(incident_id,timestamp,label,confidence,model_id,payload_json) VALUES(?,?,?,?,?,?)", (incident_id,utc_now(),label,confidence,model_id,json.dumps(payload or {},sort_keys=True))))
+    def add_prediction(self, incident_id: str, label: str, confidence: float, model_id: str | None, payload: dict[str, Any] | None = None, assurance_level: str = "FULL") -> bool:
+        return self.writer.submit(lambda c: c.execute("INSERT INTO predictions(incident_id,timestamp,label,confidence,model_id,payload_json,assurance_level) VALUES(?,?,?,?,?,?,?)", (incident_id,utc_now(),label,confidence,model_id,json.dumps(payload or {},sort_keys=True),assurance_level)))
     def add_operator_action(self, incident_id: str, operator_id: str, action: str, approved: bool, payload: dict[str, Any] | None = None) -> bool:
         return self.writer.submit(lambda c: c.execute("INSERT INTO operator_actions(incident_id,timestamp,operator_id,action,approved,payload_json) VALUES(?,?,?,?,?,?)", (incident_id,utc_now(),operator_id,action,int(approved),json.dumps(payload or {},sort_keys=True))))
     def add_note(self, incident_id: str, operator_id: str, operator_role: str, note: str) -> bool:
@@ -242,9 +295,11 @@ class IncidentRepository:
         return self.writer.submit(lambda c: c.execute("UPDATE incidents SET risk_level=?, risk_breakdown_json=?, updated_at=? WHERE incident_id=?", (level,json.dumps(breakdown,sort_keys=True),utc_now(),incident_id)))
     def close_incident(self, incident_id: str, outcome: str) -> bool:
         return self.writer.submit(lambda c: c.execute("UPDATE incidents SET status=?, outcome=?, updated_at=? WHERE incident_id=?", (IncidentStatus.CLOSED.value,outcome,utc_now(),incident_id)))
-    def rows(self, table: str, incident_id: str) -> list[dict[str, Any]]:
-        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes"}
+    def rows(self, table: str, incident_id: str | None = None) -> list[dict[str, Any]]:
+        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes","device_health_events","sync_outbox","drift_snapshots","model_baselines"}
         if table not in allowed: raise ValueError("invalid table")
+        if incident_id is None:
+            return [dict(r) for r in self._read(f"SELECT * FROM {table} ORDER BY id DESC")]
         key = "incident_id"; return [dict(r) for r in self._read(f"SELECT * FROM {table} WHERE {key}=? ORDER BY id" if table != "incidents" else "SELECT * FROM incidents WHERE incident_id=?", (incident_id,))]
     def close(self) -> None: self.writer.close()
 
