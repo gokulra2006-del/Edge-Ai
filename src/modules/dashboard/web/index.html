@@ -30,7 +30,7 @@
         }
     </script>
     <!-- Chart.js -->
-    <script async src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/chart.min.js"></script>
     <!-- Firebase Web SDK (Compat v10) -->
     <script async src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script async src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
@@ -202,6 +202,9 @@
                     <button id="nav-btn-system-health" onclick="switchPage('system-health')" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100 shrink-0">
                         SYSTEM HEALTH
                     </button>
+                    <button id="nav-btn-analytics" onclick="switchPage('analytics')" class="page-nav-pill btn-press px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100 shrink-0">
+                        ANALYTICS
+                    </button>
                 </div>
 
                 <!-- Breadcrumb -->
@@ -294,6 +297,14 @@
                         <div class="text-[10px] font-normal text-slate-500">Drift, streams, outbox & device status</div>
                     </div>
                     <span class="text-[10px] font-mono text-slate-400 px-1.5 py-0.5 rounded">08</span>
+                </button>
+
+                <button id="side-nav-analytics" onclick="switchPage('analytics')" class="side-nav-item btn-press w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition">
+                    <div>
+                        <div class="font-bold">Operations Analytics</div>
+                        <div class="text-[10px] font-normal text-slate-500">Trends, zone risk, model drift & backlog</div>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-400 px-1.5 py-0.5 rounded">09</span>
                 </button>
 
                 <div id="sideScenarioSection">
@@ -1619,6 +1630,309 @@
                         </div>
                     </div>
                 </section>
+            </div>
+
+            <!-- ================================================================= -->
+            <!-- VIEW 10: OPERATIONAL ANALYTICS & HISTORICAL METRICS (PHASE 5B)    -->
+            <!-- ================================================================= -->
+            <div id="view-analytics" class="space-y-6 hidden">
+                <!-- Page Title Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-cardBorder">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span>
+                            <h2 class="text-sm font-black text-slate-900 uppercase tracking-widest font-mono">Operations Analytics & Intelligence</h2>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">Incident Trend Visualizer &middot; Zone Risk Comparison &middot; Model Drift &middot; Backlog Telemetry</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span id="analyticsAssuranceBadge" class="px-3 py-1.5 rounded-lg font-mono font-black text-xs uppercase border bg-emerald-50 text-emerald-700 border-emerald-200">
+                            AVAILABILITY: --%
+                        </span>
+                        <button onclick="loadAnalytics(true)" class="btn-press px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-mono font-bold transition shadow-sm text-xs flex items-center gap-1.5">
+                            <span id="analyticsRefreshIcon">REFRESH</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Global Filter Bar -->
+                <section class="p-4 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-mono font-bold text-slate-900 uppercase">Global Analytics Filters</span>
+                            <span class="text-[10px] font-mono text-slate-400">(Persisted in URL query string)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="resetAnalyticsFilters()" class="text-[11px] font-mono text-blue-600 hover:underline font-semibold">Reset to Defaults</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs font-mono">
+                        <!-- Date Range -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Time Range</label>
+                            <select id="analyticsFilterRange" onchange="applyAnalyticsFilters()" class="w-full p-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 text-xs font-mono focus:bg-white focus:outline-none focus:border-blue-500">
+                                <option value="24h">Last 24 Hours (Default)</option>
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                                <option value="all">All Time History</option>
+                            </select>
+                        </div>
+
+                        <!-- Zone -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Corridor Zone</label>
+                            <select id="analyticsFilterZone" onchange="applyAnalyticsFilters()" class="w-full p-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 text-xs font-mono focus:bg-white focus:outline-none focus:border-blue-500">
+                                <option value="all">All Zones</option>
+                                <option value="ZONE_A_INTERSECTION">ZONE_A_INTERSECTION</option>
+                                <option value="ZONE_B_INTERSECTION">ZONE_B_INTERSECTION</option>
+                                <option value="ZONE_C_CORRIDOR">ZONE_C_CORRIDOR</option>
+                                <option value="ZONE_D_PERIMETER">ZONE_D_PERIMETER</option>
+                            </select>
+                        </div>
+
+                        <!-- Severity -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Severity Level</label>
+                            <select id="analyticsFilterSeverity" onchange="applyAnalyticsFilters()" class="w-full p-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 text-xs font-mono focus:bg-white focus:outline-none focus:border-blue-500">
+                                <option value="all">All Severities</option>
+                                <option value="CRITICAL">Critical</option>
+                                <option value="HIGH">High</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="LOW">Low</option>
+                            </select>
+                        </div>
+
+                        <!-- Model -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Target Model</label>
+                            <select id="analyticsFilterModel" onchange="applyAnalyticsFilters()" class="w-full p-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 text-xs font-mono focus:bg-white focus:outline-none focus:border-blue-500">
+                                <option value="all">All Models</option>
+                                <option value="edge-acoustic-net-v1">EdgeAcousticNet v1</option>
+                                <option value="edge-vision-yolo-v1">EdgeVision YOLO v1</option>
+                                <option value="synthetic">Synthetic Baseline</option>
+                            </select>
+                        </div>
+
+                        <!-- Demo Toggle -->
+                        <div class="flex flex-col justify-end">
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
+                                <input id="analyticsFilterDemo" type="checkbox" onchange="applyAnalyticsFilters()" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                <span class="text-[11px] text-slate-700 font-semibold">Include Demos</span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Loading State Banner -->
+                <div id="analyticsLoadingState" class="hidden p-8 rounded-2xl bg-cardSurface border border-cardBorder shadow-card text-center space-y-3">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+                    <div class="text-xs font-mono font-bold text-slate-700 uppercase tracking-wider">Aggregating Historical Analytics Telemetry...</div>
+                    <p class="text-[11px] text-slate-400 font-mono">Reading SQLite WAL indices and computing drift distributions (non-blocking read lock)</p>
+                </div>
+
+                <!-- Error State Banner -->
+                <div id="analyticsErrorState" class="hidden p-6 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono font-bold text-xs uppercase">Analytics Query Error</span>
+                        <button onclick="loadAnalytics(true)" class="btn-press px-2.5 py-1 rounded bg-rose-600 text-white font-mono font-bold text-[10px]">RETRY</button>
+                    </div>
+                    <p id="analyticsErrorMessage" class="text-xs font-mono">Failed to fetch analytics data from server.</p>
+                </div>
+
+                <!-- Empty State Banner -->
+                <div id="analyticsEmptyState" class="hidden p-10 rounded-2xl bg-cardSurface border border-cardBorder text-center space-y-2">
+                    <div class="text-sm font-mono font-bold text-slate-700 uppercase">No Incident Records Found</div>
+                    <p class="text-xs text-slate-500 max-w-md mx-auto">No telemetry or incident entries match the current date range and filter criteria. Adjust the filters above to expand the window.</p>
+                </div>
+
+                <!-- Main Analytics Content (Shown when loaded) -->
+                <div id="analyticsContent" class="space-y-6">
+
+                    <!-- 1. OPERATIONS OVERVIEW (6 KPI CARDS) -->
+                    <section class="space-y-2">
+                        <div class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">1. Operations Overview (Executive KPIs)</div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <div class="p-4 rounded-xl border border-slate-200 bg-white shadow-xs">
+                                <div class="text-[10px] font-mono font-bold text-slate-400 uppercase">Total Incidents</div>
+                                <div id="kpiTotalIncidents" class="text-2xl font-black text-slate-900 mt-1 font-mono">0</div>
+                                <div class="flex items-center gap-1.5 mt-1.5 text-[10px] font-mono">
+                                    <span class="text-amber-600 font-bold" id="kpiActiveBadge">0 Active</span>
+                                    <span class="text-slate-300">&middot;</span>
+                                    <span class="text-emerald-600" id="kpiResolvedBadge">0 Closed</span>
+                                </div>
+                            </div>
+
+                            <div class="p-4 rounded-xl border border-slate-200 bg-white shadow-xs">
+                                <div class="text-[10px] font-mono font-bold text-slate-400 uppercase">Mean Ack (MTTA)</div>
+                                <div id="kpiMtta" class="text-2xl font-black text-blue-600 mt-1 font-mono">-- s</div>
+                                <div class="text-[10px] font-mono text-slate-400 mt-1.5">Dispatch response lag</div>
+                            </div>
+
+                            <div class="p-4 rounded-xl border border-slate-200 bg-white shadow-xs">
+                                <div class="text-[10px] font-mono font-bold text-slate-400 uppercase">Mean Resolve (MTTR)</div>
+                                <div id="kpiMttr" class="text-2xl font-black text-emerald-600 mt-1 font-mono">-- s</div>
+                                <div class="text-[10px] font-mono text-slate-400 mt-1.5">End-to-end incident life</div>
+                            </div>
+
+                            <div class="p-4 rounded-xl border border-slate-200 bg-white shadow-xs">
+                                <div class="text-[10px] font-mono font-bold text-slate-400 uppercase">False Alarm Rate</div>
+                                <div id="kpiFar" class="text-2xl font-black text-amber-600 mt-1 font-mono">0.0%</div>
+                                <div class="text-[10px] font-mono text-slate-400 mt-1.5"><span id="kpiFarCount">0</span> false positives</div>
+                            </div>
+
+                            <div class="p-4 rounded-xl border border-slate-200 bg-white shadow-xs">
+                                <div class="text-[10px] font-mono font-bold text-slate-400 uppercase">System Uptime</div>
+                                <div id="kpiAvailability" class="text-2xl font-black text-emerald-600 mt-1 font-mono">100%</div>
+                                <div class="text-[10px] font-mono text-slate-400 mt-1.5">Subsystem availability</div>
+                            </div>
+
+                            <div class="p-4 rounded-xl border border-slate-200 bg-white shadow-xs">
+                                <div class="text-[10px] font-mono font-bold text-slate-400 uppercase">Assurance Mode</div>
+                                <div id="kpiAssurance" class="text-lg font-black text-slate-900 mt-1 font-mono uppercase truncate">FULL</div>
+                                <div class="text-[10px] font-mono text-slate-400 mt-1.5">Multi-modal coverage</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 2. INCIDENT TREND CHARTS & ZONE RISK COMPARISON (GRID) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Left 2 Cols: Incident Trend Charts -->
+                        <div class="lg:col-span-2 p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div>
+                                    <h3 class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+                                        2. Incident Volume Trends Over Time
+                                    </h3>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Time-series breakdown by severity and false-alarm frequency</p>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-mono">
+                                    <button onclick="setTrendBucket('1h')" id="trendBucket1h" class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white">1H</button>
+                                    <button onclick="setTrendBucket('1d')" id="trendBucket1d" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">1D</button>
+                                </div>
+                            </div>
+
+                            <div class="w-full h-64 relative">
+                                <canvas id="analyticsTrendsChart"></canvas>
+                            </div>
+                            <div class="flex items-center justify-center gap-4 text-[10px] font-mono text-slate-500 pt-1 border-t border-slate-100">
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Critical</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> High</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Medium/Low</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span> False Alarm</span>
+                            </div>
+                        </div>
+
+                        <!-- Right 1 Col: Zone Risk Comparison -->
+                        <div class="p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-4">
+                            <div class="border-b border-slate-100 pb-3">
+                                <h3 class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+                                    3. Zone Risk Comparison
+                                </h3>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Corridor density &amp; severe incident exposure</p>
+                            </div>
+
+                            <div id="zoneRiskList" class="space-y-2.5 max-h-72 overflow-y-auto no-scrollbar">
+                                <div class="p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-400 text-center">Loading zone risk...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. MODEL PERFORMANCE PANEL -->
+                    <section class="p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div>
+                                <h3 class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+                                    4. Model Performance, Drift &amp; Operator Disagreement
+                                </h3>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Confidence calibration, OOD detection rate, operator feedback and PSI drift stability</p>
+                            </div>
+                            <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 uppercase">ML Telemetry</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase">Mean Confidence</span>
+                                <div id="modelMeanConf" class="text-lg font-black text-slate-900 mt-1">--%</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase">OOD Rate</span>
+                                <div id="modelOodRate" class="text-lg font-black text-amber-600 mt-1">0.0%</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase">Operator Disagreement</span>
+                                <div id="modelDisagreementRate" class="text-lg font-black text-rose-600 mt-1">0.0%</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase">Evaluation Accuracy</span>
+                                <div id="modelEvalAccuracy" class="text-lg font-black text-emerald-600 mt-1">--%</div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+                            <!-- Drift History / PSI Progression -->
+                            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                                <div class="flex items-center justify-between text-xs font-mono">
+                                    <span class="font-bold text-slate-800 uppercase">Model Drift Progression (PSI)</span>
+                                    <span id="driftCurrentStatusBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">STABLE</span>
+                                </div>
+                                <div id="driftProgressionList" class="space-y-2 text-xs font-mono max-h-48 overflow-y-auto no-scrollbar">
+                                    <div class="text-slate-400">Loading drift timeline...</div>
+                                </div>
+                            </div>
+
+                            <!-- Confusion Matrix Preview -->
+                            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                                <div class="flex items-center justify-between text-xs font-mono">
+                                    <span class="font-bold text-slate-800 uppercase">Confusion Matrix (Ground Truth vs Pred)</span>
+                                    <span class="text-[10px] text-slate-400">From Operator Feedback</span>
+                                </div>
+                                <div id="confusionMatrixContainer" class="overflow-x-auto text-xs font-mono">
+                                    <div class="text-slate-400">No reviewed samples available for confusion matrix.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 4. DEVICE AVAILABILITY TIMELINE & OFFLINE-SYNC BACKLOG (GRID) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Device Availability Timeline -->
+                        <div class="p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-4">
+                            <div class="border-b border-slate-100 pb-3">
+                                <h3 class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+                                    5. Subsystem Availability &amp; Uptime Timeline
+                                </h3>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Component health state transitions and availability percentages</p>
+                            </div>
+
+                            <div id="availabilityComponentsList" class="space-y-3">
+                                <div class="p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-400">Loading availability metrics...</div>
+                            </div>
+                        </div>
+
+                        <!-- Offline-Sync Backlog History -->
+                        <div class="p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div>
+                                    <h3 class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+                                        6. Offline-Sync Backlog History
+                                    </h3>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Replay queue metrics &amp; synchronization audit trail</p>
+                                </div>
+                                <div class="flex items-center gap-2 text-xs font-mono">
+                                    <span class="text-amber-600 font-bold">Pending: <span id="analyticsOutboxPending">0</span></span>
+                                    <span class="text-slate-300">&middot;</span>
+                                    <span class="text-rose-600 font-bold">Dead: <span id="analyticsOutboxDead">0</span></span>
+                                </div>
+                            </div>
+
+                            <div id="analyticsOutboxHistoryList" class="space-y-2 max-h-64 overflow-y-auto no-scrollbar text-xs font-mono">
+                                <div class="p-3 bg-slate-50 rounded-lg text-slate-400">Loading sync backlog...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
         </main>

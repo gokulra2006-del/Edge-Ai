@@ -12,7 +12,8 @@ import hmac
 import secrets
 from pathlib import Path
 import urllib.parse
-from typing import Optional
+import time
+from typing import Optional, Any
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -36,11 +37,16 @@ AUTH_SESSIONS: dict[str, dict[str, str]] = {}
 from src.modules.assurance.drift_monitor import ModelDriftMonitor
 from src.modules.assurance.device_health import HealthMonitor, OfflineSyncOutbox
 from src.modules.hardware.stream_service import CAMERA_STREAM, AUDIO_STREAM
+from src.modules.analytics.analytics_engine import AnalyticsEngine
 
 DRIFT_MONITOR = ModelDriftMonitor(GOVERNED_REPOSITORY)
 HEALTH_MONITOR = HealthMonitor(GOVERNED_REPOSITORY)
 OUTBOX = OfflineSyncOutbox(GOVERNED_REPOSITORY)
 DRIFT_MONITOR.ensure_default_baselines()
+ANALYTICS_ENGINE = AnalyticsEngine(GOVERNED_REPOSITORY)
+
+_ANALYTICS_CACHE: dict[str, tuple[float, Any]] = {}
+ANALYTICS_CACHE_TTL = 5.0
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -60,6 +66,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        query = urllib.parse.parse_qs(parsed.query)
 
         # 1. Real-Time Consolidated Telemetry Stream
         if path == "/api/live":
@@ -387,8 +394,145 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._serve_file(WEB_DIR / "index.html", "text/html; charset=utf-8")
         elif path == "/app.js":
             self._serve_file(WEB_DIR / "app.js", "application/javascript")
+        elif path == "/chart.min.js":
+            self._serve_file(WEB_DIR / "chart.min.js", "application/javascript")
         elif path == "/style.css":
             self._serve_file(WEB_DIR / "style.css", "text/css")
+
+        elif path.startswith("/api/analytics/"):
+            now = time.monotonic()
+            cache_key = self.path
+            if cache_key in _ANALYTICS_CACHE:
+                cached_time, cached_val = _ANALYTICS_CACHE[cache_key]
+                if now - cached_time < ANALYTICS_CACHE_TTL:
+                    self._json(cached_val)
+                    return
+
+            rng = query.get("range", query.get("window", ["24h"]))[0]
+            st = query.get("start_time", [None])[0]
+            et = query.get("end_time", [None])[0]
+            inc_demo = query.get("include_demo", ["false"])[0].lower() in ("true", "1")
+            zone_filter = query.get("zone", [None])[0]
+            sev_filter = query.get("severity", [None])[0]
+            model_filter = query.get("model", [None])[0]
+            if zone_filter in ("", "all", "ALL"): zone_filter = None
+            if sev_filter in ("", "all", "ALL"): sev_filter = None
+            if model_filter in ("", "all", "ALL"): model_filter = None
+
+            if path == "/api/analytics/overview":
+                summary = ANALYTICS_ENGINE.get_incident_summary(window=rng, start_time=st, end_time=et, include_demo=inc_demo)
+                avail = ANALYTICS_ENGINE.get_system_availability(window=rng, start_time=st, end_time=et)
+                start_b, end_b = summary["window"]["start"], summary["window"]["end"]
+                with ANALYTICS_ENGINE._read_connection() as con:
+                    zone_rows = con.execute("""
+                        SELECT zone_id,
+                               count(*) as total,
+                               sum(case when severity in ('CRITICAL', 'HIGH') then 1 else 0 end) as severe_count,
+                               sum(case when status not in ('RESOLVED', 'CLOSED', 'FALSE_ALARM') then 1 else 0 end) as active_count
+                        FROM incidents
+                        WHERE created_at >= ? AND created_at <= ?
+                        GROUP BY zone_id
+                    """, (start_b, end_b)).fetchall()
+
+                zones = []
+                for zr in zone_rows:
+                    tot = zr["total"]
+                    sev_c = zr["severe_count"] or 0
+                    act_c = zr["active_count"] or 0
+                    if sev_c >= 3 or act_c >= 2:
+                        risk_level = "CRITICAL"
+                    elif sev_c >= 1:
+                        risk_level = "HIGH"
+                    elif tot >= 3:
+                        risk_level = "MEDIUM"
+                    else:
+                        risk_level = "LOW"
+                    zones.append({
+                        "zone_id": zr["zone_id"],
+                        "total_incidents": tot,
+                        "severe_incidents": sev_c,
+                        "active_incidents": act_c,
+                        "risk_level": risk_level
+                    })
+                zones.sort(key=lambda z: (z["severe_incidents"], z["total_incidents"]), reverse=True)
+
+                total_inc = summary["total_incidents"]
+                act_inc = sum(v for k, v in summary["by_status"].items() if k not in ("RESOLVED", "CLOSED", "FALSE_ALARM"))
+                res_inc = summary["by_status"].get("RESOLVED", 0) + summary["by_status"].get("CLOSED", 0)
+                far_count = summary["false_alarm_count"]
+                far_rate = round((far_count / total_inc) * 100.0, 1) if total_inc > 0 else 0.0
+
+                result = {
+                    "kpis": {
+                        "total_incidents": total_inc,
+                        "active_incidents": act_inc,
+                        "resolved_incidents": res_inc,
+                        "false_alarms": far_count,
+                        "false_alarm_rate_pct": far_rate,
+                        "mtta_seconds": summary["mean_acknowledgment_seconds"],
+                        "mttr_seconds": summary["mean_resolution_seconds"],
+                        "system_availability_pct": avail["overall_availability_pct"],
+                    },
+                    "summary": summary,
+                    "zones": zones,
+                    "availability": avail
+                }
+                _ANALYTICS_CACHE[cache_key] = (now, result)
+                self._json(result)
+                return
+
+            elif path == "/api/analytics/trends":
+                bucket = query.get("bucket", ["1h"])[0]
+                ts = ANALYTICS_ENGINE.get_incident_timeseries(window=rng, start_time=st, end_time=et, bucket_interval=bucket, include_demo=inc_demo)
+                result = {"timeseries": ts, "bucket": bucket, "window": rng}
+                _ANALYTICS_CACHE[cache_key] = (now, result)
+                self._json(result)
+                return
+
+            elif path == "/api/analytics/models":
+                perf = ANALYTICS_ENGINE.get_model_performance(window=rng, model_id=model_filter, start_time=st, end_time=et)
+                drift = ANALYTICS_ENGINE.get_drift_analytics(window=rng, model_id=model_filter, start_time=st, end_time=et)
+                disagree_rate = 0.0
+                if perf["evaluated_predictions"] > 0:
+                    disagree_rate = round((perf["incorrect_predictions"] / perf["evaluated_predictions"]) * 100.0, 1)
+
+                result = {
+                    "performance": perf,
+                    "drift": drift,
+                    "disagreement_rate_pct": disagree_rate,
+                    "mean_confidence": perf["mean_confidence"],
+                    "ood_rate_pct": round(perf["ood_rate"] * 100.0, 1)
+                }
+                _ANALYTICS_CACHE[cache_key] = (now, result)
+                self._json(result)
+                return
+
+            elif path == "/api/analytics/availability":
+                avail = ANALYTICS_ENGINE.get_system_availability(window=rng, start_time=st, end_time=et)
+                _ANALYTICS_CACHE[cache_key] = (now, result := avail)
+                self._json(result)
+                return
+
+            elif path == "/api/analytics/outbox":
+                with ANALYTICS_ENGINE._read_connection() as con:
+                    recent = [dict(r) for r in con.execute("""
+                        SELECT id, idempotency_key, target, payload_type, attempts, next_attempt_at,
+                               status, priority, last_error, created_at, updated_at
+                        FROM sync_outbox
+                        ORDER BY id DESC
+                        LIMIT 30
+                    """).fetchall()]
+                result = {
+                    "counts": OUTBOX.status_summary(),
+                    "recent": recent
+                }
+                _ANALYTICS_CACHE[cache_key] = (now, result)
+                self._json(result)
+                return
+
+            else:
+                self._json({"error": "Unknown analytics endpoint"}, 404)
+                return
         else:
             self.send_response(404)
             self.end_headers()

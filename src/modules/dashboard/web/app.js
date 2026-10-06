@@ -51,7 +51,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-blue-100 text-blue-800 border-blue-200",
         roleTitle: "Incident Commander Console",
         roleDesc: "Full municipal authority: emergency scenarios, traffic signals, barrier overrides, sensors matrix, and forensic dossier export.",
-        allowedPages: ["overview", "emergency-plan", "system-health", "sensors", "actuators", "gis", "logs", "review", "dvr", "datasets"],
+        allowedPages: ["overview", "emergency-plan", "system-health", "analytics", "sensors", "actuators", "gis", "logs", "review", "dvr", "datasets"],
         permissions: ["all", "scenarios", "signals", "ack", "telemetry", "hardware", "dvr", "datasets", "config"]
     },
     operator: {
@@ -62,7 +62,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-emerald-100 text-emerald-800 border-emerald-200",
         roleTitle: "Traffic Controller Console",
         roleDesc: "Municipal traffic signals, emergency corridor preemption, barrier controls, and incident audit log access.",
-        allowedPages: ["overview", "emergency-plan", "system-health", "actuators", "gis", "logs", "review"],
+        allowedPages: ["overview", "emergency-plan", "system-health", "analytics", "actuators", "gis", "logs", "review"],
         permissions: ["scenarios", "signals", "ack"]
     },
     engineer: {
@@ -73,7 +73,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-amber-100 text-amber-800 border-amber-200",
         roleTitle: "Hardware Engineer Console",
         roleDesc: "Physical sensor telemetry streams, hardware driver registry, calibration diagnostics, and master dataset explorer.",
-        allowedPages: ["overview", "system-health", "sensors", "gis", "logs", "review", "datasets"],
+        allowedPages: ["overview", "system-health", "analytics", "sensors", "gis", "logs", "review", "datasets"],
         permissions: ["telemetry", "hardware", "datasets", "config"]
     },
     viewer: {
@@ -84,7 +84,7 @@ const SYSTEM_USERS = {
         roleClass: "bg-slate-100 text-slate-700 border-slate-200",
         roleTitle: "Public Observer Console",
         roleDesc: "Read-only situational awareness: live urban traffic status, AI assessment summary, and corridor spatial localization.",
-        allowedPages: ["overview", "emergency-plan", "gis", "logs"],
+        allowedPages: ["overview", "emergency-plan", "analytics", "gis", "logs"],
         permissions: ["read"]
     }
 };
@@ -1790,11 +1790,12 @@ async function acknowledgeCurrentIncident() {
 /* 7. CLIENT-SIDE SPA ROUTING & COLLAPSIBLE SIDEBAR                          */
 /* ========================================================================= */
 
-const VALID_PAGES = ["overview", "emergency-plan", "system-health", "sensors", "actuators", "gis", "logs", "review", "dvr", "datasets"];
+const VALID_PAGES = ["overview", "emergency-plan", "system-health", "analytics", "sensors", "actuators", "gis", "logs", "review", "dvr", "datasets"];
 const PAGE_TITLES = {
     overview: "DASHBOARD OVERVIEW",
     "emergency-plan": "EMERGENCY RESPONSE PLAN",
     "system-health": "SYSTEM HEALTH & MONITORING",
+    analytics: "OPERATIONS ANALYTICS & INTELLIGENCE",
     sensors: "SENSORS MATRIX",
     actuators: "ACTUATORS RESPONSE",
     gis: "GIS & REAL-TIME CHARTS",
@@ -1876,6 +1877,7 @@ function switchPage(pageId, updateHash = true) {
     }
     if (pageId === "emergency-plan") updateResponsePlan();
     if (pageId === "system-health") loadSystemHealth();
+    if (pageId === "analytics") loadAnalytics();
     if (pageId === "logs") loadIncidents();
     if (pageId === "review") loadReviewQueue();
 
@@ -2273,4 +2275,448 @@ async function changeStreamSource(stream) {
         body: JSON.stringify({ stream, source })
     });
     loadSystemHealth();
+}
+
+
+/* ========================================================================= */
+/* 9. OPERATIONAL ANALYTICS & HISTORICAL METRICS (PHASE 5B)                  */
+/* ========================================================================= */
+
+let analyticsTrendsChartInstance = null;
+let currentTrendBucket = "1h";
+const analyticsClientCache = {
+    key: "",
+    timestamp: 0,
+    data: null
+};
+
+function getAnalyticsFilterParams() {
+    const range = document.getElementById("analyticsFilterRange")?.value || "24h";
+    const zone = document.getElementById("analyticsFilterZone")?.value || "all";
+    const severity = document.getElementById("analyticsFilterSeverity")?.value || "all";
+    const model = document.getElementById("analyticsFilterModel")?.value || "all";
+    const demo = document.getElementById("analyticsFilterDemo")?.checked ? "true" : "false";
+
+    const params = new URLSearchParams();
+    params.set("range", range);
+    if (zone !== "all") params.set("zone", zone);
+    if (severity !== "all") params.set("severity", severity);
+    if (model !== "all") params.set("model", model);
+    if (demo === "true") params.set("include_demo", "true");
+    return params;
+}
+
+function restoreAnalyticsFiltersFromUrl() {
+    const hash = window.location.hash.replace("#", "");
+    const qIndex = hash.indexOf("?");
+    if (qIndex === -1) return;
+    const queryStr = hash.slice(qIndex + 1);
+    const params = new URLSearchParams(queryStr);
+
+    const range = params.get("range");
+    const zone = params.get("zone");
+    const severity = params.get("severity");
+    const model = params.get("model");
+    const demo = params.get("include_demo");
+
+    if (range && document.getElementById("analyticsFilterRange")) document.getElementById("analyticsFilterRange").value = range;
+    if (zone && document.getElementById("analyticsFilterZone")) document.getElementById("analyticsFilterZone").value = zone;
+    if (severity && document.getElementById("analyticsFilterSeverity")) document.getElementById("analyticsFilterSeverity").value = severity;
+    if (model && document.getElementById("analyticsFilterModel")) document.getElementById("analyticsFilterModel").value = model;
+    if (document.getElementById("analyticsFilterDemo")) document.getElementById("analyticsFilterDemo").checked = (demo === "true");
+}
+
+function applyAnalyticsFilters() {
+    const params = getAnalyticsFilterParams();
+    window.location.hash = `analytics?${params.toString()}`;
+    loadAnalytics(true);
+}
+
+function resetAnalyticsFilters() {
+    if (document.getElementById("analyticsFilterRange")) document.getElementById("analyticsFilterRange").value = "24h";
+    if (document.getElementById("analyticsFilterZone")) document.getElementById("analyticsFilterZone").value = "all";
+    if (document.getElementById("analyticsFilterSeverity")) document.getElementById("analyticsFilterSeverity").value = "all";
+    if (document.getElementById("analyticsFilterModel")) document.getElementById("analyticsFilterModel").value = "all";
+    if (document.getElementById("analyticsFilterDemo")) document.getElementById("analyticsFilterDemo").checked = false;
+
+    window.location.hash = "analytics";
+    loadAnalytics(true);
+}
+
+function setTrendBucket(bucket) {
+    currentTrendBucket = bucket;
+    const b1h = document.getElementById("trendBucket1h");
+    const b1d = document.getElementById("trendBucket1d");
+    if (b1h && b1d) {
+        if (bucket === "1h") {
+            b1h.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white";
+            b1d.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200";
+        } else {
+            b1d.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white";
+            b1h.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200";
+        }
+    }
+    loadAnalyticsTrendsOnly();
+}
+
+async function loadAnalytics(forceRefresh = false) {
+    restoreAnalyticsFiltersFromUrl();
+    const params = getAnalyticsFilterParams();
+    const qStr = params.toString();
+
+    // Check client cache (TTL: 8 seconds)
+    const now = Date.now();
+    if (!forceRefresh && analyticsClientCache.key === qStr && (now - analyticsClientCache.timestamp < 8000)) {
+        renderAnalyticsData(analyticsClientCache.data);
+        return;
+    }
+
+    const loadEl = document.getElementById("analyticsLoadingState");
+    const errEl = document.getElementById("analyticsErrorState");
+    const contentEl = document.getElementById("analyticsContent");
+    const emptyEl = document.getElementById("analyticsEmptyState");
+
+    if (loadEl) loadEl.classList.remove("hidden");
+    if (errEl) errEl.classList.add("hidden");
+    if (contentEl) contentEl.classList.add("hidden");
+    if (emptyEl) emptyEl.classList.add("hidden");
+
+    try {
+        const [overviewRes, trendsRes, modelsRes, availRes, outboxRes] = await Promise.all([
+            fetch(`/api/analytics/overview?${qStr}`).then(r => r.ok ? r.json() : Promise.reject("overview failed")),
+            fetch(`/api/analytics/trends?${qStr}&bucket=${currentTrendBucket}`).then(r => r.ok ? r.json() : Promise.reject("trends failed")),
+            fetch(`/api/analytics/models?${qStr}`).then(r => r.ok ? r.json() : Promise.reject("models failed")),
+            fetch(`/api/analytics/availability?${qStr}`).then(r => r.ok ? r.json() : Promise.reject("availability failed")),
+            fetch(`/api/analytics/outbox?${qStr}`).then(r => r.ok ? r.json() : Promise.reject("outbox failed"))
+        ]);
+
+        const fullData = {
+            overview: overviewRes,
+            trends: trendsRes,
+            models: modelsRes,
+            availability: availRes,
+            outbox: outboxRes
+        };
+
+        analyticsClientCache.key = qStr;
+        analyticsClientCache.timestamp = now;
+        analyticsClientCache.data = fullData;
+
+        if (loadEl) loadEl.classList.add("hidden");
+        if (contentEl) contentEl.classList.remove("hidden");
+
+        renderAnalyticsData(fullData);
+    } catch (err) {
+        console.error("loadAnalytics failed:", err);
+        if (loadEl) loadEl.classList.add("hidden");
+        if (errEl) {
+            errEl.classList.remove("hidden");
+            const msgEl = document.getElementById("analyticsErrorMessage");
+            if (msgEl) msgEl.innerText = `Error retrieving analytics data: ${err}`;
+        }
+    }
+}
+
+async function loadAnalyticsTrendsOnly() {
+    const params = getAnalyticsFilterParams();
+    const qStr = params.toString();
+    try {
+        const trendsRes = await fetch(`/api/analytics/trends?${qStr}&bucket=${currentTrendBucket}`).then(r => r.json());
+        if (trendsRes && trendsRes.timeseries) {
+            renderAnalyticsTrendsChart(trendsRes.timeseries);
+        }
+    } catch (e) {
+        console.warn("loadAnalyticsTrendsOnly failed:", e);
+    }
+}
+
+function renderAnalyticsData(data) {
+    const overview = data.overview || {};
+    const kpis = overview.kpis || {};
+    const summary = overview.summary || {};
+    const zones = overview.zones || [];
+    const models = data.models || {};
+    const avail = data.availability || {};
+    const outbox = data.outbox || {};
+
+    // 1. KPI Cards
+    const totalEl = document.getElementById("kpiTotalIncidents");
+    const activeEl = document.getElementById("kpiActiveBadge");
+    const resEl = document.getElementById("kpiResolvedBadge");
+    const mttaEl = document.getElementById("kpiMtta");
+    const mttrEl = document.getElementById("kpiMttr");
+    const farEl = document.getElementById("kpiFar");
+    const farCountEl = document.getElementById("kpiFarCount");
+    const availEl = document.getElementById("kpiAvailability");
+    const badgeAvail = document.getElementById("analyticsAssuranceBadge");
+    const assEl = document.getElementById("kpiAssurance");
+
+    if (totalEl) totalEl.innerText = kpis.total_incidents || 0;
+    if (activeEl) activeEl.innerText = `${kpis.active_incidents || 0} Active`;
+    if (resEl) resEl.innerText = `${kpis.resolved_incidents || 0} Closed`;
+    if (mttaEl) mttaEl.innerText = kpis.mtta_seconds !== null ? `${kpis.mtta_seconds}s` : "--";
+    if (mttrEl) mttrEl.innerText = kpis.mttr_seconds !== null ? `${kpis.mttr_seconds}s` : "--";
+    if (farEl) farEl.innerText = `${kpis.false_alarm_rate_pct || 0}%`;
+    if (farCountEl) farCountEl.innerText = kpis.false_alarms || 0;
+    if (availEl) availEl.innerText = `${kpis.system_availability_pct || 100}%`;
+    if (badgeAvail) badgeAvail.innerText = `AVAILABILITY: ${kpis.system_availability_pct || 100}%`;
+
+    // Assurance mode
+    const dist = avail.incident_assurance_distribution || {};
+    const modes = Object.keys(dist);
+    if (assEl) assEl.innerText = modes.length > 0 ? modes[0] : "FULL";
+
+    // Empty state
+    const emptyEl = document.getElementById("analyticsEmptyState");
+    if (emptyEl) {
+        if (!kpis.total_incidents || kpis.total_incidents === 0) {
+            emptyEl.classList.remove("hidden");
+        } else {
+            emptyEl.classList.add("hidden");
+        }
+    }
+
+    // 2. Incident Trend Chart
+    if (data.trends && data.trends.timeseries) {
+        renderAnalyticsTrendsChart(data.trends.timeseries);
+    }
+
+    // 3. Zone Risk Comparison
+    renderZoneRiskList(zones);
+
+    // 4. Model Performance Panel
+    renderModelPerformancePanel(models);
+
+    // 5. Device Availability
+    renderDeviceAvailability(avail);
+
+    // 6. Offline-Sync Backlog
+    renderSyncBacklog(outbox);
+}
+
+function renderAnalyticsTrendsChart(timeseries) {
+    const canvas = document.getElementById("analyticsTrendsChart");
+    if (!canvas || !window.Chart) return;
+
+    const labels = timeseries.map(t => {
+        const parts = t.bucket.split("T");
+        return parts.length > 1 ? parts[1].slice(0, 5) : t.bucket;
+    });
+
+    const critData = timeseries.map(t => t.critical || 0);
+    const highData = timeseries.map(t => t.high || 0);
+    const medLowData = timeseries.map(t => (t.medium || 0) + (t.low || 0));
+    const farData = timeseries.map(t => t.false_alarm || 0);
+
+    if (analyticsTrendsChartInstance) {
+        analyticsTrendsChartInstance.destroy();
+    }
+
+    analyticsTrendsChartInstance = new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: labels.length > 0 ? labels : ["No Data"],
+            datasets: [
+                {
+                    label: "Critical",
+                    data: critData.length > 0 ? critData : [0],
+                    backgroundColor: "#ef4444",
+                    borderRadius: 4
+                },
+                {
+                    label: "High",
+                    data: highData.length > 0 ? highData : [0],
+                    backgroundColor: "#f59e0b",
+                    borderRadius: 4
+                },
+                {
+                    label: "Medium/Low",
+                    data: medLowData.length > 0 ? medLowData : [0],
+                    backgroundColor: "#3b82f6",
+                    borderRadius: 4
+                },
+                {
+                    label: "False Alarm",
+                    data: farData.length > 0 ? farData : [0],
+                    backgroundColor: "#94a3b8",
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { mode: 'index', intersect: false }
+            }
+        }
+    });
+}
+
+function renderZoneRiskList(zones) {
+    const list = document.getElementById("zoneRiskList");
+    if (!list) return;
+
+    if (!zones.length) {
+        list.innerHTML = `<div class="p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-400 text-center">No zone incident data in selected window.</div>`;
+        return;
+    }
+
+    list.innerHTML = zones.map(z => {
+        const rLvl = z.risk_level || "LOW";
+        const badgeColor = rLvl === "CRITICAL" ? "bg-rose-100 text-rose-800 border-rose-300"
+            : rLvl === "HIGH" ? "bg-amber-100 text-amber-800 border-amber-300"
+            : rLvl === "MEDIUM" ? "bg-blue-100 text-blue-800 border-blue-300"
+            : "bg-emerald-100 text-emerald-800 border-emerald-300";
+
+        return `
+            <div class="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between">
+                <div>
+                    <div class="font-mono text-xs font-bold text-slate-900">${z.zone_id}</div>
+                    <div class="text-[10px] font-mono text-slate-500 mt-0.5">
+                        Total: <strong>${z.total_incidents}</strong> &middot; Severe: <strong class="text-rose-600">${z.severe_incidents}</strong> &middot; Active: <strong class="text-amber-600">${z.active_incidents}</strong>
+                    </div>
+                </div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-black border ${badgeColor}">${rLvl}</span>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderModelPerformancePanel(modelsData) {
+    const perf = modelsData.performance || {};
+    const drift = modelsData.drift || {};
+
+    const confEl = document.getElementById("modelMeanConf");
+    const oodEl = document.getElementById("modelOodRate");
+    const disEl = document.getElementById("modelDisagreementRate");
+    const accEl = document.getElementById("modelEvalAccuracy");
+
+    if (confEl) confEl.innerText = perf.mean_confidence !== null ? `${Math.round(perf.mean_confidence * 100)}%` : "--";
+    if (oodEl) oodEl.innerText = `${modelsData.ood_rate_pct || 0}%`;
+    if (disEl) disEl.innerText = `${modelsData.disagreement_rate_pct || 0}%`;
+    if (accEl) accEl.innerText = perf.accuracy !== null ? `${Math.round(perf.accuracy * 100)}%` : "--";
+
+    // Drift timeline
+    const driftList = document.getElementById("driftProgressionList");
+    const badge = document.getElementById("driftCurrentStatusBadge");
+    const timeline = drift.timeline || [];
+
+    if (timeline.length > 0) {
+        const latest = timeline[timeline.length - 1];
+        if (badge) {
+            badge.innerText = latest.status;
+            badge.className = `px-2 py-0.5 rounded text-[10px] font-bold ${latest.status === 'STABLE' ? 'bg-emerald-100 text-emerald-800' : latest.status === 'WATCH' ? 'bg-blue-100 text-blue-800' : 'bg-rose-100 text-rose-800'}`;
+        }
+    }
+
+    if (driftList) {
+        if (!timeline.length) {
+            driftList.innerHTML = `<div class="text-xs text-slate-400">No drift snapshots in current window.</div>`;
+        } else {
+            driftList.innerHTML = timeline.slice(-6).map(s => `
+                <div class="p-2 rounded bg-white border border-slate-200 flex items-center justify-between text-[11px]">
+                    <div>
+                        <span class="font-bold text-slate-800">${s.model_id}</span>
+                        <span class="text-slate-400 text-[10px] ml-1.5">PSI: <strong>${s.metrics?.psi ?? 'N/A'}</strong></span>
+                    </div>
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${s.status === 'STABLE' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">${s.status}</span>
+                </div>
+            `).join("");
+        }
+    }
+
+    // Confusion Matrix Table
+    const cmContainer = document.getElementById("confusionMatrixContainer");
+    const cm = perf.confusion_matrix || {};
+    const actualClasses = Object.keys(cm);
+
+    if (cmContainer) {
+        if (!actualClasses.length) {
+            cmContainer.innerHTML = `<div class="text-xs text-slate-400 p-2">No labeled feedback samples in window.</div>`;
+        } else {
+            const predClasses = Array.from(new Set(actualClasses.flatMap(a => Object.keys(cm[a]))));
+            cmContainer.innerHTML = `
+                <table class="w-full text-left border-collapse border border-slate-200">
+                    <thead>
+                        <tr class="bg-slate-100 text-[10px]">
+                            <th class="p-1.5 border border-slate-200">Actual \\ Pred</th>
+                            ${predClasses.map(p => `<th class="p-1.5 border border-slate-200">${p}</th>`).join("")}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${actualClasses.map(a => `
+                            <tr class="hover:bg-slate-50 text-[11px]">
+                                <td class="p-1.5 font-bold border border-slate-200">${a}</td>
+                                ${predClasses.map(p => `<td class="p-1.5 text-center border border-slate-200 ${a === p ? 'bg-emerald-50 font-bold text-emerald-800' : ''}">${cm[a][p] || 0}</td>`).join("")}
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            `;
+        }
+    }
+}
+
+function renderDeviceAvailability(avail) {
+    const list = document.getElementById("availabilityComponentsList");
+    if (!list) return;
+
+    const comps = avail.components || {};
+    if (!Object.keys(comps).length) {
+        list.innerHTML = `<div class="p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-400">No device health transitions recorded in this period. Overall system state is nominal.</div>`;
+        return;
+    }
+
+    list.innerHTML = Object.entries(comps).map(([k, c]) => {
+        const pct = c.availability_pct !== undefined ? c.availability_pct : 100;
+        const color = pct >= 95 ? "bg-emerald-500" : pct >= 80 ? "bg-amber-500" : "bg-rose-500";
+        return `
+            <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs font-mono">
+                    <span class="font-bold text-slate-800 uppercase">${k}</span>
+                    <span class="text-slate-600">${pct}% Uptime (${c.total_events} events)</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div class="${color} h-2 rounded-full" style="width: ${pct}%"></div>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderSyncBacklog(outbox) {
+    const pEl = document.getElementById("analyticsOutboxPending");
+    const dEl = document.getElementById("analyticsOutboxDead");
+    const list = document.getElementById("analyticsOutboxHistoryList");
+
+    const counts = outbox.counts || {};
+    if (pEl) pEl.innerText = counts.PENDING || 0;
+    if (dEl) dEl.innerText = counts.DEAD_LETTER || 0;
+
+    const recent = outbox.recent || [];
+    if (!list) return;
+
+    if (!recent.length) {
+        list.innerHTML = `<div class="p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-400">Outbox queue is empty. Offline sync is up to date.</div>`;
+        return;
+    }
+
+    list.innerHTML = recent.map(r => `
+        <div class="p-2.5 rounded-lg border border-slate-200 bg-white flex items-center justify-between text-xs">
+            <div>
+                <span class="font-bold text-slate-900">${r.payload_type}</span>
+                <span class="text-[10px] text-slate-400 ml-2">${r.idempotency_key?.slice(0, 16)}...</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] text-slate-500">Tries: ${r.attempts}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${r.status === 'SYNCED' ? 'bg-emerald-100 text-emerald-800' : r.status === 'DEAD_LETTER' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}">${r.status}</span>
+            </div>
+        </div>
+    `).join("");
 }
