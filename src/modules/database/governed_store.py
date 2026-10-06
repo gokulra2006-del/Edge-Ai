@@ -177,6 +177,13 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     );
     CREATE INDEX IF NOT EXISTS idx_sync_outbox_status ON sync_outbox(status, next_attempt_at);
     """),
+    (6, """
+    CREATE INDEX IF NOT EXISTS idx_incidents_created_at ON incidents(created_at);
+    CREATE INDEX IF NOT EXISTS idx_incidents_event_type ON incidents(event_type);
+    CREATE INDEX IF NOT EXISTS idx_predictions_model_ts ON predictions(model_id, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_feedback_ts ON prediction_feedback(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_operator_actions_ts ON operator_actions(timestamp);
+    """),
 )
 
 

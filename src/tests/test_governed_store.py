@@ -18,7 +18,7 @@ def test_migrations_rerun_and_legacy_upgrade(tmp_path):
         con.execute("INSERT INTO emergency_events VALUES(1,'collision','Z1','2026-10-05T00:00:00+00:00')")
     MigrationRunner(db).run(); MigrationRunner(db).run()
     with sqlite3.connect(db) as con:
-        assert con.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 5
+        assert con.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 6
         assert con.execute("SELECT incident_id FROM incidents WHERE incident_id='LEGACY-1'").fetchone()[0] == "LEGACY-1"
         assert con.execute("SELECT event_type FROM emergency_events").fetchone()[0] == "collision"
 
