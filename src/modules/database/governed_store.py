@@ -198,6 +198,49 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     );
     CREATE INDEX IF NOT EXISTS idx_cleanup_logs_ts ON storage_cleanup_logs(timestamp);
     """),
+    (8, """
+    CREATE TABLE IF NOT EXISTS analytics_daily (
+      day TEXT NOT NULL,
+      zone_id TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      model_id TEXT NOT NULL,
+      total_incidents INTEGER NOT NULL DEFAULT 0,
+      resolved_count INTEGER NOT NULL DEFAULT 0,
+      false_alarm_count INTEGER NOT NULL DEFAULT 0,
+      total_ack_seconds REAL NOT NULL DEFAULT 0.0,
+      ack_count INTEGER NOT NULL DEFAULT 0,
+      total_resolve_seconds REAL NOT NULL DEFAULT 0.0,
+      resolve_count INTEGER NOT NULL DEFAULT 0,
+      sample_count INTEGER NOT NULL DEFAULT 0,
+      sum_confidence REAL NOT NULL DEFAULT 0.0,
+      ood_count INTEGER NOT NULL DEFAULT 0,
+      incorrect_count INTEGER NOT NULL DEFAULT 0,
+      correct_count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (day, zone_id, severity, event_type, model_id)
+    );
+    CREATE TABLE IF NOT EXISTS analytics_device_daily (
+      day TEXT NOT NULL,
+      component TEXT NOT NULL,
+      uptime_seconds REAL NOT NULL DEFAULT 0.0,
+      total_seconds REAL NOT NULL DEFAULT 0.0,
+      event_count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (day, component)
+    );
+    CREATE TABLE IF NOT EXISTS analytics_rollup_state (
+      rollup_name TEXT PRIMARY KEY,
+      high_water_mark TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_incidents_created_zone ON incidents(created_at, zone_id);
+    CREATE INDEX IF NOT EXISTS idx_incidents_created_sev ON incidents(created_at, severity);
+    CREATE INDEX IF NOT EXISTS idx_incidents_created_event ON incidents(created_at, event_type);
+    CREATE INDEX IF NOT EXISTS idx_predictions_ts_model ON predictions(timestamp, model_id);
+    CREATE INDEX IF NOT EXISTS idx_device_health_ts_comp ON device_health_events(timestamp, component);
+    CREATE INDEX IF NOT EXISTS idx_outbox_ts_status ON sync_outbox(created_at, status);
+    CREATE INDEX IF NOT EXISTS idx_analytics_daily_day ON analytics_daily(day);
+    CREATE INDEX IF NOT EXISTS idx_analytics_device_day ON analytics_device_daily(day);
+    """),
 )
 
 

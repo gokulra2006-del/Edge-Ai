@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from src.modules.database.governed_store import IncidentRepository, utc_now
+from src.modules.analytics.filters import AnalyticsFilter, parse_datetime
+from src.modules.analytics.rollup_engine import RollupEngine
 
 
 def parse_iso_or_none(ts_str: str | None) -> datetime | None:
@@ -60,53 +62,169 @@ def resolve_window_bounds(
         return (now - timedelta(hours=24)).isoformat(), now.isoformat()
 
 
+def compute_percentile(data: Sequence[float], p: float) -> float | None:
+    """Compute percentile value (0.0 to 1.0) using linear interpolation."""
+    if not data:
+        return None
+    sorted_d = sorted(data)
+    idx = (len(sorted_d) - 1) * p
+    f = math.floor(idx)
+    c = math.ceil(idx)
+    if f == c:
+        return round(sorted_d[int(idx)], 2)
+    val = sorted_d[f] * (c - idx) + sorted_d[c] * (idx - f)
+    return round(val, 2)
+
+
+def make_envelope(
+    data: Any,
+    filter_obj: AnalyticsFilter,
+    rollup_freshness: str | None = None,
+    empty_state: bool | None = None
+) -> dict[str, Any]:
+    """Wrap response in consistent shape with data, filters_applied, and timestamps."""
+    if empty_state is None:
+        if isinstance(data, dict):
+            if "total_incidents" in data:
+                empty_state = data["total_incidents"] == 0
+            elif "total_predictions" in data:
+                empty_state = data["total_predictions"] == 0
+            elif "total_snapshots" in data:
+                empty_state = data["total_snapshots"] == 0
+            elif "total_items" in data:
+                empty_state = data["total_items"] == 0
+            else:
+                empty_state = len(data) == 0
+        elif isinstance(data, list):
+            empty_state = len(data) == 0
+        else:
+            empty_state = data is None
+
+    env: dict[str, Any] = {
+        "data": data,
+        "filters_applied": filter_obj.to_dict(),
+        "generated_at": utc_now(),
+        "rollup_freshness": rollup_freshness or utc_now(),
+        "empty_state": empty_state,
+    }
+    # Unpack dictionary top-level keys for backwards-compatibility with callers/UI
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if k not in env:
+                env[k] = v
+    return env
+
+
 class AnalyticsEngine:
     """Read-only, non-blocking historical analytics and metrics engine."""
 
     def __init__(self, db_path_or_repo: Path | str | IncidentRepository):
         if isinstance(db_path_or_repo, IncidentRepository):
             self.db_path = Path(db_path_or_repo.db_path)
+            self._repo: IncidentRepository | None = db_path_or_repo
         else:
             self.db_path = Path(db_path_or_repo)
+            self._repo = None
+        self.rollup_engine = RollupEngine(self.db_path)
 
     def _read_connection(self) -> sqlite3.Connection:
         """Open a read-only SQLite connection configured for concurrent WAL reads."""
         p = self.db_path.resolve()
-        # Try URI read-only connection first
         try:
             uri = f"file:{p.as_posix()}?mode=ro"
-            con = sqlite3.connect(uri, uri=True, timeout=1.0)
+            con = sqlite3.connect(uri, uri=True, timeout=2.0)
         except (sqlite3.OperationalError, sqlite3.DatabaseError):
-            con = sqlite3.connect(str(p), timeout=1.0)
+            con = sqlite3.connect(str(p), timeout=2.0)
             try:
                 con.execute("PRAGMA query_only = ON")
             except sqlite3.OperationalError:
                 pass
 
         con.row_factory = sqlite3.Row
-        con.execute("PRAGMA busy_timeout = 1000")
+        con.execute("PRAGMA busy_timeout = 2000")
         return con
 
-    def get_incident_summary(
+    def run_rollup(self, days_back: int = 3, force_full: bool = False) -> dict[str, Any]:
+        """Trigger incremental rollup pre-aggregation."""
+        return self.rollup_engine.run_rollup(days_back=days_back, force_full=force_full)
+
+    def _normalize_filter(
         self,
+        filt: AnalyticsFilter | dict[str, Any] | None = None,
         window: str = "24h",
         start_time: str | None = None,
         end_time: str | None = None,
+        zone: str | None = None,
+        severity: str | None = None,
+        event_type: str | None = None,
+        model_id: str | None = None,
         include_demo: bool = False
+    ) -> AnalyticsFilter:
+        if isinstance(filt, AnalyticsFilter):
+            return filt
+        elif isinstance(filt, dict):
+            return AnalyticsFilter.from_params(filt)
+        else:
+            params: dict[str, Any] = {
+                "window": window,
+                "start_time": start_time,
+                "end_time": end_time,
+                "zone": zone,
+                "severity": severity,
+                "event_type": event_type,
+                "model_id": model_id,
+                "include_demo": include_demo
+            }
+            return AnalyticsFilter.from_params(params)
+
+    def get_incident_summary(
+        self,
+        filt: AnalyticsFilter | dict[str, Any] | None = None,
+        window: str = "24h",
+        start_time: str | None = None,
+        end_time: str | None = None,
+        include_demo: bool = False,
+        zone: str | None = None,
+        severity: str | None = None,
+        event_type: str | None = None,
+        model_id: str | None = None
     ) -> dict[str, Any]:
-        """Aggregate incident metrics over a specified time window."""
-        start_iso, end_iso = resolve_window_bounds(window, start_time, end_time)
+        """
+        Aggregate incident metrics: MTTA/MTTR (mean, median, p95),
+        false-alarm rate, totals by severity/zone/status.
+        """
+        filter_obj = self._normalize_filter(
+            filt, window=window, start_time=start_time, end_time=end_time,
+            zone=zone, severity=severity, event_type=event_type, model_id=model_id,
+            include_demo=include_demo
+        )
+
         with self._read_connection() as con:
-            demo_filter = "" if include_demo else "AND is_demo = 0"
+            conditions = ["created_at >= ?", "created_at <= ?"]
+            params: list[Any] = [filter_obj.start_time, filter_obj.end_time]
+
+            if not filter_obj.include_demo:
+                conditions.append("is_demo = 0")
+            if filter_obj.zone:
+                conditions.append("zone_id = ?")
+                params.append(filter_obj.zone)
+            if filter_obj.severity:
+                conditions.append("severity = ?")
+                params.append(filter_obj.severity)
+            if filter_obj.event_type:
+                conditions.append("event_type = ?")
+                params.append(filter_obj.event_type)
+
+            where_clause = " AND ".join(conditions)
             query = f"""
                 SELECT incident_id, event_type, zone_id, status, severity,
                        acknowledged_seconds, resolution_seconds, assurance_level,
                        is_demo, created_at
                 FROM incidents
-                WHERE created_at >= ? AND created_at <= ? {demo_filter}
+                WHERE {where_clause}
                 ORDER BY created_at ASC
             """
-            rows = con.execute(query, (start_iso, end_iso)).fetchall()
+            rows = con.execute(query, tuple(params)).fetchall()
 
             total_incidents = len(rows)
             by_status: dict[str, int] = {}
@@ -145,21 +263,27 @@ class AnalyticsEngine:
                 if r["resolution_seconds"] is not None:
                     res_times.append(float(r["resolution_seconds"]))
 
-            # Also count total demo incidents in window regardless of include_demo
-            if not include_demo:
+            if not filter_obj.include_demo:
                 demo_row = con.execute(
                     "SELECT COUNT(*) FROM incidents WHERE created_at >= ? AND created_at <= ? AND is_demo = 1",
-                    (start_iso, end_iso)
+                    (filter_obj.start_time, filter_obj.end_time)
                 ).fetchone()
                 demo_count = demo_row[0] if demo_row else 0
 
             mean_ack = round(statistics.mean(ack_times), 2) if ack_times else None
             median_ack = round(statistics.median(ack_times), 2) if ack_times else None
+            p95_ack = compute_percentile(ack_times, 0.95)
+
             mean_res = round(statistics.mean(res_times), 2) if res_times else None
             median_res = round(statistics.median(res_times), 2) if res_times else None
+            p95_res = compute_percentile(res_times, 0.95)
 
-            return {
-                "window": {"preset": window, "start": start_iso, "end": end_iso},
+            far_rate = round((false_alarms / total_incidents) * 100.0, 2) if total_incidents > 0 else 0.0
+
+            freshness = self.rollup_engine.get_freshness()
+
+            core_data = {
+                "window": {"preset": window, "start": filter_obj.start_time, "end": filter_obj.end_time},
                 "total_incidents": total_incidents,
                 "by_status": by_status,
                 "by_severity": by_severity,
@@ -168,43 +292,111 @@ class AnalyticsEngine:
                 "by_assurance_level": by_assurance_level,
                 "mean_acknowledgment_seconds": mean_ack,
                 "median_acknowledgment_seconds": median_ack,
+                "p95_acknowledgment_seconds": p95_ack,
                 "mean_resolution_seconds": mean_res,
                 "median_resolution_seconds": median_res,
+                "p95_resolution_seconds": p95_res,
                 "false_alarm_count": false_alarms,
+                "false_alarm_rate_pct": far_rate,
                 "demo_count": demo_count,
             }
 
+            return make_envelope(core_data, filter_obj, rollup_freshness=freshness)
+
     def get_incident_timeseries(
         self,
+        filt: AnalyticsFilter | dict[str, Any] | None = None,
         window: str = "24h",
         start_time: str | None = None,
         end_time: str | None = None,
         bucket_interval: str = "1h",
-        include_demo: bool = False
+        include_demo: bool = False,
+        use_rollup: bool = True
     ) -> list[dict[str, Any]]:
-        """Compute time-bucketed counts for timeline and chart visualizations."""
-        start_iso, end_iso = resolve_window_bounds(window, start_time, end_time)
+        """
+        Compute time-bucketed counts for timeline and chart visualizations.
+        Reads from analytics_daily rollup when applicable.
+        """
+        filter_obj = self._normalize_filter(
+            filt, window=window, start_time=start_time, end_time=end_time,
+            include_demo=include_demo
+        )
+
         with self._read_connection() as con:
-            demo_filter = "" if include_demo else "AND is_demo = 0"
+            is_daily = bucket_interval.lower() in ("1d", "day", "daily")
+
+            # Check if rollup table has data for daily aggregation
+            if use_rollup and is_daily and not filter_obj.include_demo:
+                c_roll = con.execute(
+                    "SELECT count(*) FROM analytics_daily WHERE day >= ? AND day <= ?",
+                    (filter_obj.start_date, filter_obj.end_date)
+                ).fetchone()[0]
+
+                if c_roll > 0:
+                    roll_conditions = ["day >= ?", "day <= ?"]
+                    r_params: list[Any] = [filter_obj.start_date, filter_obj.end_date]
+                    if filter_obj.zone:
+                        roll_conditions.append("zone_id = ?")
+                        r_params.append(filter_obj.zone)
+                    if filter_obj.severity:
+                        roll_conditions.append("severity = ?")
+                        r_params.append(filter_obj.severity)
+                    if filter_obj.event_type:
+                        roll_conditions.append("event_type = ?")
+                        r_params.append(filter_obj.event_type)
+                    if filter_obj.model_id:
+                        roll_conditions.append("model_id = ?")
+                        r_params.append(filter_obj.model_id)
+
+                    roll_where = " AND ".join(roll_conditions)
+                    roll_rows = con.execute(f"""
+                        SELECT day,
+                               sum(total_incidents) as total,
+                               sum(case when severity='CRITICAL' then total_incidents else 0 end) as critical,
+                               sum(case when severity='HIGH' then total_incidents else 0 end) as high,
+                               sum(case when severity='MEDIUM' then total_incidents else 0 end) as medium,
+                               sum(case when severity='LOW' then total_incidents else 0 end) as low,
+                               sum(case when severity='NORMAL' then total_incidents else 0 end) as normal,
+                               sum(false_alarm_count) as false_alarm
+                        FROM analytics_daily
+                        WHERE {roll_where}
+                        GROUP BY day
+                        ORDER BY day ASC
+                    """, tuple(r_params)).fetchall()
+
+                    return [
+                        {
+                            "bucket": f"{rr['day']}T00:00:00Z",
+                            "total": rr["total"],
+                            "critical": rr["critical"],
+                            "high": rr["high"],
+                            "medium": rr["medium"],
+                            "low": rr["low"],
+                            "normal": rr["normal"],
+                            "false_alarm": rr["false_alarm"]
+                        }
+                        for rr in roll_rows
+                    ]
+
+            # Raw query fallback
+            demo_filter = "" if filter_obj.include_demo else "AND is_demo = 0"
+            zone_filter = f"AND zone_id = '{filter_obj.zone}'" if filter_obj.zone else ""
+            sev_filter = f"AND severity = '{filter_obj.severity}'" if filter_obj.severity else ""
+
             query = f"""
                 SELECT created_at, severity, status
                 FROM incidents
-                WHERE created_at >= ? AND created_at <= ? {demo_filter}
+                WHERE created_at >= ? AND created_at <= ? {demo_filter} {zone_filter} {sev_filter}
                 ORDER BY created_at ASC
             """
-            rows = con.execute(query, (start_iso, end_iso)).fetchall()
+            rows = con.execute(query, (filter_obj.start_time, filter_obj.end_time)).fetchall()
 
             buckets: dict[str, dict[str, Any]] = {}
-            is_daily = bucket_interval.lower() in ("1d", "day", "daily")
-
             for r in rows:
                 dt = parse_iso_or_none(r["created_at"])
                 if not dt:
                     continue
-                if is_daily:
-                    bucket_key = dt.strftime("%Y-%m-%dT00:00:00Z")
-                else:
-                    bucket_key = dt.strftime("%Y-%m-%dT%H:00:00Z")
+                bucket_key = dt.strftime("%Y-%m-%dT00:00:00Z") if is_daily else dt.strftime("%Y-%m-%dT%H:00:00Z")
 
                 if bucket_key not in buckets:
                     buckets[bucket_key] = {
@@ -230,18 +422,22 @@ class AnalyticsEngine:
 
     def get_model_performance(
         self,
+        filt: AnalyticsFilter | dict[str, Any] | None = None,
         window: str = "24h",
         model_id: str | None = None,
         start_time: str | None = None,
         end_time: str | None = None
     ) -> dict[str, Any]:
-        """Aggregate model accuracy, confusion matrix, false-alarm rate, and OOD metrics."""
-        start_iso, end_iso = resolve_window_bounds(window, start_time, end_time)
+        """Aggregate model accuracy, confusion matrix, false-alarm rate, OOD trends, and disagreement rate."""
+        filter_obj = self._normalize_filter(
+            filt, window=window, start_time=start_time, end_time=end_time, model_id=model_id
+        )
+
         with self._read_connection() as con:
-            model_filter = "AND p.model_id = ?" if model_id else ""
-            params: list[Any] = [start_iso, end_iso]
-            if model_id:
-                params.append(model_id)
+            model_filter = "AND p.model_id = ?" if filter_obj.model_id else ""
+            params: list[Any] = [filter_obj.start_time, filter_obj.end_time]
+            if filter_obj.model_id:
+                params.append(filter_obj.model_id)
 
             query = f"""
                 SELECT p.id, p.incident_id, p.timestamp, p.label, p.confidence,
@@ -261,15 +457,26 @@ class AnalyticsEngine:
             correct_count = 0
             incorrect_count = 0
             ood_count = 0
-            confidences: list[float] = []
             false_alarms = 0
+            confidences: list[float] = []
+
             confusion_matrix: dict[str, dict[str, int]] = {}
             by_model: dict[str, dict[str, Any]] = {}
 
+            # Time-bucketed confidence and OOD trends
+            trends: dict[str, dict[str, Any]] = {}
+
             for r in rows:
-                mid = r["model_id"] or "unknown_model"
-                conf = float(r["confidence"])
+                mid = r["model_id"] or "UNKNOWN"
+                conf = float(r["confidence"]) if r["confidence"] is not None else 0.0
                 confidences.append(conf)
+
+                # Day bucket for trends
+                dt_str = r["timestamp"][:10]
+                if dt_str not in trends:
+                    trends[dt_str] = {"day": dt_str, "sample_count": 0, "sum_conf": 0.0, "ood_count": 0}
+                trends[dt_str]["sample_count"] += 1
+                trends[dt_str]["sum_conf"] += conf
 
                 if mid not in by_model:
                     by_model[mid] = {
@@ -277,33 +484,32 @@ class AnalyticsEngine:
                         "evaluated": 0,
                         "correct": 0,
                         "incorrect": 0,
-                        "confidences": [],
                         "ood_count": 0,
                         "false_alarms": 0,
+                        "confidences": []
                     }
+
                 m_entry = by_model[mid]
                 m_entry["total"] += 1
                 m_entry["confidences"].append(conf)
 
-                # Out of Distribution detection
-                is_ood = False
-                payload_raw = r["payload_json"] or "{}"
+                # OOD detection
+                p_json = {}
                 try:
-                    payload = json.loads(payload_raw)
-                    if isinstance(payload, dict):
-                        if payload.get("ood_status") == "OOD" or payload.get("is_ood"):
-                            is_ood = True
+                    p_json = json.loads(r["payload_json"] or "{}")
                 except Exception:
                     pass
 
+                is_ood = p_json.get("ood_status") == "OOD"
                 if is_ood:
                     ood_count += 1
                     m_entry["ood_count"] += 1
+                    trends[dt_str]["ood_count"] += 1
 
-                # Feedback and Ground Truth evaluation
-                predicted_class = (r["label"] or "UNKNOWN").upper()
+                # Feedback evaluation
                 f_label = (r["feedback_label"] or "").upper()
-                c_class = (r["corrected_class"] or "").upper() if r["corrected_class"] else None
+                c_class = (r["corrected_class"] or "").upper()
+                predicted_class = (r["label"] or "UNKNOWN").upper()
                 inc_st = (r["incident_status"] or "").upper()
 
                 if f_label in ("CORRECT", "INCORRECT"):
@@ -325,37 +531,23 @@ class AnalyticsEngine:
                         confusion_matrix[actual_class].get(predicted_class, 0) + 1
                     )
 
-                # False alarm tracking
                 if inc_st == "FALSE_ALARM" or (f_label == "INCORRECT" and c_class == "NORMAL"):
                     false_alarms += 1
                     m_entry["false_alarms"] += 1
 
-            accuracy = (
-                round(correct_count / evaluated_count, 4)
-                if evaluated_count > 0
-                else None
-            )
-            far = (
-                round(false_alarms / total_predictions, 4)
-                if total_predictions > 0
-                else 0.0
-            )
-            ood_rate = (
-                round(ood_count / total_predictions, 4)
-                if total_predictions > 0
-                else 0.0
-            )
-            mean_conf = (
-                round(statistics.mean(confidences), 4) if confidences else None
-            )
+            accuracy = round(correct_count / evaluated_count, 4) if evaluated_count > 0 else None
+            disagreement_rate = round((incorrect_count / evaluated_count) * 100.0, 2) if evaluated_count > 0 else 0.0
+            far = round(false_alarms / total_predictions, 4) if total_predictions > 0 else 0.0
+            ood_rate = round(ood_count / total_predictions, 4) if total_predictions > 0 else 0.0
+            mean_conf = round(statistics.mean(confidences), 4) if confidences else None
 
-            # Summarize by_model metrics
             model_summaries = {}
             for k, v in by_model.items():
                 m_acc = round(v["correct"] / v["evaluated"], 4) if v["evaluated"] > 0 else None
                 m_far = round(v["false_alarms"] / v["total"], 4) if v["total"] > 0 else 0.0
                 m_ood = round(v["ood_count"] / v["total"], 4) if v["total"] > 0 else 0.0
                 m_conf = round(statistics.mean(v["confidences"]), 4) if v["confidences"] else None
+                m_dis = round((v["incorrect"] / v["evaluated"]) * 100.0, 2) if v["evaluated"] > 0 else 0.0
                 model_summaries[k] = {
                     "total": v["total"],
                     "evaluated": v["evaluated"],
@@ -363,37 +555,58 @@ class AnalyticsEngine:
                     "false_alarm_rate": m_far,
                     "ood_rate": m_ood,
                     "mean_confidence": m_conf,
+                    "disagreement_rate_pct": m_dis,
                 }
 
-            return {
-                "window": {"preset": window, "start": start_iso, "end": end_iso},
+            trends_list = [
+                {
+                    "day": td["day"],
+                    "sample_count": td["sample_count"],
+                    "mean_confidence": round(td["sum_conf"] / td["sample_count"], 4) if td["sample_count"] > 0 else 0.0,
+                    "ood_rate": round(td["ood_count"] / td["sample_count"], 4) if td["sample_count"] > 0 else 0.0
+                }
+                for td in sorted(trends.values(), key=lambda t: t["day"])
+            ]
+
+            freshness = self.rollup_engine.get_freshness()
+
+            core_data = {
+                "window": {"preset": window, "start": filter_obj.start_time, "end": filter_obj.end_time},
                 "total_predictions": total_predictions,
                 "evaluated_predictions": evaluated_count,
                 "correct_predictions": correct_count,
                 "incorrect_predictions": incorrect_count,
                 "accuracy": accuracy,
+                "disagreement_rate_pct": disagreement_rate,
                 "false_alarm_rate": far,
                 "ood_prediction_count": ood_count,
                 "ood_rate": ood_rate,
                 "mean_confidence": mean_conf,
                 "confusion_matrix": confusion_matrix,
                 "by_model": model_summaries,
+                "trends": trends_list,
             }
+
+            return make_envelope(core_data, filter_obj, rollup_freshness=freshness)
 
     def get_drift_analytics(
         self,
+        filt: AnalyticsFilter | dict[str, Any] | None = None,
         window: str = "24h",
         model_id: str | None = None,
         start_time: str | None = None,
         end_time: str | None = None
     ) -> dict[str, Any]:
         """Historical model drift progression and PSI metrics."""
-        start_iso, end_iso = resolve_window_bounds(window, start_time, end_time)
+        filter_obj = self._normalize_filter(
+            filt, window=window, start_time=start_time, end_time=end_time, model_id=model_id
+        )
+
         with self._read_connection() as con:
-            model_filter = "AND model_id = ?" if model_id else ""
-            params: list[Any] = [start_iso, end_iso]
-            if model_id:
-                params.append(model_id)
+            model_filter = "AND model_id = ?" if filter_obj.model_id else ""
+            params: list[Any] = [filter_obj.start_time, filter_obj.end_time]
+            if filter_obj.model_id:
+                params.append(filter_obj.model_id)
 
             query = f"""
                 SELECT id, model_id, timestamp, status, reasons_json, metrics_json,
@@ -439,17 +652,18 @@ class AnalyticsEngine:
                 timeline.append(item)
                 latest_status[mid] = item
 
-                psi_val = metrics.get("psi")
+                psi_val = metrics.get("psi") or metrics.get("psi_score")
                 if psi_val is not None:
                     psi_progression.append({
-                        "model_id": mid,
                         "timestamp": r["timestamp"],
-                        "psi": psi_val,
-                        "status": st
+                        "model_id": mid,
+                        "psi": float(psi_val)
                     })
 
-            return {
-                "window": {"preset": window, "start": start_iso, "end": end_iso},
+            freshness = self.rollup_engine.get_freshness()
+
+            core_data = {
+                "window": {"preset": window, "start": filter_obj.start_time, "end": filter_obj.end_time},
                 "total_snapshots": len(timeline),
                 "status_distribution": status_distribution,
                 "latest_status_by_model": latest_status,
@@ -457,14 +671,20 @@ class AnalyticsEngine:
                 "timeline": timeline,
             }
 
+            return make_envelope(core_data, filter_obj, rollup_freshness=freshness)
+
     def get_system_availability(
         self,
+        filt: AnalyticsFilter | dict[str, Any] | None = None,
         window: str = "24h",
         start_time: str | None = None,
         end_time: str | None = None
     ) -> dict[str, Any]:
-        """Compute system & component uptime and assurance-level distribution."""
-        start_iso, end_iso = resolve_window_bounds(window, start_time, end_time)
+        """Compute system, camera, audio, and device uptime percentages."""
+        filter_obj = self._normalize_filter(
+            filt, window=window, start_time=start_time, end_time=end_time
+        )
+
         with self._read_connection() as con:
             # 1. Device health events
             health_rows = con.execute(
@@ -475,7 +695,7 @@ class AnalyticsEngine:
                 WHERE timestamp >= ? AND timestamp <= ?
                 ORDER BY timestamp ASC
                 """,
-                (start_iso, end_iso)
+                (filter_obj.start_time, filter_obj.end_time)
             ).fetchall()
 
             components: dict[str, dict[str, Any]] = {}
@@ -511,11 +731,10 @@ class AnalyticsEngine:
                 else:
                     c_data["unknown_events"] += 1
 
-            # Compute uptime per component
             for comp, c_data in components.items():
                 tot = c_data["total_events"]
                 avail = c_data["ok_events"] + c_data["degraded_events"]
-                c_data["availability_pct"] = round((avail / tot) * 100.0, 2) if tot > 0 else 100.0
+                c_data["availability_pct"] = round((avail / tot) * 100.0, 2) if tot > 0 else 0.0
 
             overall_pct = (
                 round((available_events / total_events) * 100.0, 2)
@@ -523,249 +742,229 @@ class AnalyticsEngine:
                 else 100.0
             )
 
-            # 2. Assurance-level distributions
-            inc_assurance_rows = con.execute(
+            # 2. Assurance level distribution
+            al_rows = con.execute(
                 """
-                SELECT coalesce(assurance_level, 'FULL') as lvl, count(*) as cnt
+                SELECT assurance_level, count(*) as count
                 FROM incidents
                 WHERE created_at >= ? AND created_at <= ?
-                GROUP BY lvl
+                GROUP BY assurance_level
                 """,
-                (start_iso, end_iso)
+                (filter_obj.start_time, filter_obj.end_time)
             ).fetchall()
-            incident_assurance = {r["lvl"]: r["cnt"] for r in inc_assurance_rows}
 
-            pred_assurance_rows = con.execute(
-                """
-                SELECT coalesce(assurance_level, 'FULL') as lvl, count(*) as cnt
-                FROM predictions
-                WHERE timestamp >= ? AND timestamp <= ?
-                GROUP BY lvl
-                """,
-                (start_iso, end_iso)
-            ).fetchall()
-            prediction_assurance = {r["lvl"]: r["cnt"] for r in pred_assurance_rows}
+            assurance_distribution = {r["assurance_level"]: r["count"] for r in al_rows}
 
-            return {
-                "window": {"preset": window, "start": start_iso, "end": end_iso},
+            freshness = self.rollup_engine.get_freshness()
+
+            core_data = {
+                "window": {"preset": window, "start": filter_obj.start_time, "end": filter_obj.end_time},
+                "total_events": total_events,
                 "overall_availability_pct": overall_pct,
                 "components": components,
-                "incident_assurance_distribution": incident_assurance,
-                "prediction_assurance_distribution": prediction_assurance,
+                "assurance_distribution": assurance_distribution,
             }
+
+            return make_envelope(core_data, filter_obj, rollup_freshness=freshness)
+
+    def get_outbox_analytics(
+        self,
+        filt: AnalyticsFilter | dict[str, Any] | None = None,
+        window: str = "24h",
+        limit: int = 50
+    ) -> dict[str, Any]:
+        """Offline-sync outbox backlog history and backlog trends."""
+        filter_obj = self._normalize_filter(filt, window=window)
+
+        with self._read_connection() as con:
+            counts_raw = con.execute(
+                "SELECT status, count(*) as count FROM sync_outbox GROUP BY status"
+            ).fetchall()
+            counts = {"PENDING": 0, "SYNCED": 0, "DEAD_LETTER": 0}
+            for cr in counts_raw:
+                counts[cr["status"]] = cr["count"]
+
+            # Hourly backlog history
+            history_rows = con.execute("""
+                SELECT strftime('%Y-%m-%d %H:00:00', created_at) as hour_bucket,
+                       count(*) as enqueued,
+                       sum(CASE WHEN status='SYNCED' THEN 1 ELSE 0 END) as synced,
+                       sum(CASE WHEN status='PENDING' THEN 1 ELSE 0 END) as pending,
+                       sum(CASE WHEN status='DEAD_LETTER' THEN 1 ELSE 0 END) as dead_letter
+                FROM sync_outbox
+                WHERE created_at >= ? AND created_at <= ?
+                GROUP BY hour_bucket
+                ORDER BY hour_bucket ASC
+            """, (filter_obj.start_time, filter_obj.end_time)).fetchall()
+
+            recent = [dict(r) for r in con.execute("""
+                SELECT id, idempotency_key, target, payload_type, attempts, next_attempt_at,
+                       status, priority, last_error, created_at, updated_at
+                FROM sync_outbox
+                ORDER BY id DESC
+                LIMIT ?
+            """, (min(limit, 200),)).fetchall()]
+
+            freshness = self.rollup_engine.get_freshness()
+
+            core_data = {
+                "counts": counts,
+                "history": [dict(hr) for hr in history_rows],
+                "recent": recent,
+            }
+
+            return make_envelope(core_data, filter_obj, rollup_freshness=freshness)
 
     def get_operator_analytics(
         self,
+        filt: AnalyticsFilter | dict[str, Any] | None = None,
         window: str = "24h",
         start_time: str | None = None,
         end_time: str | None = None
     ) -> dict[str, Any]:
-        """Operator actions, response audit trails, and feedback metrics."""
-        start_iso, end_iso = resolve_window_bounds(window, start_time, end_time)
+        """Operator actions and workload metrics."""
+        filter_obj = self._normalize_filter(filt, window=window, start_time=start_time, end_time=end_time)
+
         with self._read_connection() as con:
-            actions_rows = con.execute(
+            action_rows = con.execute(
                 """
-                SELECT id, incident_id, timestamp, operator_id, action, approved, payload_json
+                SELECT id, incident_id, timestamp, operator_id, action, approved
                 FROM operator_actions
                 WHERE timestamp >= ? AND timestamp <= ?
                 ORDER BY timestamp ASC
                 """,
-                (start_iso, end_iso)
+                (filter_obj.start_time, filter_obj.end_time)
             ).fetchall()
 
-            total_actions = len(actions_rows)
-            approved_actions = 0
-            by_operator: dict[str, dict[str, Any]] = {}
-            by_action_type: dict[str, int] = {}
-
-            for ar in actions_rows:
-                op = ar["operator_id"] or "system"
-                act = ar["action"] or "unknown"
-                appr = bool(ar["approved"])
-
-                if appr:
-                    approved_actions += 1
-
-                by_action_type[act] = by_action_type.get(act, 0) + 1
-
-                if op not in by_operator:
-                    by_operator[op] = {
-                        "actions": 0,
-                        "approved": 0,
-                        "notes_count": 0,
-                        "feedback_count": 0,
-                    }
-                by_operator[op]["actions"] += 1
-                if appr:
-                    by_operator[op]["approved"] += 1
-
-            # Count notes per operator
-            notes_rows = con.execute(
+            note_rows = con.execute(
                 """
-                SELECT operator_id, count(*) as cnt
+                SELECT id, incident_id, timestamp, operator_id, operator_role, note
                 FROM incident_notes
                 WHERE timestamp >= ? AND timestamp <= ?
-                GROUP BY operator_id
+                ORDER BY timestamp ASC
                 """,
-                (start_iso, end_iso)
+                (filter_obj.start_time, filter_obj.end_time)
             ).fetchall()
-            for nr in notes_rows:
-                op = nr["operator_id"]
+
+            total_actions = len(action_rows)
+            approved_actions = sum(1 for a in action_rows if a["approved"])
+            by_operator: dict[str, dict[str, Any]] = {}
+
+            for a in action_rows:
+                op = a["operator_id"] or "UNKNOWN"
                 if op not in by_operator:
-                    by_operator[op] = {"actions": 0, "approved": 0, "notes_count": 0, "feedback_count": 0}
-                by_operator[op]["notes_count"] += nr["cnt"]
+                    by_operator[op] = {"actions": 0, "approved": 0, "notes_count": 0}
+                by_operator[op]["actions"] += 1
+                if a["approved"]:
+                    by_operator[op]["approved"] += 1
 
-            # Count feedback per operator
-            feedback_rows = con.execute(
-                """
-                SELECT operator_id, count(*) as cnt
-                FROM prediction_feedback
-                WHERE timestamp >= ? AND timestamp <= ?
-                GROUP BY operator_id
-                """,
-                (start_iso, end_iso)
-            ).fetchall()
-            for fr in feedback_rows:
-                op = fr["operator_id"]
+            for n in note_rows:
+                op = n["operator_id"] or "UNKNOWN"
                 if op not in by_operator:
-                    by_operator[op] = {"actions": 0, "approved": 0, "notes_count": 0, "feedback_count": 0}
-                by_operator[op]["feedback_count"] += fr["cnt"]
+                    by_operator[op] = {"actions": 0, "approved": 0, "notes_count": 0}
+                by_operator[op]["notes_count"] += 1
 
-            approval_rate = (
-                round(approved_actions / total_actions, 4)
-                if total_actions > 0
-                else 1.0
-            )
+            freshness = self.rollup_engine.get_freshness()
 
-            return {
-                "window": {"preset": window, "start": start_iso, "end": end_iso},
+            core_data = {
+                "window": {"preset": window, "start": filter_obj.start_time, "end": filter_obj.end_time},
                 "total_actions": total_actions,
                 "approved_actions": approved_actions,
-                "approval_rate": approval_rate,
-                "by_action_type": by_action_type,
+                "total_notes": len(note_rows),
                 "by_operator": by_operator,
             }
 
+            return make_envelope(core_data, filter_obj, rollup_freshness=freshness)
+
     def get_paginated_incidents(
         self,
+        filt: AnalyticsFilter | dict[str, Any] | None = None,
         page: int = 1,
-        page_size: int = 20,
-        status: str | None = None,
-        severity: str | None = None,
-        zone_id: str | None = None,
-        event_type: str | None = None,
-        window: str = "24h",
-        start_time: str | None = None,
-        end_time: str | None = None,
-        include_demo: bool = False
-    ) -> dict[str, Any]:
-        """Paginated incidents with non-blocking read and bound checks."""
-        page = max(1, int(page))
-        page_size = min(max(1, int(page_size)), 200)
-        offset = (page - 1) * page_size
-
-        start_iso, end_iso = resolve_window_bounds(window, start_time, end_time)
-        with self._read_connection() as con:
-            conditions = ["created_at >= ?", "created_at <= ?"]
-            params: list[Any] = [start_iso, end_iso]
-
-            if not include_demo:
-                conditions.append("is_demo = 0")
-            if status:
-                conditions.append("status = ?")
-                params.append(status.upper())
-            if severity:
-                conditions.append("severity = ?")
-                params.append(severity.upper())
-            if zone_id:
-                conditions.append("zone_id = ?")
-                params.append(zone_id)
-            if event_type:
-                conditions.append("event_type = ?")
-                params.append(event_type.upper())
-
-            where_clause = " WHERE " + " AND ".join(conditions)
-
-            # Count total
-            total_row = con.execute(f"SELECT COUNT(*) FROM incidents {where_clause}", tuple(params)).fetchone()
-            total_items = total_row[0] if total_row else 0
-            total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
-
-            # Fetch page items
-            query = f"""
-                SELECT incident_id, incident_uuid, event_type, zone_id, status,
-                       created_at, updated_at, outcome, risk_level, severity,
-                       acknowledged_seconds, resolution_seconds, temporal_state,
-                       ood_status, is_demo, assurance_level, version
-                FROM incidents
-                {where_clause}
-                ORDER BY created_at DESC
-                LIMIT ? OFFSET ?
-            """
-            fetch_params = tuple(params + [page_size, offset])
-            rows = con.execute(query, fetch_params).fetchall()
-            items = [dict(r) for r in rows]
-
-            return {
-                "page": page,
-                "page_size": page_size,
-                "total_items": total_items,
-                "total_pages": total_pages,
-                "items": items,
-            }
-
-    def get_paginated_predictions(
-        self,
-        page: int = 1,
-        page_size: int = 20,
-        model_id: str | None = None,
-        incident_id: str | None = None,
+        page_size: int = 50,
         window: str = "24h",
         start_time: str | None = None,
         end_time: str | None = None
     ) -> dict[str, Any]:
-        """Paginated prediction records joined with feedback."""
-        page = max(1, int(page))
-        page_size = min(max(1, int(page_size)), 200)
+        """Drill-down: paginated raw incident records with hard pagination limits."""
+        filter_obj = self._normalize_filter(filt, window=window, start_time=start_time, end_time=end_time)
+
+        # Clamping bounds: page >= 1, 1 <= page_size <= 200
+        page = max(1, page)
+        page_size = max(1, min(page_size, 200))
         offset = (page - 1) * page_size
 
-        start_iso, end_iso = resolve_window_bounds(window, start_time, end_time)
         with self._read_connection() as con:
-            conditions = ["p.timestamp >= ?", "p.timestamp <= ?"]
-            params: list[Any] = [start_iso, end_iso]
-
-            if model_id:
-                conditions.append("p.model_id = ?")
-                params.append(model_id)
-            if incident_id:
-                conditions.append("p.incident_id = ?")
-                params.append(incident_id)
-
-            where_clause = " WHERE " + " AND ".join(conditions)
-
-            total_row = con.execute(f"SELECT COUNT(*) FROM predictions p {where_clause}", tuple(params)).fetchone()
-            total_items = total_row[0] if total_row else 0
+            count_row = con.execute(
+                "SELECT COUNT(*) FROM incidents WHERE created_at >= ? AND created_at <= ?",
+                (filter_obj.start_time, filter_obj.end_time)
+            ).fetchone()
+            total_items = count_row[0] if count_row else 0
             total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
 
-            query = f"""
-                SELECT p.id, p.incident_id, p.timestamp, p.label, p.confidence,
-                       p.model_id, p.assurance_level,
-                       f.label as feedback_label, f.corrected_class, f.operator_id,
-                       f.comment as feedback_comment
-                FROM predictions p
-                LEFT JOIN prediction_feedback f ON p.id = f.prediction_id
-                {where_clause}
-                ORDER BY p.timestamp DESC
+            rows = con.execute(
+                """
+                SELECT incident_id, incident_uuid, event_type, zone_id, status, severity,
+                       acknowledged_seconds, resolution_seconds, assurance_level,
+                       is_demo, created_at, updated_at
+                FROM incidents
+                WHERE created_at >= ? AND created_at <= ?
+                ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
-            """
-            fetch_params = tuple(params + [page_size, offset])
-            rows = con.execute(query, fetch_params).fetchall()
-            items = [dict(r) for r in rows]
+                """,
+                (filter_obj.start_time, filter_obj.end_time, page_size, offset)
+            ).fetchall()
 
-            return {
+            core_data = {
                 "page": page,
                 "page_size": page_size,
                 "total_items": total_items,
                 "total_pages": total_pages,
-                "items": items,
+                "items": [dict(r) for r in rows],
             }
+
+            return make_envelope(core_data, filter_obj)
+
+    def get_paginated_predictions(
+        self,
+        filt: AnalyticsFilter | dict[str, Any] | None = None,
+        page: int = 1,
+        page_size: int = 50,
+        window: str = "24h",
+        start_time: str | None = None,
+        end_time: str | None = None
+    ) -> dict[str, Any]:
+        """Drill-down: paginated raw prediction records with hard limits."""
+        filter_obj = self._normalize_filter(filt, window=window, start_time=start_time, end_time=end_time)
+
+        page = max(1, page)
+        page_size = max(1, min(page_size, 200))
+        offset = (page - 1) * page_size
+
+        with self._read_connection() as con:
+            count_row = con.execute(
+                "SELECT COUNT(*) FROM predictions WHERE timestamp >= ? AND timestamp <= ?",
+                (filter_obj.start_time, filter_obj.end_time)
+            ).fetchone()
+            total_items = count_row[0] if count_row else 0
+            total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
+
+            rows = con.execute(
+                """
+                SELECT id, incident_id, timestamp, label, confidence, model_id, assurance_level
+                FROM predictions
+                WHERE timestamp >= ? AND timestamp <= ?
+                ORDER BY timestamp DESC
+                LIMIT ? OFFSET ?
+                """,
+                (filter_obj.start_time, filter_obj.end_time, page_size, offset)
+            ).fetchall()
+
+            core_data = {
+                "page": page,
+                "page_size": page_size,
+                "total_items": total_items,
+                "total_pages": total_pages,
+                "items": [dict(r) for r in rows],
+            }
+
+            return make_envelope(core_data, filter_obj)

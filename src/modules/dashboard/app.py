@@ -602,12 +602,67 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         "false_alarms": far_count,
                         "false_alarm_rate_pct": far_rate,
                         "mtta_seconds": summary["mean_acknowledgment_seconds"],
+                        "mtta_median_seconds": summary.get("median_acknowledgment_seconds"),
+                        "mtta_p95_seconds": summary.get("p95_acknowledgment_seconds"),
                         "mttr_seconds": summary["mean_resolution_seconds"],
+                        "mttr_median_seconds": summary.get("median_resolution_seconds"),
+                        "mttr_p95_seconds": summary.get("p95_resolution_seconds"),
                         "system_availability_pct": avail["overall_availability_pct"],
                     },
                     "summary": summary,
                     "zones": zones,
-                    "availability": avail
+                    "availability": avail,
+                    "filters_applied": {
+                        "range": rng, "start_time": st, "end_time": et,
+                        "zone": zone_filter, "severity": sev_filter, "model": model_filter
+                    },
+                    "generated_at": utc_now(),
+                    "empty_state": total_inc == 0
+                }
+                _ANALYTICS_CACHE[cache_key] = (now, result)
+                self._json(result)
+                return
+
+            elif path == "/api/analytics/zones":
+                summary = ANALYTICS_ENGINE.get_incident_summary(window=rng, start_time=st, end_time=et, include_demo=inc_demo)
+                start_b, end_b = summary["window"]["start"], summary["window"]["end"]
+                with ANALYTICS_ENGINE._read_connection() as con:
+                    zone_rows = con.execute("""
+                        SELECT zone_id,
+                               count(*) as total,
+                               sum(case when severity in ('CRITICAL', 'HIGH') then 1 else 0 end) as severe_count,
+                               sum(case when status not in ('RESOLVED', 'CLOSED', 'FALSE_ALARM') then 1 else 0 end) as active_count
+                        FROM incidents
+                        WHERE created_at >= ? AND created_at <= ?
+                        GROUP BY zone_id
+                    """, (start_b, end_b)).fetchall()
+
+                zones = []
+                for zr in zone_rows:
+                    tot = zr["total"]
+                    sev_c = zr["severe_count"] or 0
+                    act_c = zr["active_count"] or 0
+                    if sev_c >= 3 or act_c >= 2:
+                        risk_level = "CRITICAL"
+                    elif sev_c >= 1:
+                        risk_level = "HIGH"
+                    elif tot >= 3:
+                        risk_level = "MEDIUM"
+                    else:
+                        risk_level = "LOW"
+                    zones.append({
+                        "zone_id": zr["zone_id"],
+                        "total_incidents": tot,
+                        "severe_incidents": sev_c,
+                        "active_incidents": act_c,
+                        "risk_level": risk_level
+                    })
+                zones.sort(key=lambda z: (z["severe_incidents"], z["total_incidents"]), reverse=True)
+                result = {
+                    "zones": zones,
+                    "filters_applied": {"range": rng, "zone": zone_filter},
+                    "generated_at": utc_now(),
+                    "empty_state": len(zones) == 0
                 }
                 _ANALYTICS_CACHE[cache_key] = (now, result)
                 self._json(result)
@@ -616,7 +671,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
             elif path == "/api/analytics/trends":
                 bucket = query.get("bucket", ["1h"])[0]
                 ts = ANALYTICS_ENGINE.get_incident_timeseries(window=rng, start_time=st, end_time=et, bucket_interval=bucket, include_demo=inc_demo)
-                result = {"timeseries": ts, "bucket": bucket, "window": rng}
+                result = {
+                    "timeseries": ts, "bucket": bucket, "window": rng,
+                    "filters_applied": {"range": rng, "bucket": bucket},
+                    "generated_at": utc_now(), "empty_state": len(ts) == 0
+                }
                 _ANALYTICS_CACHE[cache_key] = (now, result)
                 self._json(result)
                 return
@@ -633,7 +692,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     "drift": drift,
                     "disagreement_rate_pct": disagree_rate,
                     "mean_confidence": perf["mean_confidence"],
-                    "ood_rate_pct": round(perf["ood_rate"] * 100.0, 1)
+                    "ood_rate_pct": round(perf["ood_rate"] * 100.0, 1),
+                    "filters_applied": {"range": rng, "model": model_filter},
+                    "generated_at": utc_now(),
+                    "empty_state": perf.get("total_predictions", 0) == 0
                 }
                 _ANALYTICS_CACHE[cache_key] = (now, result)
                 self._json(result)
@@ -641,11 +703,19 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
             elif path == "/api/analytics/availability":
                 avail = ANALYTICS_ENGINE.get_system_availability(window=rng, start_time=st, end_time=et)
-                _ANALYTICS_CACHE[cache_key] = (now, result := avail)
+                result = {
+                    "overall_availability_pct": avail.get("overall_availability_pct", 100.0),
+                    "components": avail.get("components", {}),
+                    "assurance_distribution": avail.get("assurance_distribution", {}),
+                    "filters_applied": {"range": rng},
+                    "generated_at": utc_now(),
+                    "empty_state": avail.get("total_events", 0) == 0
+                }
+                _ANALYTICS_CACHE[cache_key] = (now, result)
                 self._json(result)
                 return
 
-            elif path == "/api/analytics/outbox":
+            elif path in ("/api/analytics/outbox", "/api/analytics/outbox-history"):
                 with ANALYTICS_ENGINE._read_connection() as con:
                     recent = [dict(r) for r in con.execute("""
                         SELECT id, idempotency_key, target, payload_type, attempts, next_attempt_at,
@@ -656,7 +726,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     """).fetchall()]
                 result = {
                     "counts": OUTBOX.status_summary(),
-                    "recent": recent
+                    "recent": recent,
+                    "filters_applied": {"range": rng},
+                    "generated_at": utc_now(),
+                    "empty_state": len(recent) == 0
                 }
                 _ANALYTICS_CACHE[cache_key] = (now, result)
                 self._json(result)

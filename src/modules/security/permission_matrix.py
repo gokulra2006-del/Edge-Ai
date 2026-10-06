@@ -90,7 +90,7 @@ ENDPOINT_PERMISSIONS: List[Tuple[str, str, Set[str], str]] = [
     ("GET", r"^/api/analytics/zones$", ALL_ROLES, "Zone risk assessment"),
     ("GET", r"^/api/analytics/models$", ALL_ROLES, "Model assurance metrics & confusion matrix"),
     ("GET", r"^/api/analytics/availability$", ALL_ROLES, "Subsystem availability breakdown"),
-    ("GET", r"^/api/analytics/outbox-history$", ALL_ROLES, "Outbox replay sync history"),
+    ("GET", r"^/api/analytics/outbox(-history)?$", ALL_ROLES, "Outbox replay sync history"),
 
     # 9. Reporting and Exports (Phase 5C)
     ("GET", r"^/api/reports/csv/incidents$", OPS_ROLES, "Export sanitized incident CSV"),

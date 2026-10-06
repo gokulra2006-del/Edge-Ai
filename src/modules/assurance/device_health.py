@@ -436,6 +436,8 @@ class OfflineSyncOutbox:
         for _ in range(max_batches):
             processed = self.drain_batch(sync_fn, limit=batch_size)
             total += processed
+            if hasattr(self.repository, "writer"):
+                self.repository.writer.drain()
             if processed < batch_size:
                 break
         return total
@@ -452,4 +454,6 @@ class OfflineSyncOutbox:
                 (now,)
             )
         )
+        if hasattr(self.repository, "writer"):
+            self.repository.writer.drain()
 

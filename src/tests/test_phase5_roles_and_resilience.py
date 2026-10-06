@@ -360,9 +360,9 @@ def test_migration_from_clean_phase1_4_database(tmp_path):
     assert legacy_inc[1] == "FULL"  # Default from Migration 5
     assert legacy_inc[2] == "Legacy accident"
 
-    # Verify migration table has recorded all 7 versions
+    # Verify migration table has recorded all versions
     applied_versions = {r[0] for r in con_migrated.execute("SELECT version FROM schema_migrations")}
-    assert applied_versions == {1, 2, 3, 4, 5, 6, 7}
+    assert applied_versions == {m[0] for m in MIGRATIONS}
 
     # Verify PRAGMA integrity check
     qcheck = con_migrated.execute("PRAGMA quick_check").fetchone()
