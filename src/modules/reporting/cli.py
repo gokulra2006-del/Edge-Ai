@@ -42,73 +42,76 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     repo = IncidentRepository(Path(CONFIG.db_path))
-    report_svc = ReportService(repo, reports_dir=args.output_dir if hasattr(args, "output_dir") else "reports")
+    try:
+        report_svc = ReportService(repo, reports_dir=args.output_dir if hasattr(args, "output_dir") else "reports")
 
-    if args.command == "generate":
-        as_pdf = (args.format.lower() == "pdf")
-        try:
-            res = report_svc.generate(
-                report_type=args.report_type,
-                operator_id=args.operator_id,
-                role=args.role,
-                month=args.month,
-                as_pdf=as_pdf,
-            )
-            print(f"[SUCCESS] Report generated successfully.")
-            print(f"  Report ID : {res['report']['report_id']}")
-            print(f"  Type      : {res['report']['report_type']}")
-            print(f"  Format    : {res['report']['format'].upper()}")
-            print(f"  File Path : {res['path']}")
-            print(f"  SHA-256   : {res['report']['sha256']}")
+        if args.command == "generate":
+            as_pdf = (args.format.lower() == "pdf")
+            try:
+                res = report_svc.generate(
+                    report_type=args.report_type,
+                    operator_id=args.operator_id,
+                    role=args.role,
+                    month=args.month,
+                    as_pdf=as_pdf,
+                )
+                print(f"[SUCCESS] Report generated successfully.")
+                print(f"  Report ID : {res['report']['report_id']}")
+                print(f"  Type      : {res['report']['report_type']}")
+                print(f"  Format    : {res['report']['format'].upper()}")
+                print(f"  File Path : {res['path']}")
+                print(f"  SHA-256   : {res['report']['sha256']}")
+                return 0
+            except Exception as exc:
+                print(f"[ERROR] Failed to generate report: {exc}", file=sys.stderr)
+                return 1
+
+        elif args.command == "verify-evidence":
+            verifier = EvidenceVerifier(repo)
+            if args.manifest:
+                print(f"Verifying evidence package manifest: {args.manifest}")
+                result = verifier.verify_manifest(args.manifest)
+            else:
+                print("Verifying all active database evidence records against filesystem...")
+                result = verifier.verify_all_evidence()
+
+            print(f"Total files checked : {result['total_checked']}")
+            print(f"Cryptographic match : {result['matched']}")
+            print(f"Tampered files      : {result['tampered_count']}")
+            print(f"Missing files       : {result['missing_count']}")
+
+            if result["tampered"]:
+                print("\n[CRITICAL] Tampered Evidence Files Detected:")
+                for t in result["tampered"]:
+                    print(f"  - Item #{t.get('id', '?')} ({t.get('path', t.get('file'))})")
+                    print(f"    Expected: {t['expected_sha256']}")
+                    print(f"    Actual  : {t['actual_sha256']}")
+
+            if result["missing"]:
+                print("\n[WARNING] Missing Evidence Files Detected:")
+                for m in result["missing"]:
+                    print(f"  - Item #{m.get('id', '?')} ({m.get('path', m.get('file'))})")
+
+            if result["verified"]:
+                print("\n[VERIFIED] All evidence files match cryptographic audit digests.")
+                return 0
+            else:
+                print("\n[FAIL] Cryptographic integrity verification failed.")
+                return 1
+
+        elif args.command == "list":
+            reports = report_svc.list_reports()
+            if not reports:
+                print("No reports generated yet.")
+                return 0
+            print(f"Found {len(reports)} generated report(s):")
+            for r in reports:
+                print(f"  [{r.get('generated_at', '')[:19]}] {r.get('report_id')} ({r.get('report_type')}, {r.get('format')}) -> {r.get('filename')}")
             return 0
-        except Exception as exc:
-            print(f"[ERROR] Failed to generate report: {exc}", file=sys.stderr)
-            return 1
 
-    elif args.command == "verify-evidence":
-        verifier = EvidenceVerifier(repo)
-        if args.manifest:
-            print(f"Verifying evidence package manifest: {args.manifest}")
-            result = verifier.verify_manifest(args.manifest)
-        else:
-            print("Verifying all active database evidence records against filesystem...")
-            result = verifier.verify_all_evidence()
-
-        print(f"Total files checked : {result['total_checked']}")
-        print(f"Cryptographic match : {result['matched']}")
-        print(f"Tampered files      : {result['tampered_count']}")
-        print(f"Missing files       : {result['missing_count']}")
-
-        if result["tampered"]:
-            print("\n[CRITICAL] Tampered Evidence Files Detected:")
-            for t in result["tampered"]:
-                print(f"  - Item #{t.get('id', '?')} ({t.get('path', t.get('file'))})")
-                print(f"    Expected: {t['expected_sha256']}")
-                print(f"    Actual  : {t['actual_sha256']}")
-
-        if result["missing"]:
-            print("\n[WARNING] Missing Evidence Files Detected:")
-            for m in result["missing"]:
-                print(f"  - Item #{m.get('id', '?')} ({m.get('path', m.get('file'))})")
-
-        if result["verified"]:
-            print("\n[VERIFIED] All evidence files match cryptographic audit digests.")
-            return 0
-        else:
-            print("\n[FAIL] Cryptographic integrity verification failed.")
-            return 1
-
-    elif args.command == "list":
-        reports = report_svc.list_reports()
-        if not reports:
-            print("No reports generated yet.")
-            return 0
-        print(f"Found {len(reports)} generated report(s):")
-        for r in reports:
-            print(f"  [{r.get('generated_at', '')[:19]}] {r.get('report_id')} ({r.get('report_type')}, {r.get('format')}) -> {r.get('filename')}")
         return 0
-
-    return 0
+    finally:
+        repo.close()
 
 
 if __name__ == "__main__":
