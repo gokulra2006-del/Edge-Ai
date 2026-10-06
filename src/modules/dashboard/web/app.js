@@ -171,12 +171,20 @@ async function handleLoginSubmit(event) {
     }
 }
 
-function quickLogin(roleKey) {
+function quickLogin(roleKey, autoSubmit = false) {
     logout();
     const username = document.getElementById("loginUsername");
     const password = document.getElementById("loginPassword");
+    const demoPassword = "Sentinel2026!";
     if (username) username.value = SYSTEM_USERS[roleKey] ? roleKey : "";
-    if (password) password.focus();
+    if (password) {
+        password.value = demoPassword;
+        password.focus();
+    }
+    if (autoSubmit) {
+        const form = document.getElementById("loginForm");
+        if (form) form.requestSubmit();
+    }
 }
 
 async function logout() {
