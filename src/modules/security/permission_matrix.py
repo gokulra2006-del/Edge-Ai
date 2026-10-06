@@ -93,6 +93,8 @@ ENDPOINT_PERMISSIONS: List[Tuple[str, str, Set[str], str]] = [
     ("GET", r"^/api/analytics/outbox(-history)?$", ALL_ROLES, "Outbox replay sync history"),
     ("GET", r"^/api/calibration/metrics$", ALL_ROLES, "Confidence calibration ECE, MCE, and Brier metrics"),
     ("GET", r"^/api/calibration/diagram$", ALL_ROLES, "Reliability diagram data and zone calibration breakdown"),
+    ("GET", r"^/api/replay/timeline$", ALL_ROLES, "Digital twin incident replay timeline and risk trajectory"),
+    ("POST", r"^/api/replay/execute$", ALL_ROLES, "Execute sandboxed counterfactual incident replay"),
 
     # 9. Reporting and Exports (Phase 5C)
     ("GET", r"^/api/reports/csv/incidents$", OPS_ROLES, "Export sanitized incident CSV"),

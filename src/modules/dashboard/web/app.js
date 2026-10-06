@@ -2014,6 +2014,65 @@ async function fetchDatasetsCatalog() {
     }
 }
 
+async function triggerIncidentReplay() {
+    const incId = document.getElementById("replayIncidentId")?.value || "INC-DEMO-001";
+    const speed = parseFloat(document.getElementById("replaySpeed")?.value || "1.0");
+    const fault = document.getElementById("replayFault")?.value || "none";
+    const box = document.getElementById("replayResultsBox");
+    const title = document.getElementById("replaySummaryTitle");
+    const digestBadge = document.getElementById("replayDigestBadge");
+    const list = document.getElementById("replayTimelineList");
+
+    if (box) box.classList.remove("hidden");
+    if (list) list.innerHTML = `<div class="text-slate-400">Executing sandbox replay for ${incId}...</div>`;
+
+    const payload = {
+        incident_id: incId,
+        speed: speed,
+        dropout: ["camera", "audio", "sensors"].includes(fault) ? fault : null,
+        camera_failure: fault === "camera",
+        conflicting_sensors: fault === "conflicting",
+        network_outage: fault === "network",
+    };
+
+    try {
+        const token = localStorage.getItem("sentinel_token");
+        const csrfToken = localStorage.getItem("sentinel_csrf_token");
+        const res = await fetch("/api/replay/execute", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token ? `Bearer ${token}` : "",
+                "X-CSRF-Token": csrfToken || "",
+            },
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        if (title) title.innerText = `REPLAY COMPLETE: ${data.final_decision} (Risk: ${(data.final_risk * 100).toFixed(1)}%)`;
+        if (digestBadge) digestBadge.innerText = `DIGEST: ${data.hash_digest.substring(0, 10)}`;
+
+        if (list && data.timeline) {
+            list.innerHTML = data.timeline.map(s => `
+                <div class="p-2 rounded bg-slate-800/80 border border-slate-700/60 flex items-center justify-between">
+                    <div>
+                        <span class="text-blue-400 font-bold">Step ${s.step_idx}</span>
+                        <span class="text-slate-400 text-[10px]">(${s.timestamp_offset_sec.toFixed(1)}s)</span>:
+                        <span class="text-slate-200">${s.action} &bull; ${s.recommended_plan}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-amber-400">Risk: ${s.final_risk.toFixed(2)}</span>
+                        ${s.ood_detected ? '<span class="px-1 py-0.5 rounded bg-amber-900/60 text-amber-300 text-[9px]">OOD</span>' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (e) {
+        if (list) list.innerHTML = `<div class="text-rose-400">Replay failed: ${e.message}</div>`;
+    }
+}
+
 function toggleSidebar() {
     const drawer = document.getElementById("sidebarDrawer");
     const overlay = document.getElementById("sidebarOverlay");

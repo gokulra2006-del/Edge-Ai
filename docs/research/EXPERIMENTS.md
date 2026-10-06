@@ -149,3 +149,43 @@ All systems process identical timestamped scenario streams through a unified eva
 - **Failure Criteria**:
   - If calibration increases Brier score or ECE on the held-out test split, hypothesis fails.
   - If any OOD input yields confidence $> 0.50$, safety guard fails.
+
+
+---
+
+## Experiment 6D-1: Sandboxed Incident Replay and Counterfactual Digital Twin
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-06
+- **Status**: PRE-REGISTERED (Criteria locked prior to evaluation runs)
+
+### 2. Hypothesis
+- **Hypothesis**: "Any past incident can be re-run bit-for-bit through the production fusion and decision pipeline with 100% determinism, and counterfactual runs (sensor dropout, delayed streams, network outage, conflicting sensor values, alternative operator actions) expose decision robustness without mutating live state."
+- **Sandbox Invariant**: Replay execution runs in memory / isolated workspace and NEVER writes to live incident tables (`incidents`, `evidence_items`), never invokes real hardware actuators, never sounds buzzers, and never sends emergency dispatch notifications.
+- **Unified Code Path Invariant**: Replay exercises the exact production pipeline modules:
+  `raw evidence -> model predictions -> fusion -> OOD check -> risk score -> response plan -> operator action`.
+
+### 3. Fault & Counterfactual Controls
+1. `playback_speed`: Multiplier for virtual time steps ($0.5\times, 1.0\times, 2.0\times, 5.0\times$).
+2. `dropout`: Sensor failure injection (`camera`, `audio`, `environmental`).
+3. `delayed_audio`: Artificially introduce $N$ ms latency lag on acoustic stream.
+4. `camera_failure`: Drop camera feed completely (black frame/0 FPS).
+5. `network_outage`: Simulate offline node condition (isolated WAL outbox queue).
+6. `conflicting_sensors`: Artificially invert or perturb one modality to contradict others.
+7. `operator_action`: Inject alternative operator feedback (`ACKNOWLEDGE`, `FALSE_ALARM`, `OVERRIDE_PLAN`).
+
+### 4. Mathematical Metrics & Mismatch Detection
+1. **Replay Mismatch**: Binary divergence flag:
+   $$\text{mismatch} = (\hat{y}_{\text{replay}} \neq y_{\text{original}}) \lor (|\text{risk}_{\text{replay}} - \text{risk}_{\text{original}}| > 10^{-4})$$
+2. **Robustness Score**: Ratio of counterfactual runs maintaining safe and correct response plan despite single sensor faults.
+3. **Timeline Completeness**: 100% coverage of timestamped step entries containing raw inputs, predictions, uncertainty factors, final risk, and recommended response plan.
+
+### 5. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. $100\%$ determinism on unmodified replay: bit-exact match with original decision.
+  2. Zero live-table writes verified via pre/post database row count assertions.
+  3. Divergence cleanly detected and reported whenever an incident trace is tampered with or counterfactually altered.
+  4. Full CLI (`python -m replay run --incident <id> ...`) and REST API `/api/replay/*` available.
+- **Failure Criteria**:
+  - Any mutation to live database tables or trigger of physical actuators during replay constitutes an immediate safety failure.
+  - Non-deterministic outputs across identical seeds/replays fails the determinism invariant.

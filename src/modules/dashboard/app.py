@@ -876,6 +876,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
             strat = mgr.evaluate_stratified_slices(samples)
             self._json(strat)
             return
+        elif path == "/api/replay/timeline":
+            query = urllib.parse.parse_qs(parsed.query)
+            incident_id = query.get("incident", ["INC-DEMO-001"])[0]
+            from replay.__main__ import build_sample_incident_trace
+            from src.modules.incident_management.replay_engine import SandboxedReplayEngine
+            trace = build_sample_incident_trace(incident_id)
+            engine = SandboxedReplayEngine()
+            result = engine.execute_replay(incident_id=incident_id, steps=trace)
+            self._json(result.to_dict())
+            return
         else:
             self.send_response(404)
             self.end_headers()
@@ -903,6 +913,27 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 return
             res = USER_MANAGER.create_user(username, password, "COMMANDER")
             self._json({"status": "admin_created", "username": res["username"], "role": "COMMANDER"})
+            return
+
+        if path == "/api/replay/execute":
+            payload = self._payload()
+            incident_id = str(payload.get("incident_id", "INC-DEMO-001"))
+            from replay.__main__ import build_sample_incident_trace
+            from src.modules.incident_management.replay_engine import SandboxedReplayEngine
+            trace = build_sample_incident_trace(incident_id)
+            engine = SandboxedReplayEngine()
+            result = engine.execute_replay(
+                incident_id=incident_id,
+                steps=trace,
+                playback_speed=float(payload.get("speed", 1.0)),
+                dropout_sensor=payload.get("dropout"),
+                delayed_audio_ms=int(payload.get("delayed_audio_ms", 0)),
+                camera_failure=bool(payload.get("camera_failure", False)),
+                network_outage=bool(payload.get("network_outage", False)),
+                conflicting_sensors=bool(payload.get("conflicting_sensors", False)),
+                operator_action=payload.get("operator_action", "NONE"),
+            )
+            self._json(result.to_dict())
             return
 
         if path == "/api/reports/generate":
