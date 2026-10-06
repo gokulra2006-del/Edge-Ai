@@ -222,9 +222,9 @@ def test_startup_recovery(tmp_path):
                 incident_id TEXT,
                 timestamp TEXT,
                 operator_id TEXT,
-                operator_role TEXT,
                 action TEXT,
-                notes TEXT
+                approved INTEGER DEFAULT 0,
+                payload_json TEXT
             )
         """)
         # Insert stuck in-progress outbox messages

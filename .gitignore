@@ -46,6 +46,9 @@ data/phase2_smoke.db
 .pytest-phase3*/
 data/*.db-*
 data/test_tmp/
+data/smoke_phase5/
+data/backups/
+data/archives/
 reports/*.html
 reports/*.pdf
 reports/*.csv

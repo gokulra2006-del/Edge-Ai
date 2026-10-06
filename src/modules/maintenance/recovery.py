@@ -79,14 +79,14 @@ def run_startup_recovery(
                     (utc_now(), utc_now()),
                 )
                 con.execute(
-                    "INSERT INTO operator_actions(incident_id, timestamp, operator_id, operator_role, action, notes) "
+                    "INSERT INTO operator_actions(incident_id, timestamp, operator_id, action, approved, payload_json) "
                     "VALUES (?, ?, ?, ?, ?, ?)",
                     (
                         "SYSTEM",
                         utc_now(),
                         "SYSTEM_RECOVERY",
-                        "SYSTEM",
                         "STARTUP_RECOVERY",
+                        1,
                         json.dumps({
                             "db_integrity": res["db_integrity"],
                             "stuck_outbox_reconciled": res["stuck_outbox_reconciled"],
