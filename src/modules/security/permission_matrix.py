@@ -134,6 +134,13 @@ ENDPOINT_PERMISSIONS: List[Tuple[str, str, Set[str], str]] = [
     ("POST", r"^/api/predictions/.*$", TRIAGE_ROLES, "Prediction actions"),
     ("POST", r"^/api/firebase_config$", COMMANDER_ONLY, "Firebase cloud synchronization configuration"),
     ("GET", r"^/api/analytics/.*$", ALL_ROLES, "Analytics endpoints prefix"),
+
+    # 12. Governed Human Feedback Loop & Retraining Proposals (Phase 6G)
+    ("GET", r"^/api/governance/disagreements$", ALL_ROLES, "Inter-operator disagreement analytics"),
+    ("GET", r"^/api/governance/proposals$", ALL_ROLES, "Model retraining proposals list"),
+    ("POST", r"^/api/governance/proposals/generate$", TECH_ROLES, "Generate model retraining proposal"),
+    ("POST", r"^/api/governance/proposals/[^/]+/approve$", TECH_ROLES, "Approve candidate model retraining proposal"),
+    ("POST", r"^/api/governance/snapshots/create$", TECH_ROLES, "Create immutable dataset snapshot"),
 ]
 
 

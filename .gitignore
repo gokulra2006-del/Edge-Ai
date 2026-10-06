@@ -49,6 +49,7 @@ data/test_tmp/
 data/smoke_phase5/
 data/backups/
 data/archives/
+data/governed_datasets/
 reports/*.html
 reports/*.pdf
 reports/*.csv

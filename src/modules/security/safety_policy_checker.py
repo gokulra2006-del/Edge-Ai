@@ -591,6 +591,9 @@ class SafetyPolicyChecker:
             ("POST", "/api/incidents/INC-1/false_alarm"),
             ("POST", "/api/predictions/1/feedback"),
             ("POST", "/api/predictions/1/claim"),
+            ("POST", "/api/governance/proposals/generate"),
+            ("POST", "/api/governance/proposals/PROP-1/approve"),
+            ("POST", "/api/governance/snapshots/create"),
         ]
 
         uncovered = []

@@ -125,13 +125,51 @@ class ReviewQueue:
             include=item.get("label") in {"UNKNOWN","REVIEW_REQUIRED"} or bool(reasons) or item.get("feedback_label")=="INCORRECT" or float(item.get("confidence",1))<.6
             if not include: continue
             item["reason_codes"]=reasons; item["status"]="reviewed" if item.get("feedback_label") else "pending"
-            item["priority"]=round((1-float(item["confidence"]))*50+len(reasons)*15+(20 if item["label"]=="UNKNOWN" else 0),2)
+            
+            # Active-learning acquisition scoring (Uncertainty, Margin, and OOD)
+            from src.modules.governance.feedback_loop import ActiveLearningSelector
+            selector = ActiveLearningSelector()
+            score = selector.compute_priority(item)
+            item["active_learning_score"] = score.combined_priority
+            item["acquisition_rationale"] = score.acquisition_rationale
+            item["priority"] = score.combined_priority
+
             if filters.get("reason") and filters["reason"] not in reasons: continue
             if filters.get("zone") and item.get("zone_id")!=filters["zone"]: continue
             if filters.get("model") and item.get("model_id")!=filters["model"]: continue
             if filters.get("status") and item["status"]!=filters["status"]: continue
             result.append(item)
+
+        if filters.get("strategy") == "random":
+            limit = int(filters.get("limit", len(result)))
+            return selector.select_random(result, batch_size=limit)
+
         return sorted(result,key=lambda x:x["priority"],reverse=True)
+
+    def get_label_quality_tracker(self):
+        from src.modules.governance.feedback_loop import LabelQualityTracker
+        return LabelQualityTracker(self.repository)
+
+    def get_disagreement_analytics(self):
+        tracker = self.get_label_quality_tracker()
+        return tracker.compute_platform_disagreement_analytics()
+
+    def create_dataset_snapshot(self, operator_id: str, operator_role: str, snapshot_id: Optional[str] = None, notes: str = ""):
+        from src.modules.governance.feedback_loop import DatasetSnapshotManager
+        # Pull reviewed predictions
+        rows = [dict(x) for x in self.repository._read("""
+            SELECT f.id as feedback_id, f.label as feedback_label, f.corrected_class, f.operator_id,
+                   p.id as prediction_id, p.incident_id, p.label as model_label,
+                   i.zone_id, e.source_path as evidence_path, e.sha256 as evidence_sha256
+            FROM prediction_feedback f
+            JOIN predictions p ON p.id = f.prediction_id
+            JOIN incidents i ON i.incident_id = p.incident_id
+            LEFT JOIN evidence e ON e.incident_id = i.incident_id
+            ORDER BY f.id ASC
+        """)]
+        manager = DatasetSnapshotManager()
+        return manager.create_snapshot(rows, operator_id, operator_role, snapshot_id=snapshot_id, notes=notes)
+
     def export(self,fmt:str="json",include_demo:bool=False)->str:
         rows=[dict(x) for x in self.repository._read("""SELECT f.*,p.incident_id,p.model_id,i.zone_id,i.is_demo,m.usage_restriction,e.source_path,e.sha256
         FROM prediction_feedback f JOIN predictions p ON p.id=f.prediction_id JOIN incidents i ON i.incident_id=p.incident_id

@@ -267,3 +267,35 @@ For each evaluated incident, generate:
 
 ### 5. Honest Scope Disclaimer
 - Automated verification demonstrates invariant satisfaction across covered execution paths, mock scenarios, and property-based sweeps; it does not constitute a formal mathematical proof (e.g. TLA+ or Coq).
+
+
+---
+
+## Experiment 6G-1: Governed Human-Feedback Loop and Active-Learning Review Selection
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-06
+- **Status**: PRE-REGISTERED (Criteria locked prior to evaluation runs)
+
+### 2. Hypothesis
+- **Hypothesis**: "Uncertainty-based active-learning review selection (combining least-confidence, classification margin, and OOD signals) improves candidate model macro-F1 faster per labeled sample than uniform random selection, while immutable dataset versioning and gated proposal approvals guarantee 0% test-set leakage and zero unapproved model deployments."
+
+### 3. Primary Metrics & Target Thresholds
+- **Sample Efficiency Ratio**:
+  $$\text{Gain}_{\text{sample}} = \frac{\Delta \text{Macro-F1}_{\text{Active}}}{\Delta \text{Macro-F1}_{\text{Random}}} > 1.0$$
+- **Inter-Operator Agreement ($P_o$)**: Exact agreement percentage between multiple independent operator labels on identical predictions, with automated conflict escalation when $P_o < 1.0$.
+- **Test-Set Leakage**: Strictly $0.0\%$ (zero overlap between training/feedback dataset snapshots and the frozen evaluation split).
+- **Snapshot Immutability**: $100\%$ tamper-detection rate via SHA-256 digest verification.
+- **Autonomous Deployment Prohibition**: $100\%$ rejection of automated model actuation or promotion; only audit-logged `COMMANDER` or `ENGINEER` approvals transition candidate models.
+
+### 4. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Active learning selection prioritizes uncertain, low-margin, and OOD samples, outperforming uniform random selection in macro-F1 gain per labeled batch.
+  2. Label quality tracking computes operator reliability and flags conflicting labels for commander adjudication.
+  3. Dataset snapshots are cryptographically hashed and versioned with full provenance.
+  4. Retraining proposals document before/after metrics on a frozen test split (per-zone, per-class, and macro-F1).
+  5. Retraining approval workflow enforces role boundaries (Engineer/Commander only), logs audit entries, and places approved models in registry strictly as `CANDIDATE`.
+- **Failure Criteria**:
+  - Any overlap between dataset snapshot and frozen test split constitutes a test-leakage failure.
+  - Any automated deployment without human approval violates research invariants.
+  - Inability to detect dataset snapshot tampering.

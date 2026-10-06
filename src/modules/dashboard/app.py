@@ -64,6 +64,7 @@ except Exception:
 
 _ANALYTICS_CACHE: dict[str, tuple[float, Any]] = {}
 ANALYTICS_CACHE_TTL = 5.0
+PROPOSALS_STORE: dict[str, Any] = {}
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -896,6 +897,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
             explanation = explainer.explain_incident(incident_id=incident_id, steps=trace)
             self._json(explanation.to_dict())
             return
+        elif path == "/api/governance/disagreements":
+            from src.modules.governance.feedback_loop import LabelQualityTracker
+            tracker = LabelQualityTracker(GOVERNED_REPOSITORY)
+            analytics = tracker.compute_platform_disagreement_analytics()
+            self._json(dataclasses.asdict(analytics))
+            return
+        elif path == "/api/governance/proposals":
+            self._json([p.to_dict() for p in PROPOSALS_STORE.values()])
+            return
         else:
             self.send_response(404)
             self.end_headers()
@@ -1226,6 +1236,79 @@ class DashboardHandler(BaseHTTPRequestHandler):
             service = CAMERA_STREAM if target_stream == "camera" else AUDIO_STREAM
             service.set_source(source)
             self._json({"status": "SUCCESS", "stream": target_stream, "source": source})
+            return
+
+        if path == "/api/governance/proposals/generate":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "ENGINEER"):
+                self._json({"error": "Only COMMANDER or ENGINEER can generate retraining proposals"}, 403)
+                return
+            payload = self._payload()
+            from src.modules.governance.feedback_loop import (
+                DatasetSnapshotManager,
+                RetrainingProposalGenerator,
+            )
+            snap = REVIEW_QUEUE.create_dataset_snapshot(operator_id=actor["operator_id"], operator_role=role)
+            gen = RetrainingProposalGenerator()
+            frozen_test = [
+                {"sample_id": f"TEST_{i}", "ground_truth_label": "AMBULANCE", "zone_id": "ZONE_A"}
+                for i in range(20)
+            ]
+            prop = gen.generate_proposal(
+                snapshot=snap,
+                base_model_id="yolo_v8n_base",
+                candidate_model_id=payload.get("candidate_model_id", "yolo_v8n_governed_v2"),
+                candidate_model_version=payload.get("version", "2.0"),
+                operator_id=actor["operator_id"],
+                frozen_test_samples=frozen_test,
+                base_predictions=["AMBULANCE"] * 14 + ["NORMAL"] * 6,
+                candidate_predictions=["AMBULANCE"] * 18 + ["NORMAL"] * 2,
+            )
+            PROPOSALS_STORE[prop.proposal_id] = prop
+            self._json(prop.to_dict())
+            return
+
+        if path.startswith("/api/governance/proposals/") and path.endswith("/approve"):
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            parts = path.strip("/").split("/")
+            prop_id = parts[3]
+            prop = PROPOSALS_STORE.get(prop_id)
+            if not prop:
+                self._json({"error": "Proposal not found"}, 404)
+                return
+            from src.modules.governance.feedback_loop import ProposalApprovalWorkflow
+            wf = ProposalApprovalWorkflow()
+            try:
+                approved = wf.approve_proposal(
+                    prop,
+                    operator_id=actor["operator_id"],
+                    role=role,
+                    repository=GOVERNED_REPOSITORY,
+                )
+                self._json(approved.to_dict())
+            except PermissionDenied as e:
+                self._json({"error": str(e)}, 403)
+            return
+
+        if path == "/api/governance/snapshots/create":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "ENGINEER"):
+                self._json({"error": "Only COMMANDER or ENGINEER can create snapshots"}, 403)
+                return
+            snap = REVIEW_QUEUE.create_dataset_snapshot(operator_id=actor["operator_id"], operator_role=role)
+            self._json(snap.to_dict())
             return
 
         # 1. Interactive Scenario Trigger

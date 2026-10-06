@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-10-06T19:02:28.424820+00:00",
-  "git_hash": "7bcf151",
+  "timestamp": "2026-10-06T19:18:41.527525+00:00",
+  "git_hash": "8643d54",
   "data_tag": "SYNTHETIC",
   "total_invariants": 8,
   "passed_invariants": 8,
   "failed_invariants": 0,
   "all_passed": true,
   "endpoint_coverage": {
-    "total_endpoints": 26,
-    "covered_endpoints": 26,
+    "total_endpoints": 29,
+    "covered_endpoints": 29,
     "uncovered_routes": [],
     "coverage_pct": 100.0,
     "sample_covered_routes": [
@@ -45,7 +45,7 @@
       "invariant_id": "INV-03-COMMANDER-AUDIT-LOGGED",
       "name": "Commander Action Non-Repudiation",
       "passed": true,
-      "details": "Verified all Commander lifecycle transitions (acknowledge, resolve, escalate, confirm) are written to operator_actions ledger.",
+      "details": "Verified all Commander lifecycle transitions (confirm, acknowledge, resolve, escalate) are written to operator_actions ledger.",
       "violations": []
     },
     {
