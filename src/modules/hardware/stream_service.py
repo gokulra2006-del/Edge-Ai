@@ -134,6 +134,9 @@ class CameraService(StreamService):
     def set_source(self, source: str) -> None:
         with self._lock:
             self.source = source
+            if source not in ("mock", "simulation"):
+                self.status = "DEGRADED"
+                self.reason_code = "RECONNECTING"
             if self.is_running:
                 self._cleanup_source()
 

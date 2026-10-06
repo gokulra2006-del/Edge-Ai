@@ -2,7 +2,7 @@
 **Release Version:** `v1.0.0-rc1`  
 **Date:** October 6, 2026  
 **Platform Target:** Raspberry Pi 4 Model B (4 GB RAM) & Windows Edge Appliance  
-**Test Suite Status:** **149 / 149 Tests Passing (100%)**
+**Test Suite Status:** **154 / 154 Tests Passing (100%)**
 
 ---
 
@@ -23,7 +23,7 @@ The platform has expanded from its initial multi-modal sensor fusion and edge in
 
 | Sub-Phase | Core Deliverables | Files & Modules Created / Hardened |
 |---|---|---|
-| **5A: Analytics Engine** | Non-blocking read-only analytics, sliding-window queries, KPI calculations (MTTA/MTTR), incident trends, confusion metrics, and availability scoring. | `src/modules/analytics/analytics_engine.py`, Migration 6 index optimizations, `test_phase5a_analytics.py` (7 tests). |
+| **5A: Analytics Engine** | Non-blocking read-only analytics, sliding-window queries, KPI calculations (MTTA/MTTR), incident trends, confusion metrics, and availability scoring. | `src/modules/analytics/analytics_engine.py`, Migration 6 index optimizations, `test_phase5a_analytics.py` (12 tests). |
 | **5B: Dashboard Analytics** | Offline Chart.js bundled UI, KPI summary cards, incident trend graphs, zone risk matrix, model performance badges, and persistent URL query filters. | `src/modules/dashboard/web/chart.min.js`, `app.js`, `index.html`, `test_phase5b_dashboard_analytics.py` (5 tests). |
 | **5C: Reporting & Compliance** | Streamed CSV incident export with formula/macro injection neutralization, ReportLab/HTML templates, automated report catalog manifests, and evidence SHA-256 verifier. | `src/modules/reporting/` (csv_exporter, report_service, pdf_exporter, evidence_verifier, templates, cli), `test_phase5c_reporting.py` (9 tests). |
 | **5D: Storage Safety & Retention** | Telemetry `.json.gz` archival, DVR oldest-first cap eviction, SQLite WAL PASSIVE/TRUNCATE checkpoint management, protected data guarantees (active incidents, audit rows, un-synced outbox never pruned). | `src/modules/storage/storage_safety.py`, `src/modules/storage/cli.py`, Migration 7 (`storage_cleanup_logs`), `test_phase5d_storage_safety.py` (7 tests). |
@@ -37,11 +37,11 @@ The platform has expanded from its initial multi-modal sensor fusion and edge in
 
 ### Grand Total Test Execution
 ```
-======================= 149 passed in 93.68s (0:01:33) ========================
+======================= 154 passed in 63.21s (0:01:03) ========================
 ```
 - **Phase 1-4 Baseline Tests**: 91 passed (0 regressions).
-- **Phase 5 New Tests**: 58 passed.
-- **Total Passing Tests**: **149 passed across 26 test modules**.
+- **Phase 5 New Tests**: 63 passed.
+- **Total Passing Tests**: **154 passed across 26 test modules**.
 
 ### Test Suite Breakdown
 
@@ -60,7 +60,7 @@ The platform has expanded from its initial multi-modal sensor fusion and edge in
 | `test_phase2_decision_logic.py` | 5 | Zone severity, confidence, corroboration |
 | `test_phase3_workflow.py` | 6 | Role transitions, notes, review claims |
 | `test_phase4_monitoring.py` | 14 | Model drift PSI, device health, streams |
-| `test_phase5a_analytics.py` | 7 | Analytics engine, timeseries, aggregations |
+| `test_phase5a_analytics.py` | 12 | Analytics engine, timeseries, aggregations |
 | `test_phase5b_dashboard_analytics.py` | 5 | Dashboard analytics endpoints & caching |
 | `test_phase5c_reporting.py` | 9 | Sanitized CSV, HTML/PDF, evidence verify |
 | `test_phase5d_storage_safety.py` | 7 | Gzip archival, DVR eviction, WAL manager |
@@ -73,7 +73,7 @@ The platform has expanded from its initial multi-modal sensor fusion and edge in
 | `test_severity.py` | 2 | Heuristic emergency severity classification |
 | `test_simulation_v1.py` | 5 | Interactive simulation scenario triggers |
 | `test_system_health.py` | 1 | Overall node hardware health scoring |
-| **Total** | **149** | **Complete Suite Passing (Exit Code 0)** |
+| **Total** | **154** | **Complete Suite Passing (Exit Code 0)** |
 
 ---
 
