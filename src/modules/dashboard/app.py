@@ -24,7 +24,7 @@ from src.config.settings import CONFIG
 from src.modules.dashboard.firebase_sync import FIREBASE_SYNC
 from src.modules.dashboard.live_streamer import STREAMER
 from src.modules.database.db_manager import DatabaseManager
-from src.modules.database.governed_store import IncidentRepository
+from src.modules.database.governed_store import IncidentRepository, utc_now
 from src.modules.incident_management.workflow import OperatorWorkflow, ReviewQueue, PermissionDenied, VersionConflict, WorkflowError
 from src.modules.logging.logger import LOGGER
 
@@ -533,6 +533,62 @@ class DashboardHandler(BaseHTTPRequestHandler):
             else:
                 self._json({"error": "Unknown analytics endpoint"}, 404)
                 return
+
+        elif path == "/api/reports/csv/incidents":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "OPERATOR"):
+                self._json({"error": f"{role} is not permitted to export CSV incidents"}, 403)
+                return
+            st = query.get("start_time", [None])[0]
+            et = query.get("end_time", [None])[0]
+            zn = query.get("zone", [None])[0]
+            sev = query.get("severity", [None])[0]
+            stat = query.get("status", [None])[0]
+            ev_type = query.get("event_type", [None])[0]
+            inc_demo = query.get("include_demo", ["false"])[0].lower() in ("true", "1")
+
+            from src.modules.reporting.csv_exporter import stream_incidents_csv
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition", f'attachment; filename="incidents_{utc_now()[:10]}.csv"')
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            for chunk in stream_incidents_csv(GOVERNED_REPOSITORY, start_time=st, end_time=et, zone_id=zn, severity=sev, status=stat, event_type=ev_type, include_demo=inc_demo):
+                self.wfile.write(chunk.encode("utf-8"))
+            return
+
+        elif path.startswith("/api/reports/download/"):
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            filename = os.path.basename(path)
+            report_file = ROOT_DIR / "reports" / filename
+            if not report_file.exists():
+                self._json({"error": "Report file not found"}, 404)
+                return
+            c_type = "application/pdf" if filename.endswith(".pdf") else ("text/csv" if filename.endswith(".csv") else "text/html; charset=utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", c_type)
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(report_file.read_bytes())
+            return
+
+        elif path == "/api/reports/list":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            from src.modules.reporting.report_service import get_report_service
+            svc = get_report_service(GOVERNED_REPOSITORY)
+            self._json(svc.list_reports())
+            return
         else:
             self.send_response(404)
             self.end_headers()
@@ -541,6 +597,47 @@ class DashboardHandler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
+
+        if path == "/api/reports/generate":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            payload = self._payload()
+            rep_type = str(payload.get("type", "monthly")).lower()
+            as_pdf = bool(payload.get("format", "html").lower() == "pdf")
+            month = payload.get("month")
+            from src.modules.reporting.report_service import get_report_service, PermissionDenied as ReportPermissionDenied
+            svc = get_report_service(GOVERNED_REPOSITORY)
+            try:
+                res = svc.generate(
+                    report_type=rep_type,
+                    operator_id=actor["operator_id"],
+                    role=actor["role"],
+                    month=month,
+                    as_pdf=as_pdf,
+                    extra_params=payload,
+                )
+                self._json(res)
+            except ReportPermissionDenied as exc:
+                self._json({"error": str(exc)}, 403)
+            except Exception as exc:
+                self._json({"error": str(exc)}, 400)
+            return
+
+        if path == "/api/evidence/verify":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            if actor["role"].upper() not in ("COMMANDER", "ENGINEER"):
+                self._json({"error": f"{actor['role']} is not permitted to run evidence verification"}, 403)
+                return
+            from src.modules.reporting.evidence_verifier import EvidenceVerifier
+            verifier = EvidenceVerifier(GOVERNED_REPOSITORY)
+            res = verifier.verify_all_evidence()
+            self._json(res)
+            return
 
         if path == "/api/auth/login":
             length = int(self.headers.get("Content-Length", 0))

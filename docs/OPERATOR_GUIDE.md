@@ -45,3 +45,49 @@ The Operations Analytics & Intelligence page is available at `#analytics`. It pr
 - **Offline-Sync Backlog**: Idempotent replay outbox history, pending sync tallies, retry counts, and dead-letter records.
 - **Global Filters & Deep Linking**: Date range, zone, severity, target model, and demo toggles persist directly in URL query strings (e.g. `#analytics?range=7d&zone=ZONE_B_INTERSECTION&severity=CRITICAL`) for shareable situational state.
 - **Offline & Edge-Optimized**: Powered by a locally bundled offline charting engine (`chart.min.js`, zero CDN dependencies) with read-only non-blocking queries and short in-memory response caching to protect Raspberry Pi CPU.
+
+## Reporting and Exports
+
+Sentinel-AI includes a comprehensive, audit-logged reporting and export suite. All generated reports are saved with cryptographic SHA-256 digests in `reports/` and tracked in `reports/manifest.json`. Every generation and download action is permanently recorded in the `operator_actions` audit ledger.
+
+### Role Permissions for Reports & Exports
+
+| Report / Export Type | Commander | Operator | Engineer | Viewer |
+|---|---:|---:|---:|---:|
+| Incident CSV Export (Streamed, Injection-Safe) | Yes | Yes | No | No |
+| Monthly Operations Report (`monthly`) | Yes | Yes | No | No |
+| Model Assurance & Verification Report (`assurance`) | Yes | No | Yes | No |
+| Model Drift Monitoring Report (`drift`) | Yes | No | Yes | No |
+| Device Health & Availability Report (`health`) | Yes | No | Yes | No |
+| Evidence Package Index (`evidence`) | Yes | Yes | Yes | No |
+| Forensic Evidence Hash Verification (`verify-evidence`) | Yes | Yes | Yes | No |
+
+### CLI Usage
+
+Generate reports directly from the command line:
+```bash
+# Generate monthly operations report (HTML + PDF if ReportLab installed)
+python -m src.modules.reporting generate --type monthly --month 2026-10 --role COMMANDER
+
+# Generate model assurance report
+python -m src.modules.reporting generate --type assurance --role ENGINEER
+
+# Generate model drift report
+python -m src.modules.reporting generate --type drift --role ENGINEER
+
+# Generate device health report
+python -m src.modules.reporting generate --type health --role ENGINEER
+
+# Generate forensic evidence package index
+python -m src.modules.reporting generate --type evidence --role COMMANDER
+
+# Export incidents to sanitized CSV
+python -m src.modules.reporting export-csv --out reports/incidents_export.csv --role OPERATOR
+
+# Re-hash all evidence files and verify integrity against SQLite ledger
+python -m src.modules.reporting verify-evidence
+```
+
+### Forensic Evidence Verification
+The verification engine re-hashes all physical evidence files (keyframes, audio clips, sensor traces) on disk using SHA-256 and compares them with the immutable records stored in the SQLite ledger. Any missing or tampered file is immediately flagged with its expected vs. actual digest and logged to the audit trail.
+
