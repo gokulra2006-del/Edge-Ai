@@ -241,6 +241,9 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     CREATE INDEX IF NOT EXISTS idx_analytics_daily_day ON analytics_daily(day);
     CREATE INDEX IF NOT EXISTS idx_analytics_device_day ON analytics_device_daily(day);
     """),
+    (9, """
+    ALTER TABLE evidence ADD COLUMN condition_metadata_json TEXT DEFAULT '{}';
+    """),
 )
 
 
@@ -352,9 +355,10 @@ class IncidentRepository:
         return self.writer.submit(lambda c: c.execute("INSERT INTO prediction_feedback(prediction_id,label,corrected_class,operator_id,operator_role,timestamp,comment) VALUES(?,?,?,?,?,?,?)", (prediction_id,label,corrected_class,operator_id,operator_role,utc_now(),comment)))
     def add_assurance_state(self, incident_id: str, model_id: str | None, state: str, payload: dict[str, Any] | None = None) -> bool:
         return self.writer.submit(lambda c: c.execute("INSERT INTO assurance_states(incident_id,timestamp,model_id,state,payload_json) VALUES(?,?,?,?,?)", (incident_id,utc_now(),model_id,state,json.dumps(payload or {},sort_keys=True))))
-    def attach_evidence(self, incident_id: str, kind: str, source: Path) -> bool:
+    def attach_evidence(self, incident_id: str, kind: str, source: Path, condition_metadata: dict[str, Any] | None = None) -> bool:
         source = Path(source); digest = sha256(source.read_bytes()).hexdigest()
-        return self.writer.submit(lambda c: c.execute("INSERT INTO evidence(incident_id,timestamp,kind,source_path,sha256) VALUES(?,?,?,?,?)", (incident_id,utc_now(),kind,str(source),digest)))
+        cond_json = json.dumps(condition_metadata or {}, sort_keys=True)
+        return self.writer.submit(lambda c: c.execute("INSERT INTO evidence(incident_id,timestamp,kind,source_path,sha256,condition_metadata_json) VALUES(?,?,?,?,?,?)", (incident_id,utc_now(),kind,str(source),digest,cond_json)))
     def update_incident_risk(self, incident_id: str, level: str, breakdown: dict[str, Any]) -> bool:
         return self.writer.submit(lambda c: c.execute("UPDATE incidents SET risk_level=?, risk_breakdown_json=?, updated_at=? WHERE incident_id=?", (level,json.dumps(breakdown,sort_keys=True),utc_now(),incident_id)))
     def close_incident(self, incident_id: str, outcome: str) -> bool:

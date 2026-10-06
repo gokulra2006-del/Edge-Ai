@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sentinel-AI Environmental Robustness & Subgroup Fairness Report</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      color: #1a202c;
+      background: #f7fafc;
+      margin: 0;
+      padding: 24px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 32px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    header {
+      border-bottom: 2px solid #edf2f7;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    h1 { margin: 0 0 8px 0; color: #2d3748; font-size: 24px; }
+    .meta-bar { color: #718096; font-size: 13px; display: flex; gap: 20px; flex-wrap: wrap; }
+    .disclosure-box {
+      background: #ebf8ff;
+      border-left: 4px solid #3182ce;
+      padding: 12px 16px;
+      margin: 20px 0;
+      font-size: 14px;
+      color: #2b6cb0;
+      border-radius: 4px;
+    }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+    .card-header {
+      background: #f8fafc;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .card-header h3 { margin: 0; font-size: 14px; color: #4a5568; }
+    .gap-pill {
+      background: #fed7d7;
+      color: #9b2c2c;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .card-body { padding: 12px 14px; font-size: 13px; }
+    .card-body p { margin: 4px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+    }
+    th {
+      background: #f7fafc;
+      color: #4a5568;
+      font-weight: 600;
+    }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .text-small { font-size: 11px; }
+    .text-muted { color: #a0aec0; }
+    .text-warning { color: #dd6b20; }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-valid { background: #c6f6d5; color: #22543d; }
+    .badge-insufficient { background: #feebc8; color: #7b341e; }
+    .tag {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .tag-real { background: #bee3f8; color: #2a4365; }
+    .tag-replayed { background: #e9d8fd; color: #44337a; }
+    .tag-synth { background: #edf2f7; color: #4a5568; }
+    footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 1px solid #edf2f7;
+      color: #a0aec0;
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Environmental Robustness & Subgroup Fairness Evaluation</h1>
+      <div class="meta-bar">
+        <span><strong>System:</strong> temporal-ood-fusion</span>
+        <span><strong>Git:</strong> 365f67c2</span>
+        <span><strong>Config Hash:</strong> 02cee019b225cd53</span>
+        <span><strong>Total Scenarios:</strong> 92</span>
+        <span><strong>Total Steps:</strong> 1104</span>
+        <span><strong>Seed:</strong> 42</span>
+        <span><strong>Sample Gate:</strong> N &ge; 10</span>
+      </div>
+    </header>
+
+    <div class="disclosure-box">
+      <strong>Data Origin & Provenance Disclosure:</strong>
+      <p style="margin: 4px 0 0 0;">Real hardware edge data is currently verified on Raspberry Pi 4 (rpi4_node1) under day, clear, overhead camera, asphalt road surface, and quiet/commercial zones. Adverse and rare conditions (such as heavy fog, night precipitation, and gravel surfaces) are synthetically perturbed to quantify resilience bounds.</p>
+    </div>
+
+    <h2>Subgroup Disparities & Fairness Gaps</h2>
+    <div class="cards-grid">
+      
+            <div class="card">
+              <div class="card-header">
+                <h3>Time Of Day</h3>
+                <span class="gap-pill">F1 Gap: 6.7%</span>
+              </div>
+              <div class="card-body">
+                <p><strong>Best:</strong> day (0.8583)</p>
+                <p><strong>Worst:</strong> night (0.7914)</p>
+                <p class="text-muted text-small">Performance disparity of 6.7% Macro-F1 detected: best 'day' (0.858) vs worst 'night' (0.791). Miss rate gap: 10.2%.</p>
+                
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header">
+                <h3>Weather</h3>
+                <span class="gap-pill">F1 Gap: 6.3%</span>
+              </div>
+              <div class="card-body">
+                <p><strong>Best:</strong> clear (0.8597)</p>
+                <p><strong>Worst:</strong> rain (0.7965)</p>
+                <p class="text-muted text-small">Performance disparity of 6.3% Macro-F1 detected: best 'clear' (0.860) vs worst 'rain' (0.796). Miss rate gap: 5.6%.</p>
+                
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header">
+                <h3>Camera Angle</h3>
+                <span class="gap-pill">F1 Gap: 8.1%</span>
+              </div>
+              <div class="card-body">
+                <p><strong>Best:</strong> overhead (0.8617)</p>
+                <p><strong>Worst:</strong> oblique (0.7809)</p>
+                <p class="text-muted text-small">Performance disparity of 8.1% Macro-F1 detected: best 'overhead' (0.862) vs worst 'oblique' (0.781). Miss rate gap: 10.6%.</p>
+                
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header">
+                <h3>Traffic Density</h3>
+                <span class="gap-pill">F1 Gap: 9.6%</span>
+              </div>
+              <div class="card-body">
+                <p><strong>Best:</strong> medium (0.8619)</p>
+                <p><strong>Worst:</strong> high (0.7655)</p>
+                <p class="text-muted text-small">Performance disparity of 9.6% Macro-F1 detected: best 'medium' (0.862) vs worst 'high' (0.765). Miss rate gap: 13.1%.</p>
+                
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header">
+                <h3>Microphone Placement</h3>
+                <span class="gap-pill">F1 Gap: 11.6%</span>
+              </div>
+              <div class="card-body">
+                <p><strong>Best:</strong> enclosed (0.9332)</p>
+                <p><strong>Worst:</strong> curbside (0.8173)</p>
+                <p class="text-muted text-small">Performance disparity of 11.6% Macro-F1 detected: best 'enclosed' (0.933) vs worst 'curbside' (0.817). Miss rate gap: 19.3%.</p>
+                
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header">
+                <h3>Road Surface</h3>
+                <span class="gap-pill">F1 Gap: 4.2%</span>
+              </div>
+              <div class="card-body">
+                <p><strong>Best:</strong> gravel (0.8953)</p>
+                <p><strong>Worst:</strong> asphalt (0.8531)</p>
+                <p class="text-muted text-small">Performance disparity of 4.2% Macro-F1 detected: best 'gravel' (0.895) vs worst 'asphalt' (0.853). Miss rate gap: 6.6%.</p>
+                
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header">
+                <h3>Acoustic Zone</h3>
+                <span class="gap-pill">F1 Gap: 15.4%</span>
+              </div>
+              <div class="card-body">
+                <p><strong>Best:</strong> noisy_intersection (0.9332)</p>
+                <p><strong>Worst:</strong> commercial (0.7796)</p>
+                <p class="text-muted text-small">Performance disparity of 15.4% Macro-F1 detected: best 'noisy_intersection' (0.933) vs worst 'commercial' (0.780). Miss rate gap: 22.3%.</p>
+                
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header">
+                <h3>Hardware Node</h3>
+                <span class="gap-pill">F1 Gap: 10.8%</span>
+              </div>
+              <div class="card-body">
+                <p><strong>Best:</strong> edge_server (0.9261)</p>
+                <p><strong>Worst:</strong> jetson_node2 (0.8178)</p>
+                <p class="text-muted text-small">Performance disparity of 10.8% Macro-F1 detected: best 'edge_server' (0.926) vs worst 'jetson_node2' (0.818). Miss rate gap: 10.7%.</p>
+                
+              </div>
+            </div>
+            
+    </div>
+
+    <h2>Detailed Per-Condition Performance Breakdown</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Dimension</th>
+          <th>Condition</th>
+          <th>Status</th>
+          <th>Data Origin</th>
+          <th class="text-center">N</th>
+          <th class="text-right">Macro-F1</th>
+          <th class="text-center">95% Bootstrap CI</th>
+          <th class="text-right">FAR (%)</th>
+          <th class="text-right">Miss (%)</th>
+          <th class="text-right">ECE</th>
+          <th class="text-right">Brier</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+            <tr>
+              <td><code>time_of_day</code></td>
+              <td><strong>day</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-real">REAL_HARDWARE</span></td>
+              <td class="text-center">1056</td>
+              <td class="text-right"><b>0.858</b></td>
+              <td class="text-center text-small">[0.834, 0.879]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">24.9%</td>
+              <td class="text-right">0.214</td>
+              <td class="text-right">0.130</td>
+            </tr>
+            
+            <tr>
+              <td><code>time_of_day</code></td>
+              <td><strong>night</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.791</b></td>
+              <td class="text-center text-small">[0.631, 0.916]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">35.0%</td>
+              <td class="text-right">0.300</td>
+              <td class="text-right">0.147</td>
+            </tr>
+            
+            <tr>
+              <td><code>weather</code></td>
+              <td><strong>clear</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-real">REAL_HARDWARE</span></td>
+              <td class="text-center">1008</td>
+              <td class="text-right"><b>0.860</b></td>
+              <td class="text-center text-small">[0.836, 0.883]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">24.8%</td>
+              <td class="text-right">0.210</td>
+              <td class="text-right">0.128</td>
+            </tr>
+            
+            <tr>
+              <td><code>weather</code></td>
+              <td><strong>fog</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.812</b></td>
+              <td class="text-center text-small">[0.654, 0.946]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">30.0%</td>
+              <td class="text-right">0.339</td>
+              <td class="text-right">0.175</td>
+            </tr>
+            
+            <tr>
+              <td><code>weather</code></td>
+              <td><strong>rain</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.796</b></td>
+              <td class="text-center text-small">[0.654, 0.913]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">30.4%</td>
+              <td class="text-right">0.269</td>
+              <td class="text-right">0.128</td>
+            </tr>
+            
+            <tr>
+              <td><code>camera_angle</code></td>
+              <td><strong>oblique</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.781</b></td>
+              <td class="text-center text-small">[0.639, 0.903]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">33.3%</td>
+              <td class="text-right">0.265</td>
+              <td class="text-right">0.129</td>
+            </tr>
+            
+            <tr>
+              <td><code>camera_angle</code></td>
+              <td><strong>overhead</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-real">REAL_HARDWARE</span></td>
+              <td class="text-center">1008</td>
+              <td class="text-right"><b>0.862</b></td>
+              <td class="text-center text-small">[0.838, 0.886]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">24.4%</td>
+              <td class="text-right">0.216</td>
+              <td class="text-right">0.131</td>
+            </tr>
+            
+            <tr>
+              <td><code>camera_angle</code></td>
+              <td><strong>street_level</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.791</b></td>
+              <td class="text-center text-small">[0.631, 0.916]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">35.0%</td>
+              <td class="text-right">0.244</td>
+              <td class="text-right">0.120</td>
+            </tr>
+            
+            <tr>
+              <td><code>traffic_density</code></td>
+              <td><strong>high</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.765</b></td>
+              <td class="text-center text-small">[0.626, 0.875]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">37.5%</td>
+              <td class="text-right">0.233</td>
+              <td class="text-right">0.116</td>
+            </tr>
+            
+            <tr>
+              <td><code>traffic_density</code></td>
+              <td><strong>low</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.821</b></td>
+              <td class="text-center text-small">[0.676, 0.928]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">29.2%</td>
+              <td class="text-right">0.202</td>
+              <td class="text-right">0.114</td>
+            </tr>
+            
+            <tr>
+              <td><code>traffic_density</code></td>
+              <td><strong>medium</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-real">REAL_HARDWARE</span></td>
+              <td class="text-center">1008</td>
+              <td class="text-right"><b>0.862</b></td>
+              <td class="text-center text-small">[0.838, 0.886]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">24.4%</td>
+              <td class="text-right">0.219</td>
+              <td class="text-right">0.132</td>
+            </tr>
+            
+            <tr>
+              <td><code>microphone_placement</code></td>
+              <td><strong>curbside</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.817</b></td>
+              <td class="text-center text-small">[0.643, 0.938]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">31.8%</td>
+              <td class="text-right">0.211</td>
+              <td class="text-right">0.120</td>
+            </tr>
+            
+            <tr>
+              <td><code>microphone_placement</code></td>
+              <td><strong>enclosed</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.933</b></td>
+              <td class="text-center text-small">[0.817, 1.000]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">12.5%</td>
+              <td class="text-right">0.287</td>
+              <td class="text-right">0.149</td>
+            </tr>
+            
+            <tr>
+              <td><code>microphone_placement</code></td>
+              <td><strong>pole_mounted</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-real">REAL_HARDWARE</span></td>
+              <td class="text-center">1008</td>
+              <td class="text-right"><b>0.854</b></td>
+              <td class="text-center text-small">[0.830, 0.879]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">25.6%</td>
+              <td class="text-right">0.217</td>
+              <td class="text-right">0.130</td>
+            </tr>
+            
+            <tr>
+              <td><code>road_surface</code></td>
+              <td><strong>asphalt</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-real">REAL_HARDWARE</span></td>
+              <td class="text-center">1008</td>
+              <td class="text-right"><b>0.853</b></td>
+              <td class="text-center text-small">[0.831, 0.878]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">25.6%</td>
+              <td class="text-right">0.218</td>
+              <td class="text-right">0.131</td>
+            </tr>
+            
+            <tr>
+              <td><code>road_surface</code></td>
+              <td><strong>gravel</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.895</b></td>
+              <td class="text-center text-small">[0.741, 0.983]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">19.1%</td>
+              <td class="text-right">0.229</td>
+              <td class="text-right">0.126</td>
+            </tr>
+            
+            <tr>
+              <td><code>road_surface</code></td>
+              <td><strong>wet_concrete</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.873</b></td>
+              <td class="text-center text-small">[0.713, 0.979]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">22.7%</td>
+              <td class="text-right">0.202</td>
+              <td class="text-right">0.118</td>
+            </tr>
+            
+            <tr>
+              <td><code>acoustic_zone</code></td>
+              <td><strong>commercial</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-replayed">REPLAYED_REAL</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.780</b></td>
+              <td class="text-center text-small">[0.649, 0.897]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">34.8%</td>
+              <td class="text-right">0.226</td>
+              <td class="text-right">0.109</td>
+            </tr>
+            
+            <tr>
+              <td><code>acoustic_zone</code></td>
+              <td><strong>noisy_intersection</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.933</b></td>
+              <td class="text-center text-small">[0.824, 1.000]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">12.5%</td>
+              <td class="text-right">0.353</td>
+              <td class="text-right">0.204</td>
+            </tr>
+            
+            <tr>
+              <td><code>acoustic_zone</code></td>
+              <td><strong>quiet_suburb</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-real">REAL_HARDWARE</span></td>
+              <td class="text-center">1008</td>
+              <td class="text-right"><b>0.854</b></td>
+              <td class="text-center text-small">[0.829, 0.879]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">25.4%</td>
+              <td class="text-right">0.220</td>
+              <td class="text-right">0.128</td>
+            </tr>
+            
+            <tr>
+              <td><code>hardware_node</code></td>
+              <td><strong>edge_server</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.926</b></td>
+              <td class="text-center text-small">[0.798, 1.000]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">15.0%</td>
+              <td class="text-right">0.249</td>
+              <td class="text-right">0.130</td>
+            </tr>
+            
+            <tr>
+              <td><code>hardware_node</code></td>
+              <td><strong>jetson_node2</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-synth">SYNTHETIC</span></td>
+              <td class="text-center">48</td>
+              <td class="text-right"><b>0.818</b></td>
+              <td class="text-center text-small">[0.667, 0.942]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">25.0%</td>
+              <td class="text-right">0.226</td>
+              <td class="text-right">0.111</td>
+            </tr>
+            
+            <tr>
+              <td><code>hardware_node</code></td>
+              <td><strong>rpi4_node1</strong></td>
+              <td><span class="badge badge-valid">VALID</span></td>
+              <td><span class="tag tag-real">REAL_HARDWARE</span></td>
+              <td class="text-center">1008</td>
+              <td class="text-right"><b>0.854</b></td>
+              <td class="text-center text-small">[0.829, 0.880]</td>
+              <td class="text-right">0.0%</td>
+              <td class="text-right">25.7%</td>
+              <td class="text-right">0.219</td>
+              <td class="text-right">0.131</td>
+            </tr>
+            
+      </tbody>
+    </table>
+
+    <footer>
+      Sentinel-AI Offline Urban Emergency Detection Platform &bull; Phase 6H Robustness Benchmark
+    </footer>
+  </div>
+</body>
+</html>

@@ -299,3 +299,59 @@ For each evaluated incident, generate:
   - Any overlap between dataset snapshot and frozen test split constitutes a test-leakage failure.
   - Any automated deployment without human approval violates research invariants.
   - Inability to detect dataset snapshot tampering.
+
+
+---
+
+## Experiment 6H-1: Environmental Robustness and Subgroup Fairness Evaluation
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-06
+- **Status**: PRE-REGISTERED (Criteria locked prior to evaluation runs)
+
+### 2. Hypothesis
+- **Hypothesis**: "Edge AI incident detection performance diverges significantly across environmental and operational conditions (time of day, weather, camera angle, traffic density, microphone placement, road surface, acoustic zone, and hardware node). A synthetic-only nominal baseline masks severe operational degradation, whereas stratified condition reporting with honest sample accounting and provenance tagging exposes critical safety vulnerabilities and subgroup fairness gaps."
+
+### 3. Evaluated Condition Dimensions & Subgroups
+Evaluation is stratified across 8 operational axes:
+1. **Time of Day**: `day`, `night`
+2. **Weather**: `clear`, `rain`, `fog`
+3. **Camera Angle**: `overhead`, `street_level`, `oblique`
+4. **Traffic Density**: `low`, `medium`, `high`
+5. **Microphone Placement**: `pole_mounted`, `curbside`, `enclosed`
+6. **Road Surface**: `asphalt`, `wet_concrete`, `gravel`
+7. **Acoustic Zone**: `quiet_suburb`, `noisy_intersection`, `commercial`
+8. **Hardware Node**: `rpi4_node1`, `jetson_node2`, `edge_server`
+
+### 4. Metrics & Evaluation Protocol
+For each condition subgroup:
+1. **Sample Count ($N$)**: Total evaluated steps/scenarios.
+2. **Sample Adequacy Gate**: If $N < N_{\min}$ (default $N_{\min} = 10$), flag status as `INSUFFICIENT_DATA` rather than reporting misleading, high-variance point estimates.
+3. **Performance Metrics**:
+   - **Macro-F1** with non-parametric Bootstrap 95% Confidence Interval.
+   - **False-Alarm Rate (FAR %)**: $\frac{\text{False Alarms}}{\text{True Normals}} \times 100\%$ with Bootstrap 95% CI.
+   - **Miss Rate (FNR %)**: $\frac{\text{Missed Emergencies}}{\text{Total Emergencies}} \times 100\%$ with Bootstrap 95% CI.
+   - **Expected Calibration Error (ECE)** and **Brier Score**.
+4. **Subgroup Disparity & Fairness Gap**:
+   $$\Delta_{\text{Macro-F1}} = \max_{c} \text{F1}(c) - \min_{c} \text{F1}(c)$$
+   $$\Delta_{\text{FAR}} = \max_{c} \text{FAR}(c) - \min_{c} \text{FAR}(c)$$
+   $$\Delta_{\text{Miss}} = \max_{c} \text{Miss}(c) - \min_{c} \text{Miss}(c)$$
+5. **Honest Data Provenance & Real-Data Disclosure**:
+   - Every result tagged explicitly: `SYNTHETIC`, `REPLAYED_REAL`, or `REAL_HARDWARE`.
+   - Clear disclosure of which conditions have real physical data vs synthetic/simulated perturbations.
+
+### 5. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Condition metadata is integrated directly into scenario formats and database evidence records.
+  2. Per-condition evaluation produces Macro-F1, FAR, Miss Rate, ECE, Brier score, sample counts, and bootstrap 95% CIs.
+  3. Any condition with $N < N_{\min}$ is strictly flagged as `INSUFFICIENT_DATA` without reporting false point estimates.
+  4. Worst-performing conditions and performance gaps ($\Delta$) are automatically identified and highlighted across all 8 dimensions.
+  5. 100% of reported results carry honest provenance tags (`SYNTHETIC`, `REPLAYED_REAL`, `REAL_HARDWARE`).
+  6. Exportable publication-grade HTML report (`reports/robustness_report.html`) and CSV (`results/robustness_evaluation.csv`) are generated.
+  7. CLI command enables single-command reproduction of the full evaluation suite.
+- **Failure Criteria**:
+  - Failure to flag low-sample subgroups ($N < N_{\min}$) as `INSUFFICIENT_DATA`.
+  - Presenting synthetic perturbations as real hardware data.
+  - Missing any of the 8 required condition dimensions.
+  - Failure to compute bootstrap confidence intervals or calibration metrics.
+

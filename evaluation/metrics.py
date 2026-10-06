@@ -159,6 +159,56 @@ def compute_bootstrap_macro_f1_ci(
     return (round(scores[low_idx], 4), round(scores[high_idx], 4))
 
 
+def compute_bootstrap_far_ci(
+    y_true: List[EventClass],
+    y_pred: List[EventClass],
+    rounds: int = 1000,
+    seed: int = 42,
+) -> Tuple[float, float]:
+    normals_idx = [i for i, yt in enumerate(y_true) if yt == "NORMAL"]
+    if len(normals_idx) < 5:
+        return (0.0, 100.0)
+
+    rng = random.Random(seed)
+    rates: List[float] = []
+    n_norm = len(normals_idx)
+
+    for _ in range(rounds):
+        sample_idx = [rng.choice(normals_idx) for _ in range(n_norm)]
+        fa = sum(1 for i in sample_idx if y_pred[i] != "NORMAL")
+        rates.append((fa / n_norm) * 100.0)
+
+    rates.sort()
+    low_idx = int(rounds * 0.025)
+    high_idx = int(rounds * 0.975)
+    return (round(rates[low_idx], 2), round(rates[high_idx], 2))
+
+
+def compute_bootstrap_miss_ci(
+    y_true: List[EventClass],
+    y_pred: List[EventClass],
+    rounds: int = 1000,
+    seed: int = 42,
+) -> Tuple[float, float]:
+    emergencies_idx = [i for i, yt in enumerate(y_true) if yt != "NORMAL"]
+    if len(emergencies_idx) < 5:
+        return (0.0, 100.0)
+
+    rng = random.Random(seed)
+    rates: List[float] = []
+    n_em = len(emergencies_idx)
+
+    for _ in range(rounds):
+        sample_idx = [rng.choice(emergencies_idx) for _ in range(n_em)]
+        miss = sum(1 for i in sample_idx if y_pred[i] == "NORMAL")
+        rates.append((miss / n_em) * 100.0)
+
+    rates.sort()
+    low_idx = int(rounds * 0.025)
+    high_idx = int(rounds * 0.975)
+    return (round(rates[low_idx], 2), round(rates[high_idx], 2))
+
+
 def compute_latency_metrics(
     latencies: List[float],
     total_events: int,

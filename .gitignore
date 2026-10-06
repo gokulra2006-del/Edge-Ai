@@ -51,6 +51,7 @@ data/backups/
 data/archives/
 data/governed_datasets/
 reports/*.html
+!reports/robustness_report.html
 reports/*.pdf
 reports/*.csv
 .env

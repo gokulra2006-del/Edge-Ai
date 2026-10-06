@@ -27,6 +27,28 @@ FaultType = Literal[
 
 
 @dataclass
+class EnvironmentalConditions:
+    time_of_day: str = "day"                     # "day", "night"
+    weather: str = "clear"                       # "clear", "rain", "fog"
+    camera_angle: str = "overhead"               # "overhead", "street_level", "oblique"
+    traffic_density: str = "medium"              # "low", "medium", "high"
+    microphone_placement: str = "pole_mounted"   # "pole_mounted", "curbside", "enclosed"
+    road_surface: str = "asphalt"                # "asphalt", "wet_concrete", "gravel"
+    acoustic_zone: str = "quiet_suburb"          # "quiet_suburb", "noisy_intersection", "commercial"
+    hardware_node: str = "rpi4_node1"            # "rpi4_node1", "jetson_node2", "edge_server"
+
+    def to_dict(self) -> Dict[str, str]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Optional[Dict[str, Any]] = None) -> "EnvironmentalConditions":
+        if not data:
+            return cls()
+        fields = {f.name for f in dataclasses.fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in fields})
+
+
+@dataclass
 class SensorReading:
     timestamp: float
     temperature: float
@@ -82,6 +104,7 @@ class Scenario:
     fault_type: FaultType = "none"
     seed: Optional[int] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+    conditions: EnvironmentalConditions = field(default_factory=EnvironmentalConditions)
 
     def compute_hash(self) -> str:
         serialized = json.dumps(
@@ -94,6 +117,7 @@ class Scenario:
                 "event": self.ground_truth_event,
                 "fault": self.fault_type,
                 "tag": self.data_tag,
+                "conditions": self.conditions.to_dict(),
                 "steps": [
                     {
                         "idx": s.step_idx,
@@ -136,6 +160,10 @@ class Scenario:
             )
         data_copy = dict(data)
         data_copy["steps"] = steps
+        if "conditions" in data_copy and isinstance(data_copy["conditions"], dict):
+            data_copy["conditions"] = EnvironmentalConditions.from_dict(data_copy["conditions"])
+        elif "conditions" not in data_copy:
+            data_copy["conditions"] = EnvironmentalConditions()
         return cls(**data_copy)
 
 
@@ -185,7 +213,9 @@ class ScenarioGenerator:
         duration_seconds: float,
         rng: random.Random,
         data_tag: DataTag,
+        conditions: Optional[EnvironmentalConditions] = None,
     ) -> Scenario:
+        conditions = conditions or EnvironmentalConditions()
         num_steps = int(duration_seconds / self.step_duration)
         onset_step = 0 if event_class == "NORMAL" else rng.randint(3, max(4, num_steps // 2))
         event_onset_time = None if event_class == "NORMAL" else onset_step * self.step_duration
@@ -240,14 +270,6 @@ class ScenarioGenerator:
                 mel_conf = rng.uniform(0.50, 0.75)
                 siren = False
 
-            audio = AudioReading(
-                timestamp=t,
-                decibels=round(db, 1),
-                mel_top_class=mel_class,
-                mel_confidence=round(mel_conf, 3),
-                siren_detected=siren,
-            )
-
             # 3. Vision
             if current_gt == "FIRE":
                 det = ["fire", "smoke"]
@@ -261,6 +283,57 @@ class ScenarioGenerator:
             else:
                 det = ["car", "pedestrian"]
                 confs = {"car": round(rng.uniform(0.60, 0.85), 3), "pedestrian": round(rng.uniform(0.50, 0.80), 3)}
+
+            # Physical condition perturbations
+            vis_mult = 1.0
+            if conditions.time_of_day == "night":
+                vis_mult *= 0.76
+            if conditions.weather == "rain":
+                vis_mult *= 0.84
+            elif conditions.weather == "fog":
+                vis_mult *= 0.65
+            if conditions.camera_angle == "oblique":
+                vis_mult *= 0.88
+            elif conditions.camera_angle == "street_level":
+                vis_mult *= 0.94
+
+            confs = {k: round(max(0.10, min(0.99, v * vis_mult)), 3) for k, v in confs.items()}
+            if conditions.weather == "fog" and current_gt == "NORMAL" and rng.random() < 0.12:
+                if "smoke" not in det:
+                    det.append("smoke")
+                    confs["smoke"] = round(rng.uniform(0.40, 0.60), 3)
+
+            db_offset = 0.0
+            mel_mult = 1.0
+            if conditions.acoustic_zone == "noisy_intersection":
+                db_offset += 12.0
+                mel_mult *= 0.82
+            elif conditions.acoustic_zone == "commercial":
+                db_offset += 6.0
+            if conditions.road_surface == "wet_concrete":
+                db_offset += 4.0
+            elif conditions.road_surface == "gravel":
+                db_offset += 5.0
+            if conditions.traffic_density == "high":
+                db_offset += 5.0
+            elif conditions.traffic_density == "low":
+                db_offset -= 4.0
+            if conditions.microphone_placement == "enclosed":
+                db_offset -= 10.0
+                mel_mult *= 0.85
+            elif conditions.microphone_placement == "curbside":
+                db_offset += 3.0
+
+            db = max(35.0, min(120.0, db + db_offset))
+            mel_conf = round(max(0.15, min(0.99, mel_conf * mel_mult)), 3)
+
+            audio = AudioReading(
+                timestamp=t,
+                decibels=round(db, 1),
+                mel_top_class=mel_class,
+                mel_confidence=round(mel_conf, 3),
+                siren_detected=siren,
+            )
 
             vision = VisionReading(
                 timestamp=t,
@@ -293,7 +366,67 @@ class ScenarioGenerator:
             steps=steps,
             fault_type="none",
             seed=self.seed,
+            conditions=conditions,
         )
+
+    def generate_robustness_suite(
+        self,
+        count_per_condition: int = 4,
+        duration_seconds: float = 6.0,
+    ) -> List[Scenario]:
+        """
+        Generates a comprehensive evaluation suite stratified across all 8 condition dimensions.
+        """
+        rng = random.Random(self.seed)
+        scenarios: List[Scenario] = []
+
+        dimensions_and_values = [
+            ("time_of_day", ["day", "night"]),
+            ("weather", ["clear", "rain", "fog"]),
+            ("camera_angle", ["overhead", "street_level", "oblique"]),
+            ("traffic_density", ["low", "medium", "high"]),
+            ("microphone_placement", ["pole_mounted", "curbside", "enclosed"]),
+            ("road_surface", ["asphalt", "wet_concrete", "gravel"]),
+            ("acoustic_zone", ["quiet_suburb", "noisy_intersection", "commercial"]),
+            ("hardware_node", ["rpi4_node1", "jetson_node2", "edge_server"]),
+        ]
+
+        real_data_conditions = {
+            "time_of_day": {"day"},
+            "weather": {"clear"},
+            "camera_angle": {"overhead"},
+            "traffic_density": {"medium"},
+            "microphone_placement": {"pole_mounted"},
+            "road_surface": {"asphalt"},
+            "acoustic_zone": {"quiet_suburb", "commercial"},
+            "hardware_node": {"rpi4_node1"},
+        }
+
+        sc_idx = 0
+        for dim, values in dimensions_and_values:
+            for val in values:
+                for ev_class in self.CLASSES:
+                    for i in range(max(1, count_per_condition // len(self.CLASSES))):
+                        sc_idx += 1
+                        cond_kwargs = {dim: val}
+                        cond = EnvironmentalConditions(**cond_kwargs)
+                        has_real = val in real_data_conditions.get(dim, set())
+                        tag: DataTag = "REAL_HARDWARE" if (has_real and dim == "hardware_node") else ("REPLAYED_REAL" if has_real else "SYNTHETIC")
+                        zone = rng.choice(self.ZONES)
+
+                        sc = self._generate_single_scenario(
+                            scenario_id=f"ROBUST-{sc_idx:04d}-{dim}-{val}-{ev_class}",
+                            name=f"Robustness {dim}={val} {ev_class} #{i+1}",
+                            zone=zone,
+                            event_class=ev_class,
+                            duration_seconds=duration_seconds,
+                            rng=rng,
+                            data_tag=tag,
+                            conditions=cond,
+                        )
+                        scenarios.append(sc)
+
+        return scenarios
 
 
 class FaultInjector:
