@@ -10,7 +10,7 @@ from pathlib import Path
 from src.modules.security.user_store import UserManager, ALLOWED_ROLES
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sentinel-AI Security & User Account Manager")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -35,7 +35,7 @@ def main() -> None:
     # 5. Migrate Passwords
     subparsers.add_parser("migrate-passwords", help="Hash any remaining plain-text passwords")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     user_mgr = UserManager()
 
     if args.command == "setup-admin":
@@ -47,10 +47,10 @@ def main() -> None:
             pw_conf = getpass.getpass("Confirm password: ")
             if pw != pw_conf:
                 print("Error: Passwords do not match.", file=sys.stderr)
-                sys.exit(1)
+                return 1
         res = user_mgr.create_user(args.username, pw, "COMMANDER")
         print(f"Initial administrator '{res['username']}' created successfully with role COMMANDER.")
-        sys.exit(0)
+        return 0
 
     elif args.command == "add-user":
         pw = args.password
@@ -59,30 +59,32 @@ def main() -> None:
             pw_conf = getpass.getpass("Confirm password: ")
             if pw != pw_conf:
                 print("Error: Passwords do not match.", file=sys.stderr)
-                sys.exit(1)
+                return 1
         res = user_mgr.create_user(args.username, pw, args.role)
         print(f"User '{res['username']}' created/updated successfully with role {res['role']}.")
-        sys.exit(0)
+        return 0
 
     elif args.command == "list-users":
         users = user_mgr.list_users()
         print(json.dumps(users, indent=2))
-        sys.exit(0)
+        return 0
 
     elif args.command == "delete-user":
         ok = user_mgr.delete_user(args.username)
         if ok:
             print(f"User '{args.username}' deleted successfully.")
-            sys.exit(0)
+            return 0
         else:
             print(f"Error: User '{args.username}' not found.", file=sys.stderr)
-            sys.exit(1)
+            return 1
 
     elif args.command == "migrate-passwords":
         count = user_mgr.migrate_all_passwords()
         print(f"Migrated and hashed {count} plain-text password(s).")
-        sys.exit(0)
+        return 0
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
