@@ -76,7 +76,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.send_header("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:;")
 
+    def _drain_rfile(self):
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            if length > 0 and not getattr(self, "_payload_read", False):
+                self.rfile.read(length)
+                self._payload_read = True
+        except Exception:
+            pass
+
     def _json(self, value, status=200):
+        self._drain_rfile()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -85,8 +95,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(value, default=str).encode("utf-8"))
 
     def _payload(self):
-        length = int(self.headers.get("Content-Length", 0))
-        return json.loads(self.rfile.read(length) or b"{}")
+        if hasattr(self, "_cached_payload"):
+            return self._cached_payload
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            raw = self.rfile.read(length) if length > 0 else b"{}"
+            self._payload_read = True
+            self._cached_payload = json.loads(raw or b"{}")
+            return self._cached_payload
+        except Exception:
+            self._cached_payload = {}
+            return self._cached_payload
 
     def _actor(self):
         token = ""

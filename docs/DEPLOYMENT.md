@@ -209,6 +209,11 @@ External process supervisors (systemd, Kubernetes, Docker, consul, monit) can qu
 
 ## 6. Hardware Benchmarking Suite (scripts/pi/)
 
+> [!IMPORTANT]
+> **Real Hardware Execution Requirement**:
+> These benchmark scripts **MUST be run directly on the physical Raspberry Pi 4 Model B hardware**.
+> Execution in development environments (Windows/macOS/x86) validates software mechanics, JSON report schema generation, and error fallbacks only; genuine thermal, hardware bus contention, V4L2/libcamera frame rates, and microSD flash write latency metrics require actual ARM hardware and physical peripherals.
+
 Run these scripts directly on the Raspberry Pi 4 to validate production hardware specs. Each script outputs a structured JSON report:
 
 1. **Sustained CPU & Memory**:
