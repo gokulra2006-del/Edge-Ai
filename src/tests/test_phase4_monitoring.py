@@ -363,6 +363,7 @@ def test_system_health_endpoints_role_enforcement(test_repo, monkeypatch):
     server = HTTPServer(("127.0.0.1", 0), dashboard_app.DashboardHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
+    time.sleep(0.05)
     base = f"http://127.0.0.1:{server.server_port}"
 
     try:

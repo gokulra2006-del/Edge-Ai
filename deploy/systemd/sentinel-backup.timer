@@ -1,0 +1,12 @@
+[Unit]
+Description=Trigger Sentinel-AI Automated Database Backup Daily
+Documentation=https://github.com/gokulra2006-del/Edge-Ai
+
+[Timer]
+# Run every night at 03:00 UTC with randomized delay to prevent I/O storm
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target

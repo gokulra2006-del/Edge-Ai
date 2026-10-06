@@ -453,12 +453,26 @@ function showRoleAccessDeniedToast(targetPage, user) {
     }, 3500);
 }
 
+async function fetchSystemVersion() {
+    try {
+        const res = await fetch("/api/system/version");
+        if (!res.ok) return;
+        const data = await res.json();
+        const badge = document.getElementById("systemVersionBadge");
+        if (badge) {
+            badge.innerText = `v${data.version} (${data.git_hash})`;
+            badge.title = `Target: ${data.target_platform} | Built: ${data.build_date} | Schema: v${data.schema_version}`;
+        }
+    } catch (e) {}
+}
+
 // Initialize Dashboard upon DOM Load
 document.addEventListener("DOMContentLoaded", () => {
     checkAuthAndRender();
 
     if (window.Chart) initChart();
     initFirebaseOrFallback();
+    fetchSystemVersion();
     fetchHistoricalEvents();
     fetchRecordings();
     setInterval(fetchHistoricalEvents, 10000);

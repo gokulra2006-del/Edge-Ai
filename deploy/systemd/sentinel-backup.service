@@ -1,0 +1,23 @@
+[Unit]
+Description=Sentinel-AI Automated Daily Database Online Backup
+Documentation=https://github.com/gokulra2006-del/Edge-Ai
+After=sentinel.service
+
+[Service]
+Type=oneshot
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/Edge-AI
+EnvironmentFile=-/home/pi/Edge-AI/.env
+ExecStart=/home/pi/Edge-AI/.venv/bin/python -m src.modules.maintenance backup --source data/emergency_events.db --target data/backups/sentinel_daily.db
+
+# Sandboxing
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/pi/Edge-AI/data
+PrivateTmp=true
+NoNewPrivileges=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sentinel-backup

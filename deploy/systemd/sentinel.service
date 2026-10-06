@@ -1,0 +1,42 @@
+[Unit]
+Description=Sentinel-AI Urban Edge Emergency Detection Service
+Documentation=https://github.com/gokulra2006-del/Edge-Ai
+After=network.target time-sync.target local-fs.target
+Wants=time-sync.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/Edge-AI
+EnvironmentFile=-/home/pi/Edge-AI/.env
+ExecStart=/home/pi/Edge-AI/.venv/bin/python -m src.modules.dashboard.app --port 8080 --production
+
+# Watchdog & Process Lifecycle
+Restart=always
+RestartSec=5s
+WatchdogSec=30s
+TimeoutStartSec=60s
+TimeoutStopSec=20s
+
+# Resource Constraints (Tuned for Raspberry Pi 4 Model B - 4 GB RAM)
+MemoryMax=2.8G
+MemoryHigh=2.5G
+CPUQuota=350%
+TasksMax=1024
+LimitNOFILE=65536
+
+# Security and Sandboxing
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/pi/Edge-AI/data /home/pi/Edge-AI/logs /home/pi/Edge-AI/reports
+PrivateTmp=true
+NoNewPrivileges=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sentinel-ai
+
+[Install]
+WantedBy=multi-user.target

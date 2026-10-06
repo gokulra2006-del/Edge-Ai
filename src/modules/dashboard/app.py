@@ -43,6 +43,8 @@ from src.modules.security.user_store import UserManager
 from src.modules.security.session_manager import SessionManager, SESSION_MANAGER
 from src.modules.security.rate_limiter import LoginRateLimiter, RATE_LIMITER
 from src.modules.security.permission_matrix import check_endpoint_permission
+from src.modules.core.version import get_version_info
+from src.modules.maintenance.recovery import run_startup_recovery
 
 DRIFT_MONITOR = ModelDriftMonitor(GOVERNED_REPOSITORY)
 HEALTH_MONITOR = HealthMonitor(GOVERNED_REPOSITORY)
@@ -53,6 +55,12 @@ STORAGE_ENGINE = StorageRetentionEngine(GOVERNED_REPOSITORY)
 STORAGE_STATUS = StorageSafetyStatus(STORAGE_ENGINE)
 USER_MANAGER = UserManager()
 RATE_LIMITER.repository = GOVERNED_REPOSITORY
+
+SERVER_START_TIME = time.time()
+try:
+    _STARTUP_RECOVERY = run_startup_recovery(GOVERNED_REPOSITORY.db_path)
+except Exception:
+    _STARTUP_RECOVERY = {"status": "INITIALIZATION_SKIPPED"}
 
 _ANALYTICS_CACHE: dict[str, tuple[float, Any]] = {}
 ANALYTICS_CACHE_TTL = 5.0
@@ -165,6 +173,61 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(json.dumps(assess_live_state(FIREBASE_SYNC.get_full_live_state())).encode("utf-8"))
+
+        # Supervisor Liveness & Readiness Probes
+        elif path == "/healthz":
+            uptime = round(time.time() - SERVER_START_TIME, 1)
+            self._json({
+                "status": "alive",
+                "uptime_seconds": uptime,
+                "timestamp": utc_now(),
+            }, 200)
+
+        elif path == "/readyz":
+            checks = {}
+            errors = []
+
+            # 1. DB check
+            try:
+                with GOVERNED_REPOSITORY._read_connection() as con:
+                    q = con.execute("PRAGMA quick_check").fetchone()
+                    if q and q[0] == "ok":
+                        checks["database"] = "ok"
+                    else:
+                        checks["database"] = "corrupted"
+                        errors.append("Database quick_check failed")
+            except Exception as e:
+                checks["database"] = f"error: {e}"
+                errors.append(f"Database error: {e}")
+
+            # 2. Writer queue check
+            q_depth = GOVERNED_REPOSITORY.writer.queue.qsize()
+            q_max = GOVERNED_REPOSITORY.writer.queue.maxsize
+            if q_depth >= q_max:
+                checks["writer_queue"] = "saturated"
+                errors.append(f"Writer queue saturated ({q_depth}/{q_max})")
+            else:
+                checks["writer_queue"] = "ok"
+
+            # 3. Storage volume check
+            storage_rep = STORAGE_STATUS.get_summary()
+            if storage_rep.get("status") == "CRITICAL":
+                checks["storage"] = "critical"
+                errors.append("Storage volume critically full")
+            else:
+                checks["storage"] = "ok"
+
+            is_ready = len(errors) == 0
+            status_code = 200 if is_ready else 503
+            self._json({
+                "status": "ready" if is_ready else "not_ready",
+                "checks": checks,
+                "errors": errors,
+                "timestamp": utc_now(),
+            }, status_code)
+
+        elif path == "/api/system/version":
+            self._json(get_version_info(), 200)
 
         elif path == "/api/system/health":
             from src.modules.assurance.system_health import system_health

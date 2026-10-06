@@ -282,7 +282,7 @@ def test_endpoint_permission_matrix_introspection_guard():
         for method, pattern, allowed_roles, desc in ENDPOINT_PERMISSIONS:
             # Test route against regex
             test_path = route.rstrip("/")
-            if not test_path.startswith("/api") and test_path not in ("", "/index.html", "/app.js", "/chart.min.js", "/style.css"):
+            if not test_path.startswith("/api") and test_path not in ("", "/index.html", "/app.js", "/chart.min.js", "/style.css", "/healthz", "/readyz"):
                 continue
             if re.match(pattern, test_path) or re.match(pattern, test_path + "/dummy"):
                 matched = True
