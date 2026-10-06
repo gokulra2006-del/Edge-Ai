@@ -49,61 +49,66 @@ def main() -> None:
     args = parser.parse_args()
 
     repo = IncidentRepository()
-    engine = StorageRetentionEngine(repository=repo)
-    status_helper = StorageSafetyStatus(engine=engine)
+    try:
+        engine = StorageRetentionEngine(repository=repo)
+        status_helper = StorageSafetyStatus(engine=engine)
 
-    if args.command == "status":
-        stat = status_helper.get_status()
-        print(json.dumps(stat, indent=2))
-        sys.exit(0)
+        if args.command == "status":
+            stat = status_helper.get_status()
+            print(json.dumps(stat, indent=2))
+            return
 
-    elif args.command == "checkpoint":
-        role_upper = args.role.upper()
-        if role_upper not in ("COMMANDER", "ENGINEER"):
-            print(f"Error: Role {args.role} is not authorized to execute WAL checkpointing.", file=sys.stderr)
-            sys.exit(1)
-        res = engine.wal_manager.checkpoint(mode=args.mode)
-        print(json.dumps(res, indent=2))
-        sys.exit(0 if res.get("success") else 1)
+        elif args.command == "checkpoint":
+            role_upper = args.role.upper()
+            if role_upper not in ("COMMANDER", "ENGINEER"):
+                print(f"Error: Role {args.role} is not authorized to execute WAL checkpointing.", file=sys.stderr)
+                sys.exit(1)
+            res = engine.wal_manager.checkpoint(mode=args.mode)
+            print(json.dumps(res, indent=2))
+            if not res.get("success"):
+                sys.exit(1)
+            return
 
-    elif args.command == "cleanup":
-        role_upper = args.role.upper()
-        if role_upper not in ("COMMANDER", "ENGINEER"):
-            print(f"Error: Role {args.role} is not authorized to execute storage cleanup.", file=sys.stderr)
-            sys.exit(1)
+        elif args.command == "cleanup":
+            role_upper = args.role.upper()
+            if role_upper not in ("COMMANDER", "ENGINEER"):
+                print(f"Error: Role {args.role} is not authorized to execute storage cleanup.", file=sys.stderr)
+                sys.exit(1)
 
-        dry = args.dry_run
-        policy = args.policy
-        if policy == "all":
-            res = engine.run_full_cleanup(dry_run=dry)
-        elif policy == "telemetry":
-            res = engine.archive_telemetry(dry_run=dry)
-        elif policy == "dvr":
-            res = engine.evict_dvr(dry_run=dry)
-        elif policy == "evidence":
-            res = engine.cleanup_evidence(dry_run=dry)
-        elif policy == "reports":
-            res = engine.cleanup_reports(dry_run=dry)
-        elif policy == "logs":
-            res = engine.cleanup_logs(dry_run=dry)
-        elif policy == "outbox":
-            res = engine.cleanup_outbox(dry_run=dry)
+            dry = args.dry_run
+            policy = args.policy
+            if policy == "all":
+                res = engine.run_full_cleanup(dry_run=dry)
+            elif policy == "telemetry":
+                res = engine.archive_telemetry(dry_run=dry)
+            elif policy == "dvr":
+                res = engine.evict_dvr(dry_run=dry)
+            elif policy == "evidence":
+                res = engine.cleanup_evidence(dry_run=dry)
+            elif policy == "reports":
+                res = engine.cleanup_reports(dry_run=dry)
+            elif policy == "logs":
+                res = engine.cleanup_logs(dry_run=dry)
+            elif policy == "outbox":
+                res = engine.cleanup_outbox(dry_run=dry)
 
-        print(json.dumps(res, indent=2))
-        sys.exit(0)
+            print(json.dumps(res, indent=2))
+            return
 
-    elif args.command == "logs":
-        import sqlite3
-        with sqlite3.connect(str(repo.db_path)) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT * FROM storage_cleanup_logs ORDER BY id DESC LIMIT ?",
-                (args.limit,)
-            )
-            rows = [dict(r) for r in cursor.fetchall()]
-            print(json.dumps(rows, indent=2))
-        sys.exit(0)
+        elif args.command == "logs":
+            import sqlite3
+            with sqlite3.connect(str(repo.db_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT * FROM storage_cleanup_logs ORDER BY id DESC LIMIT ?",
+                    (args.limit,)
+                )
+                rows = [dict(r) for r in cursor.fetchall()]
+                print(json.dumps(rows, indent=2))
+            return
+    finally:
+        repo.close()
 
 
 if __name__ == "__main__":
