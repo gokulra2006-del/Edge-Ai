@@ -93,7 +93,18 @@ function getCurrentUser() {
     try {
         const stored = localStorage.getItem("sentinel_auth_user");
         const user = stored ? JSON.parse(stored) : null;
-        return user && user.authVersion === 3 ? user : null;
+        if (!user || user.authVersion !== 3) return null;
+        const roleKey = (user.role || user.username || "commander").toLowerCase();
+        const baseProfile = SYSTEM_USERS[roleKey] || SYSTEM_USERS.commander;
+        return {
+            ...baseProfile,
+            ...user,
+            name: user.name || baseProfile.name,
+            roleBadge: user.roleBadge || baseProfile.roleBadge,
+            roleClass: user.roleClass || baseProfile.roleClass,
+            allowedPages: user.allowedPages || baseProfile.allowedPages,
+            permissions: user.permissions || baseProfile.permissions
+        };
     } catch (e) {
         return null;
     }
@@ -101,7 +112,14 @@ function getCurrentUser() {
 
 function setCurrentUser(user) {
     if (user) {
-        localStorage.setItem("sentinel_auth_user", JSON.stringify({ ...user, authVersion: 3 }));
+        const roleKey = (user.role || user.username || "commander").toLowerCase();
+        const baseProfile = SYSTEM_USERS[roleKey] || SYSTEM_USERS.commander;
+        const hydrated = {
+            ...baseProfile,
+            ...user,
+            authVersion: 3
+        };
+        localStorage.setItem("sentinel_auth_user", JSON.stringify(hydrated));
     } else {
         localStorage.removeItem("sentinel_auth_user");
     }
@@ -134,7 +152,12 @@ async function handleLoginSubmit(event) {
         localStorage.setItem("sentinel_token", verified.token);
         if (verified.csrf_token) localStorage.setItem("sentinel_csrf_token", verified.csrf_token);
 
+        const roleKey = (verified.role || userInput || "commander").toLowerCase();
+        const baseProfile = SYSTEM_USERS[roleKey] || SYSTEM_USERS.commander;
+
         setCurrentUser({
+            ...baseProfile,
+            username: userInput,
             role: verified.role,
             authToken: verified.token,
             operatorId: verified.operator_id,
