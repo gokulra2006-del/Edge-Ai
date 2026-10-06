@@ -23,6 +23,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+try:
+    from scripts.pi.common import create_benchmark_header
+except ImportError:
+    from common import create_benchmark_header
+
 
 def run_benchmark(
     concurrency: int = 4,
@@ -84,13 +89,14 @@ def run_benchmark(
     avg_wait_ms = round(sum(lock_wait_times_ms) / len(lock_wait_times_ms), 3) if lock_wait_times_ms else 0.0
     max_wait_ms = round(max(lock_wait_times_ms), 3) if lock_wait_times_ms else 0.0
     avg_tx_ms = round(sum(transaction_times_ms) / len(transaction_times_ms), 3) if transaction_times_ms else 0.0
-
     contention_pct = round((contention_events / max(1, total_ops)) * 100.0, 2)
 
+    header = create_benchmark_header("sensor_bus_contention", total_elapsed, repeatable=True)
     result = {
+        "header": header,
         "benchmark": "sensor_bus_contention",
         "target": "Raspberry Pi 4 Model B (4 GB)",
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": header["timestamp_utc"],
         "host": hostname,
         "bus_device": bus_dev if has_real_bus else "mock_synchronized_bus",
         "parameters": {

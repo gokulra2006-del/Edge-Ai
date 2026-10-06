@@ -367,7 +367,8 @@ class IncidentRepository:
         allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes","device_health_events","sync_outbox","drift_snapshots","model_baselines"}
         if table not in allowed: raise ValueError("invalid table")
         if incident_id is None:
-            return [dict(r) for r in self._read(f"SELECT * FROM {table} ORDER BY id DESC")]
+            order_col = "created_at" if table in ("incidents", "model_baselines") else "id"
+            return [dict(r) for r in self._read(f"SELECT * FROM {table} ORDER BY {order_col} DESC")]
         key = "incident_id"; return [dict(r) for r in self._read(f"SELECT * FROM {table} WHERE {key}=? ORDER BY id" if table != "incidents" else "SELECT * FROM incidents WHERE incident_id=?", (incident_id,))]
     def close(self) -> None: self.writer.close()
 

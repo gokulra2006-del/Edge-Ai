@@ -355,3 +355,60 @@ For each condition subgroup:
   - Missing any of the 8 required condition dimensions.
   - Failure to compute bootstrap confidence intervals or calibration metrics.
 
+
+---
+
+## Experiment 6I-1: Physical Edge Deployment Validation on Raspberry Pi 4
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-06
+- **Status**: PRE-REGISTERED (Criteria locked prior to physical hardware execution)
+
+### 2. Hypothesis
+- **Hypothesis**: "Physical edge hardware deployment introduces sustained thermal throttling, MicroSD fsync bottlenecks, sensor bus contention, and power/network disruptions that synthetic simulations underestimate. A robust edge architecture maintains sub-second recovery and 0% audit loss under physical disruption, while reporting authentic physical telemetry without fabrication."
+
+### 3. Primary Metrics & Target Thresholds
+1. **Sustained Compute & Memory**:
+   - Sustained CPU utilization (%) under active vision, audio, and environmental sensor fusion.
+   - Process RSS memory consumption $\le 120$ MB.
+2. **Thermal & Throttling Diagnostics**:
+   - SoC Core Temperature ($^\circ\text{C}$) via `/sys/class/thermal/thermal_zone0/temp`.
+   - `vcgencmd get_throttled` bitmask: detects under-voltage ($0\text{x}1$), frequency capping ($0\text{x}2$), and thermal throttling ($0\text{x}4$).
+3. **Camera Ingestion Throughput**:
+   - Camera FPS $\ge 12.0$ FPS under full inference pipeline.
+   - Frame drop rate $\le 2.0\%$.
+4. **Audio Latency & Buffer Stability**:
+   - Audio window processing latency $\le 80$ ms.
+   - Dropped window count $= 0$ under nominal load.
+5. **Bus Contention (I2C/SPI)**:
+   - Transaction round-trip time $\le 25$ ms.
+   - Bus transaction error rate $\le 0.1\%$.
+6. **MicroSD Storage Latency**:
+   - SQLite WAL append and `fsync` write latency: median $\le 15$ ms, p95 $\le 65$ ms.
+7. **Network Outage Recovery**:
+   - Seamless offline buffer transition: 100% of generated events persisted to local SQLite outbox during physical network cut.
+   - Recovery flush time $\le 5.0$ seconds upon physical reconnection.
+8. **Power-Interruption Recovery**:
+   - SQLite database integrity check: `PRAGMA integrity_check` returns strictly `"ok"`.
+   - 0% lost audit records: all pre-cut committed `operator_actions` and incidents retain bit-exact cryptographic consistency.
+
+### 4. Honest Data & Anti-Fabrication Invariants
+- **Zero Fabrication Rule**: The software system and assistant must NEVER synthesize, mock, or fake physical Raspberry Pi measurements.
+- **Tagging Invariant**: Every benchmark generated on physical hardware is authenticated and tagged `REAL_HARDWARE`.
+- **Missing Measurement Invariant**: Any metric that has not been executed on physical hardware must be explicitly labeled as `NOT_MEASURED` in all paper tables and reports.
+- **Tamper-Resistant Importer**: Importer validates hardware provenance, cryptographic script fingerprint, and rejects unauthorized or synthetic files attempting to claim real hardware origin.
+
+### 5. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Complete standalone validation tooling under `scripts/pi/` recording hardware model, OS, git hash, duration, and parameters.
+  2. Physical testing guide (`docs/hardware/PI_VALIDATION_GUIDE.md`) detailing physical test protocol (unplugging network, abrupt power cuts).
+  3. Result importer (`scripts/pi/import_results.py`) safely merges authenticated outputs into `results/` tagged `REAL_HARDWARE` and rejects invalid inputs.
+  4. Publication report generator produces paper-ready tables where unmeasured fields render strictly as `NOT_MEASURED`.
+  5. Power interruption recovery asserts `PRAGMA integrity_check == ok` and 0 audit log deletions.
+- **Failure Criteria**:
+  - Any fabricated or guessed performance numbers.
+  - Importer accepting synthetic data as real hardware.
+  - Missing any of the required physical validation vectors.
+  - Database corruption or audit loss following power recovery test.
+
+

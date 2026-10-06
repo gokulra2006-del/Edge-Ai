@@ -15,6 +15,15 @@ import platform
 import sys
 import time
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+try:
+    from scripts.pi.common import create_benchmark_header
+except ImportError:
+    from common import create_benchmark_header
+
 try:
     import psutil
 except ImportError:
@@ -86,10 +95,12 @@ def run_benchmark(duration_seconds: int = 10, sample_interval: float = 1.0) -> d
     avg_rss = round(sum(mem_rss_mb) / len(mem_rss_mb), 2) if mem_rss_mb else 0.0
     max_rss = max(mem_rss_mb) if mem_rss_mb else 0.0
 
+    header = create_benchmark_header("sustained_cpu_memory", duration_seconds, repeatable=True)
     result = {
+        "header": header,
         "benchmark": "sustained_cpu_memory",
         "target": "Raspberry Pi 4 Model B (4 GB)",
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": header["timestamp_utc"],
         "host": hostname,
         "os": os_info,
         "parameters": {

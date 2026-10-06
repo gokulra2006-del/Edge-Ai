@@ -13,8 +13,15 @@ import json
 import os
 from pathlib import Path
 import platform
-import subprocess
 import sys
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+try:
+    from scripts.pi.common import create_benchmark_header
+except ImportError:
+    from common import create_benchmark_header
 
 # Raspberry Pi 4 vcgencmd throttling bit definitions
 THROTTLE_FLAGS = {
@@ -107,10 +114,12 @@ def run_benchmark() -> dict:
     if throttled_data and throttled_data.get("is_currently_throttled"):
         status = "THROTTLED"
 
+    header = create_benchmark_header("thermal_throttling", 0.0, repeatable=True)
     result = {
+        "header": header,
         "benchmark": "thermal_throttling",
         "target": "Raspberry Pi 4 Model B (4 GB)",
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": header["timestamp_utc"],
         "host": hostname,
         "platform": platform.system(),
         "temperature_celsius": temp_c,

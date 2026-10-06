@@ -21,6 +21,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+try:
+    from scripts.pi.common import create_benchmark_header
+except ImportError:
+    from common import create_benchmark_header
+
 
 def run_benchmark(
     target_dir: str = "data/test_tmp",
@@ -86,10 +91,12 @@ def run_benchmark(
     # Bad cards or wear out > 100ms.
     status = "EXCELLENT" if avg_fsync_ms < 15.0 else ("ACCEPTABLE" if avg_fsync_ms < 60.0 else "POOR_FLASH_PERFORMANCE")
 
+    header = create_benchmark_header("microsd_write_latency", 0.0, repeatable=True)
     result = {
+        "header": header,
         "benchmark": "microsd_write_latency",
         "target": "Raspberry Pi 4 Model B (4 GB)",
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": header["timestamp_utc"],
         "host": hostname,
         "parameters": {
             "random_4k_ops": random_4k_ops,
