@@ -32,8 +32,9 @@ class RegisteredModelRecord:
     name: str
     version: str
     sha256: str
-    usage_restriction: str  # PRODUCTION, RESEARCH_ONLY, DEPRECATED
-    status: str             # ACTIVE, INACTIVE, SHADOW
+    usage_restriction: str = "RESEARCH_ONLY"  # PRODUCTION, RESEARCH_ONLY, DEPRECATED
+    status: str = "RESEARCH_ONLY"             # PRODUCTION, CANDIDATE, RESEARCH_ONLY (or ACTIVE/INACTIVE)
+    registry_status: str = "RESEARCH_ONLY"    # Explicit tier: PRODUCTION, CANDIDATE, RESEARCH_ONLY
 
 
 @dataclass
@@ -50,6 +51,7 @@ class ModelExecutionResult:
 class SafetyAwareModelRegistry:
     """
     Registry enforcing strict runtime guardrails around research and production models.
+    Enforces that only verified PRODUCTION models can actuate hardware or dispatch alerts.
     """
 
     def __init__(self):
@@ -63,14 +65,28 @@ class SafetyAwareModelRegistry:
         sha256: str,
         usage_restriction: str = "RESEARCH_ONLY",
         status: str = "ACTIVE",
+        registry_status: Optional[str] = None,
     ) -> None:
+        norm_status = status.upper()
+        norm_usage = usage_restriction.upper()
+        # Derive effective registry status tier (PRODUCTION / CANDIDATE / RESEARCH_ONLY)
+        if registry_status:
+            effective_tier = registry_status.upper()
+        elif norm_status in ("PRODUCTION", "CANDIDATE", "RESEARCH_ONLY"):
+            effective_tier = norm_status
+        elif norm_usage in ("PRODUCTION", "CANDIDATE", "RESEARCH_ONLY"):
+            effective_tier = norm_usage
+        else:
+            effective_tier = "RESEARCH_ONLY"
+
         rec = RegisteredModelRecord(
             model_id=model_id,
             name=name,
             version=version,
             sha256=sha256,
-            usage_restriction=usage_restriction.upper(),
-            status=status.upper(),
+            usage_restriction=norm_usage,
+            status=norm_status,
+            registry_status=effective_tier,
         )
         self.models[model_id] = rec
 
@@ -83,6 +99,11 @@ class SafetyAwareModelRegistry:
         """
         Determines whether the model output is authorized to trigger real-world
         incidents or physical actuators.
+        Enforces:
+        - UNREGISTERED models are rejected.
+        - RESEARCH_ONLY models are restricted to shadow evaluation (no actuators, no alerts).
+        - CANDIDATE models are restricted to shadow evaluation.
+        - Only PRODUCTION models (active status) are authorized for physical actuation.
         """
         violations: List[str] = []
         if model_id not in self.models:
@@ -98,9 +119,12 @@ class SafetyAwareModelRegistry:
             )
 
         model = self.models[model_id]
+        tier = (model.registry_status or model.usage_restriction or "RESEARCH_ONLY").upper()
+        if model.status in ("PRODUCTION", "CANDIDATE", "RESEARCH_ONLY"):
+            tier = model.status.upper()
 
-        if model.usage_restriction == "RESEARCH_ONLY":
-            violations.append("POLICY_RESTRICTION: Model is RESEARCH_ONLY and cannot actuate physical hardware")
+        if tier == "RESEARCH_ONLY":
+            violations.append("POLICY_RESTRICTION: Model is RESEARCH_ONLY and cannot actuate physical hardware or authorize alerts")
             return ModelExecutionResult(
                 model_id=model_id,
                 prediction_label=predicted_label,
@@ -111,7 +135,19 @@ class SafetyAwareModelRegistry:
                 safety_violations=violations,
             )
 
-        if model.status != "ACTIVE":
+        if tier == "CANDIDATE":
+            violations.append("POLICY_RESTRICTION: Model is CANDIDATE (shadow-evaluation only) and cannot actuate physical hardware or authorize alerts")
+            return ModelExecutionResult(
+                model_id=model_id,
+                prediction_label=predicted_label,
+                confidence=confidence,
+                actuators_permitted=False,
+                incident_dispatch_permitted=False,
+                is_shadow_only=True,
+                safety_violations=violations,
+            )
+
+        if model.status not in ("ACTIVE", "PRODUCTION"):
             violations.append(f"INACTIVE_MODEL: Model status is {model.status}")
             return ModelExecutionResult(
                 model_id=model_id,

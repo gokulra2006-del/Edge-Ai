@@ -227,3 +227,43 @@ For each evaluated incident, generate:
 - **Failure Criteria**:
   - Any instance where removing a sensor increases computed risk constitutes a safety invariant failure.
   - Explanation fidelity $< 100\%$ constitutes an unfaithful explanation failure.
+
+
+---
+
+## Experiment 6F-1: Automated Safety-Policy Verification and Invariant Assurance
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-06
+- **Status**: PRE-REGISTERED (Criteria locked prior to verification execution)
+
+### 2. Hypothesis
+- **Hypothesis**: "The platform's core safety invariants (role boundaries, model restriction gates, audit trails, immutability, critical deletion protection, and sensor monotonicity) hold deterministically across all runtime code paths."
+- **Invariants Under Verification**:
+  1. **Viewer Actuation Guard**: A Viewer cannot actuate hardware under any circumstances.
+  2. **Operator Resolution Guard**: An Operator cannot resolve incidents (resolution is restricted to Commander).
+  3. **Commander Audit Trail**: Every Commander action is unconditionally audit-logged with non-repudiation.
+  4. **Manual Dispatch Gate**: External municipal emergency dispatch is never automated; it requires explicit human Commander escalation.
+  5. **Model Registry Restriction Gate**: Models designated as `RESEARCH_ONLY` or `CANDIDATE` can never authorize physical actuation or live emergency alerts.
+  6. **Closed Incident Immutability**: A closed incident cannot be modified (status, transitions, or outcomes are immutable).
+  7. **Critical Retention Protection**: An unresolved critical incident cannot be deleted, including during automated storage retention cleanups.
+  8. **Sensor Failure Confidence Monotonicity**: A failed, degraded, or dropped sensor can never increase event confidence or computed risk score.
+
+### 3. Primary Metrics & Target Thresholds
+- **Invariant Pass Rate**: $100\%$ (8 of 8 invariants strictly passing, 0 violations permitted).
+- **State-Changing Route Coverage**: $100\%$ of all state-changing endpoints (`POST`, `PUT`, `DELETE`) in `app.py` protected by active permission matrix rules and CSRF validation.
+- **Role $\times$ Action Matrix Rejection Rate**: $100\%$ of unauthorized role-action combinations rejected with HTTP 403 or `PermissionDenied`.
+
+### 4. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. All 8 safety invariants verified via automated checker, role-matrix tests, and property tests.
+  2. 100% of state-changing routes have explicit policy coverage.
+  3. Declarative policy file (`src/config/safety_policies.json`) drives both runtime enforcement and offline validation.
+  4. Model registry enforces `status` (`PRODUCTION`, `CANDIDATE`, `RESEARCH_ONLY`) at the actuation boundary.
+  5. Policy checker runnable via module, CLI (`python -m src.modules.security.safety_policy_checker`), and CI test, outputting `docs/SAFETY_POLICY.md` and `results/safety_policy_verification.json`.
+  6. Any invariant violation immediately fails the build with non-zero exit code.
+- **Failure Criteria**:
+  - Any bypassed permission, untracked commander action, automated external dispatch, actuation from a non-production model, modification of a closed incident, deletion of an unresolved incident, or confidence increase on sensor failure constitutes an immediate build-breaking invariant failure.
+
+### 5. Honest Scope Disclaimer
+- Automated verification demonstrates invariant satisfaction across covered execution paths, mock scenarios, and property-based sweeps; it does not constitute a formal mathematical proof (e.g. TLA+ or Coq).

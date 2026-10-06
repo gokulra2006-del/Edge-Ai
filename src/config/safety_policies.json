@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sentinel-AI Platform Safety Policies & Invariants Specification",
+  "version": "1.0.0",
+  "last_updated": "2026-10-06T18:45:00Z",
+  "policy_metadata": {
+    "system": "Sentinel-AI Edge Platform",
+    "verification_level": "CRITICAL_SAFETY_INVARIANT",
+    "enforcement_modes": ["STATIC_ANALYSIS", "RUNTIME_GATE", "TEST_SUITE"]
+  },
+  "invariants": [
+    {
+      "id": "INV-01-VIEWER-NO-ACTUATION",
+      "name": "Viewer Actuation Guard",
+      "statement": "A Viewer cannot actuate hardware under any circumstances.",
+      "category": "ROLE_BASED_ACCESS_CONTROL",
+      "target_roles": ["VIEWER"],
+      "prohibited_actions": [
+        "POST /api/actuators/servo",
+        "POST /api/actuators/buzzer",
+        "POST /api/hardware/mode"
+      ],
+      "enforcement_points": [
+        "src/modules/security/permission_matrix.py",
+        "src/modules/dashboard/app.py"
+      ],
+      "severity": "CRITICAL",
+      "must_fail_build": true
+    },
+    {
+      "id": "INV-02-OPERATOR-NO-RESOLVE",
+      "name": "Operator Resolution Guard",
+      "statement": "An Operator cannot resolve incidents; resolution is strictly restricted to Incident Commander.",
+      "category": "SEPARATION_OF_DUTIES",
+      "target_roles": ["OPERATOR", "VIEWER", "ENGINEER"],
+      "prohibited_actions": [
+        "POST /api/incidents/{id}/resolve",
+        "OperatorWorkflow.act(..., action='resolve')"
+      ],
+      "enforcement_points": [
+        "src/modules/incident_management/workflow.py",
+        "src/modules/security/permission_matrix.py"
+      ],
+      "severity": "CRITICAL",
+      "must_fail_build": true
+    },
+    {
+      "id": "INV-03-COMMANDER-AUDIT-LOGGED",
+      "name": "Commander Action Non-Repudiation",
+      "statement": "Every Commander action is unconditionally audit-logged in the tamper-evident ledger.",
+      "category": "AUDITABILITY",
+      "target_roles": ["COMMANDER"],
+      "required_ledger": "operator_actions",
+      "enforcement_points": [
+        "src/modules/incident_management/workflow.py",
+        "src/modules/dashboard/app.py"
+      ],
+      "severity": "CRITICAL",
+      "must_fail_build": true
+    },
+    {
+      "id": "INV-04-NO-AUTOMATIC-DISPATCH",
+      "name": "Manual Emergency Dispatch Gate",
+      "statement": "External municipal emergency dispatch is never automated; it requires explicit human Commander escalation.",
+      "category": "HUMAN_IN_THE_LOOP",
+      "prohibited_behaviors": [
+        "Automatic external HTTP dispatch without human confirmation",
+        "Autonomous siren escalation without human authorization"
+      ],
+      "enforcement_points": [
+        "src/modules/decision/uncertainty_fusion.py",
+        "src/modules/incident_management/workflow.py"
+      ],
+      "severity": "CRITICAL",
+      "must_fail_build": true
+    },
+    {
+      "id": "INV-05-RESEARCH-MODEL-BOUNDARY",
+      "name": "Model Registry Restriction Gate",
+      "statement": "A RESEARCH_ONLY or CANDIDATE model can never authorize physical actuation or live emergency alerts.",
+      "category": "MODEL_GOVERNANCE",
+      "restricted_statuses": ["RESEARCH_ONLY", "CANDIDATE"],
+      "allowed_actuation_status": "PRODUCTION",
+      "enforcement_points": [
+        "src/modules/core/safety_registry_gate.py"
+      ],
+      "severity": "CRITICAL",
+      "must_fail_build": true
+    },
+    {
+      "id": "INV-06-CLOSED-INCIDENT-IMMUTABLE",
+      "name": "Closed Incident Immutability",
+      "statement": "A closed incident cannot be modified; lifecycle transitions and outcomes are immutable.",
+      "category": "DATA_INTEGRITY",
+      "immutable_states": ["CLOSED"],
+      "allowed_post_close_action": "note",
+      "enforcement_points": [
+        "src/modules/incident_management/workflow.py",
+        "src/modules/database/governed_store.py"
+      ],
+      "severity": "HIGH",
+      "must_fail_build": true
+    },
+    {
+      "id": "INV-07-CRITICAL-INCIDENT-NO-DELETE",
+      "name": "Critical Incident Retention Protection",
+      "statement": "An unresolved critical incident cannot be deleted, including during automated storage retention cleanups.",
+      "category": "RETENTION_SAFETY",
+      "protected_statuses": ["OPEN", "ACKNOWLEDGED", "CONFIRMED", "ESCALATED", "REVIEW_REQUIRED"],
+      "enforcement_points": [
+        "src/modules/storage/storage_safety.py",
+        "src/modules/database/governed_store.py"
+      ],
+      "severity": "CRITICAL",
+      "must_fail_build": true
+    },
+    {
+      "id": "INV-08-SENSOR-FAILURE-MONOTONICITY",
+      "name": "Sensor Failure Confidence Monotonicity",
+      "statement": "A failed, degraded, or dropped sensor can never increase event confidence or computed risk score.",
+      "category": "UNCERTAINTY_SAFETY",
+      "mathematical_invariant": "Risk(degraded) <= Risk(healthy) + 1e-6",
+      "enforcement_points": [
+        "src/modules/decision/uncertainty_fusion.py",
+        "src/modules/incident_management/replay_engine.py",
+        "src/modules/decision/counterfactual_engine.py"
+      ],
+      "severity": "CRITICAL",
+      "must_fail_build": true
+    }
+  ]
+}

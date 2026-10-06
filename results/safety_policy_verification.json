@@ -1,0 +1,87 @@
+{
+  "timestamp": "2026-10-06T19:02:28.424820+00:00",
+  "git_hash": "7bcf151",
+  "data_tag": "SYNTHETIC",
+  "total_invariants": 8,
+  "passed_invariants": 8,
+  "failed_invariants": 0,
+  "all_passed": true,
+  "endpoint_coverage": {
+    "total_endpoints": 26,
+    "covered_endpoints": 26,
+    "uncovered_routes": [],
+    "coverage_pct": 100.0,
+    "sample_covered_routes": [
+      "POST /api/auth/setup-admin",
+      "POST /api/auth/login",
+      "POST /api/auth/logout",
+      "POST /api/auth/users",
+      "DELETE /api/auth/users/test",
+      "POST /api/replay/execute",
+      "POST /api/reports/generate",
+      "POST /api/evidence/verify",
+      "POST /api/storage/cleanup",
+      "POST /api/storage/checkpoint"
+    ],
+    "all_covered": true
+  },
+  "scope_disclaimer": "This verification report provides automated empirical testing and static route analysis of core architectural invariants across platform code paths. It is rigorous automated assurance, but does not constitute a formal mathematical proof (e.g., TLA+ or Coq machine proof).",
+  "checks": [
+    {
+      "invariant_id": "INV-01-VIEWER-NO-ACTUATION",
+      "name": "Viewer Actuation Guard",
+      "passed": true,
+      "details": "Tested 3 actuator endpoints against role VIEWER; all returned 403 Forbidden.",
+      "violations": []
+    },
+    {
+      "invariant_id": "INV-02-OPERATOR-NO-RESOLVE",
+      "name": "Operator Resolution Guard",
+      "passed": true,
+      "details": "Verified that both permission matrix and OperatorWorkflow reject OPERATOR resolution with PermissionDenied.",
+      "violations": []
+    },
+    {
+      "invariant_id": "INV-03-COMMANDER-AUDIT-LOGGED",
+      "name": "Commander Action Non-Repudiation",
+      "passed": true,
+      "details": "Verified all Commander lifecycle transitions (acknowledge, resolve, escalate, confirm) are written to operator_actions ledger.",
+      "violations": []
+    },
+    {
+      "invariant_id": "INV-04-NO-AUTOMATIC-DISPATCH",
+      "name": "Manual Emergency Dispatch Gate",
+      "passed": true,
+      "details": "Verified decision engines only synthesize recommendations; physical dispatch requires human Commander escalation.",
+      "violations": []
+    },
+    {
+      "invariant_id": "INV-05-RESEARCH-MODEL-BOUNDARY",
+      "name": "Model Registry Restriction Gate",
+      "passed": true,
+      "details": "Verified status (PRODUCTION / CANDIDATE / RESEARCH_ONLY) strictly enforced at actuation boundary.",
+      "violations": []
+    },
+    {
+      "invariant_id": "INV-06-CLOSED-INCIDENT-IMMUTABLE",
+      "name": "Closed Incident Immutability",
+      "passed": true,
+      "details": "Verified that CLOSED incidents strictly reject all transitions (acknowledge, confirm, escalate, resolve, false_alarm).",
+      "violations": []
+    },
+    {
+      "invariant_id": "INV-07-CRITICAL-INCIDENT-NO-DELETE",
+      "name": "Critical Incident Retention Protection",
+      "passed": true,
+      "details": "Verified that active/unresolved critical incidents and linked evidence are strictly protected from retention pruning.",
+      "violations": []
+    },
+    {
+      "invariant_id": "INV-08-SENSOR-FAILURE-MONOTONICITY",
+      "name": "Sensor Failure Confidence Monotonicity",
+      "passed": true,
+      "details": "Property test: Degraded health inputs (camera, audio, sensors) and sensor disagreement monotonically decrease risk.",
+      "violations": []
+    }
+  ]
+}
