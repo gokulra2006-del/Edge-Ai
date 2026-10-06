@@ -97,8 +97,9 @@ class HealthMonitor:
         self.repository = repository
         self.config = config or self._load_config()
         self.cfg = self.config.get("monitoring", {}).get("health", {})
-        self.warn_storage = int(self.cfg.get("storage_warning_bytes", 1000000000))
-        self.crit_storage = int(self.cfg.get("storage_critical_bytes", 250000000))
+        storage_thresh = self.config.get("storage", {}).get("thresholds", {})
+        self.warn_storage = int(storage_thresh.get("warning_bytes", self.cfg.get("storage_warning_bytes", 1000000000)))
+        self.crit_storage = int(storage_thresh.get("critical_bytes", self.cfg.get("storage_critical_bytes", 250000000)))
         self.writer_depth_warn = int(self.cfg.get("writer_queue_warning_depth", 192))
         self.last_status: Dict[str, str] = {}
         self.last_seen: Dict[str, str] = {}
@@ -156,7 +157,13 @@ class HealthMonitor:
 
         components["storage"] = {
             "status": st_status, "reason_code": st_reason, "message": st_msg,
-            "last_seen": now, "details": {"free_bytes": usage.free, "total_bytes": usage.total}
+            "last_seen": now, "details": {
+                "free_bytes": usage.free,
+                "total_bytes": usage.total,
+                "warning_threshold_bytes": self.warn_storage,
+                "critical_threshold_bytes": self.crit_storage,
+                "wal_bytes": wal_size,
+            }
         }
 
         # 3. Hardware sensors & camera/mic via HARDWARE_HUB
@@ -419,3 +426,30 @@ class OfflineSyncOutbox:
         for r in rows:
             counts[r["status"]] = r["count"]
         return counts
+
+    def catch_up(self, sync_fn: Any, batch_size: int = 50, max_batches: int = 20) -> int:
+        """
+        Drains multiple batches in succession after network outage recovery.
+        Returns total successfully processed items.
+        """
+        total = 0
+        for _ in range(max_batches):
+            processed = self.drain_batch(sync_fn, limit=batch_size)
+            total += processed
+            if processed < batch_size:
+                break
+        return total
+
+    def reset_backoff_for_catchup(self) -> None:
+        """
+        Resets next_attempt_at to current timestamp for all PENDING items
+        so that network reconnection immediately processes accumulated backlog.
+        """
+        now = utc_now()
+        self.repository.writer.submit(
+            lambda db: db.execute(
+                "UPDATE sync_outbox SET next_attempt_at=? WHERE status='PENDING'",
+                (now,)
+            )
+        )
+

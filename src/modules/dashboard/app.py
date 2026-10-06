@@ -38,12 +38,15 @@ from src.modules.assurance.drift_monitor import ModelDriftMonitor
 from src.modules.assurance.device_health import HealthMonitor, OfflineSyncOutbox
 from src.modules.hardware.stream_service import CAMERA_STREAM, AUDIO_STREAM
 from src.modules.analytics.analytics_engine import AnalyticsEngine
+from src.modules.storage.storage_safety import StorageRetentionEngine, StorageSafetyStatus
 
 DRIFT_MONITOR = ModelDriftMonitor(GOVERNED_REPOSITORY)
 HEALTH_MONITOR = HealthMonitor(GOVERNED_REPOSITORY)
 OUTBOX = OfflineSyncOutbox(GOVERNED_REPOSITORY)
 DRIFT_MONITOR.ensure_default_baselines()
 ANALYTICS_ENGINE = AnalyticsEngine(GOVERNED_REPOSITORY)
+STORAGE_ENGINE = StorageRetentionEngine(GOVERNED_REPOSITORY)
+STORAGE_STATUS = StorageSafetyStatus(STORAGE_ENGINE)
 
 _ANALYTICS_CACHE: dict[str, tuple[float, Any]] = {}
 ANALYTICS_CACHE_TTL = 5.0
@@ -589,6 +592,27 @@ class DashboardHandler(BaseHTTPRequestHandler):
             svc = get_report_service(GOVERNED_REPOSITORY)
             self._json(svc.list_reports())
             return
+
+        elif path == "/api/storage/status":
+            self._json(STORAGE_STATUS.get_status())
+            return
+
+        elif path == "/api/storage/cleanup-logs":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            if actor["role"].upper() not in ("COMMANDER", "ENGINEER"):
+                self._json({"error": f"{actor['role']} is not permitted to view cleanup logs"}, 403)
+                return
+            limit = int(query.get("limit", ["20"])[0])
+            with sqlite3.connect(str(GOVERNED_REPOSITORY.db_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM storage_cleanup_logs ORDER BY id DESC LIMIT ?", (limit,))
+                rows = [dict(r) for r in cursor.fetchall()]
+            self._json(rows)
+            return
         else:
             self.send_response(404)
             self.end_headers()
@@ -638,6 +662,73 @@ class DashboardHandler(BaseHTTPRequestHandler):
             res = verifier.verify_all_evidence()
             self._json(res)
             return
+
+        if path == "/api/storage/cleanup":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "ENGINEER"):
+                self._json({"error": f"{role} is not permitted to trigger storage cleanup"}, 403)
+                return
+            payload = self._payload()
+            policy = str(payload.get("policy", "all")).lower()
+            dry_run = bool(payload.get("dry_run", False))
+
+            if policy == "all":
+                res = STORAGE_ENGINE.run_full_cleanup(dry_run=dry_run)
+            elif policy == "telemetry":
+                res = STORAGE_ENGINE.archive_telemetry(dry_run=dry_run)
+            elif policy == "dvr":
+                res = STORAGE_ENGINE.evict_dvr(dry_run=dry_run)
+            elif policy == "evidence":
+                res = STORAGE_ENGINE.cleanup_evidence(dry_run=dry_run)
+            elif policy == "reports":
+                res = STORAGE_ENGINE.cleanup_reports(dry_run=dry_run)
+            elif policy == "logs":
+                res = STORAGE_ENGINE.cleanup_logs(dry_run=dry_run)
+            elif policy == "outbox":
+                res = STORAGE_ENGINE.cleanup_outbox(dry_run=dry_run)
+            else:
+                self._json({"error": f"Unknown cleanup policy: {policy}"}, 400)
+                return
+
+            GOVERNED_REPOSITORY.writer.submit(
+                lambda db, op=actor["operator_id"], act="storage_cleanup", dj=json.dumps({"policy": policy, "dry_run": dry_run, "res": res}): (
+                    db.execute(
+                        "INSERT INTO operator_actions(incident_id,timestamp,operator_id,action,approved,payload_json) VALUES(?,?,?,?,?,?)",
+                        ("SYSTEM", utc_now(), op, act, 1, dj)
+                    )
+                )
+            )
+            self._json(res)
+            return
+
+        if path == "/api/storage/checkpoint":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "ENGINEER"):
+                self._json({"error": f"{role} is not permitted to trigger WAL checkpoint"}, 403)
+                return
+            payload = self._payload()
+            mode = str(payload.get("mode", "PASSIVE")).upper()
+            res = STORAGE_ENGINE.wal_manager.checkpoint(mode=mode)
+
+            GOVERNED_REPOSITORY.writer.submit(
+                lambda db, op=actor["operator_id"], act="wal_checkpoint", dj=json.dumps({"mode": mode, "res": res}): (
+                    db.execute(
+                        "INSERT INTO operator_actions(incident_id,timestamp,operator_id,action,approved,payload_json) VALUES(?,?,?,?,?,?)",
+                        ("SYSTEM", utc_now(), op, act, 1, dj)
+                    )
+                )
+            )
+            self._json(res)
+            return
+
 
         if path == "/api/auth/login":
             length = int(self.headers.get("Content-Length", 0))

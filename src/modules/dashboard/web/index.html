@@ -1630,6 +1630,117 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Production Data Retention, Storage Safety & WAL Management (Phase 5D) -->
+                <section class="p-6 rounded-2xl bg-cardSurface border border-cardBorder shadow-card space-y-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div>
+                            <h3 class="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
+                                Storage Safety, WAL Management & Data Retention (Phase 5D)
+                            </h3>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Automated telemetry archival, DVR oldest-first cap, and SQLite WAL truncation</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="storageHealthStatusBadge" class="px-2.5 py-1 rounded text-[11px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
+                                STORAGE: OK
+                            </span>
+                            <button onclick="loadStorageStatus()" class="btn-press px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-xs font-bold transition">
+                                REFRESH
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Storage Utilization Metrics & Thresholds -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                            <div class="text-[10px] font-mono uppercase text-slate-500 font-bold">Disk Free Space</div>
+                            <div id="storageFreeText" class="text-lg font-black font-mono text-slate-900 mt-1">-- GB Free</div>
+                            <div id="storageWarningText" class="text-[10px] font-mono text-amber-600 mt-0.5">Warn: &lt; 1.0 GB &middot; Crit: &lt; 250 MB</div>
+                        </div>
+
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                            <div class="text-[10px] font-mono uppercase text-slate-500 font-bold">SQLite WAL Journal</div>
+                            <div id="storageWalText" class="text-lg font-black font-mono text-slate-900 mt-1">-- KB</div>
+                            <div class="text-[10px] font-mono text-slate-400 mt-0.5">Auto-Truncate: 10 MB</div>
+                        </div>
+
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                            <div class="text-[10px] font-mono uppercase text-slate-500 font-bold">DVR Video Storage</div>
+                            <div id="storageDvrText" class="text-lg font-black font-mono text-slate-900 mt-1">-- MB</div>
+                            <div class="text-[10px] font-mono text-slate-400 mt-0.5">Max Cap: 500 MB (Oldest Eviction)</div>
+                        </div>
+
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                            <div class="text-[10px] font-mono uppercase text-slate-500 font-bold">Forensic Evidence</div>
+                            <div id="storageEvidenceText" class="text-lg font-black font-mono text-slate-900 mt-1">-- MB</div>
+                            <div class="text-[10px] font-mono text-emerald-600 mt-0.5">Active Incidents Protected</div>
+                        </div>
+                    </div>
+
+                    <!-- Safety Protections & Role Enforcement Banner -->
+                    <div class="p-3.5 rounded-xl border border-blue-200 bg-blue-50/60 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px]">PROTECTIONS</span>
+                            <span class="text-blue-900 font-semibold">Active Incidents, Linked Evidence, Audit Trail, &amp; Unsynced Outbox are NEVER Deleted.</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-[10px] text-slate-500">
+                            <span>Authorized: <strong class="text-slate-800">Commander &amp; Engineer</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Controls: Checkpoint & Cleanup -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                        <!-- WAL Checkpoint Control Card -->
+                        <div class="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold font-mono text-xs text-slate-900">SQLITE WAL CHECKPOINT</span>
+                                <span class="text-[10px] font-mono text-slate-400">Zero-Lock Maintenance</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500">Flushes WAL log pages into SQLite main database and resets journal file.</p>
+                            <div class="flex items-center gap-2 pt-1">
+                                <button onclick="triggerWalCheckpoint('PASSIVE')" class="btn-press px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-mono font-bold text-xs transition">
+                                    PASSIVE FLUSH
+                                </button>
+                                <button onclick="triggerWalCheckpoint('TRUNCATE')" class="btn-press px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-mono font-bold text-xs transition">
+                                    TRUNCATE WAL (0 KB)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Retention Cleanup Control Card -->
+                        <div class="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold font-mono text-xs text-slate-900">SAFE RETENTION CLEANUP</span>
+                                <label class="flex items-center gap-1.5 text-[11px] font-mono text-slate-600 cursor-pointer">
+                                    <input type="checkbox" id="storageDryRunToggle" checked class="rounded border-slate-300 text-blue-600">
+                                    <span>Dry Run (Simulate)</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <select id="storagePolicySelect" class="text-xs font-mono p-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 flex-1">
+                                    <option value="all">Full Cleanup (All Policies)</option>
+                                    <option value="telemetry">Archive Old Telemetry Only</option>
+                                    <option value="dvr">Evict Old DVR Clips Only</option>
+                                    <option value="evidence">Prune Obsolete Evidence Only</option>
+                                    <option value="reports">Prune Old Reports Only</option>
+                                    <option value="outbox">Prune Synced Outbox Only</option>
+                                </select>
+                                <button onclick="triggerStorageCleanup()" class="btn-press px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-mono font-bold text-xs transition">
+                                    EXECUTE
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cleanup Results & Status Console -->
+                    <div id="storageCleanupResultBox" class="hidden p-3.5 rounded-xl border border-slate-200 bg-slate-900 text-slate-100 text-xs font-mono">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px] text-slate-400">
+                            <span>LAST EXECUTION RESULT</span>
+                            <span id="storageResultTimestamp">--:--:--</span>
+                        </div>
+                        <pre id="storageResultContent" class="mt-2 text-[11px] whitespace-pre-wrap overflow-x-auto text-emerald-400"></pre>
+                    </div>
+                </section>
             </div>
 
             <!-- ================================================================= -->

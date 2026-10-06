@@ -91,3 +91,37 @@ python -m src.modules.reporting verify-evidence
 ### Forensic Evidence Verification
 The verification engine re-hashes all physical evidence files (keyframes, audio clips, sensor traces) on disk using SHA-256 and compares them with the immutable records stored in the SQLite ledger. Any missing or tampered file is immediately flagged with its expected vs. actual digest and logged to the audit trail.
 
+## Data Retention and Storage Safety (Phase 5D)
+
+To ensure unattended 24/7 reliability on the Raspberry Pi 4, Sentinel-AI enforces automated retention limits, storage safety margins, and database maintenance routines.
+
+### Retention Policies & Safeguards
+
+| Subsystem | Policy Limit | Eviction / Retention Mechanism | Safeguard |
+|---|---|---|---|
+| **Raw Telemetry** | 3 days raw / 7 days max | Automatically compressed to `.json.gz` archives in `data/archives/` before raw rows are pruned from SQLite. | Archive SHA-256 is verified before pruning. |
+| **Blackbox DVR** | 500 MB hard cap | Oldest video recordings are evicted first when the directory exceeds the storage cap. | Newest pre/post-crash emergency clips are retained. |
+| **Forensic Evidence** | 30 days | Files older than 30 days are pruned only if the linked incident is `CLOSED` or `RESOLVED`. | **NEVER deletes active incidents or evidence linked to open incidents.** |
+| **Audit Ledger** | Indefinite | Permanent immutable history. | **NEVER deleted under any circumstances.** |
+| **Offline Sync Outbox** | 500 rows max | Expired `SYNCED` rows pruned after 7 days. Low-priority telemetry dropped if cap exceeded. | **NEVER drops `HIGH`, `AUDIT`, or unsynced (`PENDING`/`DEAD_LETTER`) rows.** |
+| **SQLite WAL** | 10 MB threshold | Automatic `TRUNCATE` checkpoints to reclaim flash storage space. | Passive checkpoints flush pages with zero database locks. |
+
+### Storage CLI Commands
+
+```bash
+# View storage health, volume utilization, and threshold margins
+python -m src.modules.storage status
+
+# Run safe retention cleanup in dry-run mode (simulate without deletion)
+python -m src.modules.storage cleanup --dry-run --policy all --role COMMANDER
+
+# Execute real storage cleanup (Commander or Engineer role required)
+python -m src.modules.storage cleanup --policy all --role COMMANDER
+
+# Force a WAL checkpoint (PASSIVE or TRUNCATE)
+python -m src.modules.storage checkpoint --mode TRUNCATE --role ENGINEER
+
+# View immutable history of storage cleanup actions
+python -m src.modules.storage logs --limit 10
+```
+

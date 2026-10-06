@@ -193,5 +193,32 @@
       "backoff_max_seconds": 60.0,
       "jitter_factor": 0.2
     }
+  },
+  "storage": {
+    "retention": {
+      "raw_telemetry_days": 7,
+      "archive_telemetry_after_days": 3,
+      "dvr_max_bytes": 524288000,
+      "evidence_retention_days": 30,
+      "reports_retention_days": 90,
+      "logs_retention_days": 14,
+      "synced_outbox_retention_days": 7
+    },
+    "wal": {
+      "checkpoint_mode": "PASSIVE",
+      "auto_truncate_bytes": 10485760,
+      "checkpoint_interval_seconds": 60
+    },
+    "thresholds": {
+      "warning_bytes": 1000000000,
+      "critical_bytes": 250000000
+    },
+    "paths": {
+      "archives_dir": "data/archives",
+      "dvr_dir": "data/recordings",
+      "evidence_dir": "data/evidence",
+      "reports_dir": "reports",
+      "logs_dir": "logs"
+    }
   }
 }

@@ -2110,6 +2110,7 @@ async function loadSystemHealth() {
         if (driftRes) renderDriftPanel(driftRes);
         if (streamsRes) renderStreamsPanel(streamsRes);
         if (outboxRes) renderOutboxPanel(outboxRes);
+        loadStorageStatus();
     } catch (e) {
         console.error("loadSystemHealth error:", e);
     }
@@ -2720,3 +2721,111 @@ function renderSyncBacklog(outbox) {
         </div>
     `).join("");
 }
+
+/* ========================================================================= */
+/* 10. STORAGE SAFETY & DATA RETENTION (PHASE 5D)                            */
+/* ========================================================================= */
+
+async function loadStorageStatus() {
+    try {
+        const res = await fetch("/api/storage/status");
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const badge = document.getElementById("storageHealthStatusBadge");
+        if (badge) {
+            badge.innerText = `STORAGE: ${data.status}`;
+            badge.className = `px-2.5 py-1 rounded text-[11px] font-mono font-bold uppercase border ${
+                data.status === "OK" ? "bg-emerald-100 text-emerald-800 border-emerald-200" :
+                data.status === "DEGRADED" ? "bg-amber-100 text-amber-800 border-amber-200" :
+                "bg-rose-100 text-rose-800 border-rose-200"
+            }`;
+        }
+
+        const freeGb = (data.free_bytes / (1024 * 1024 * 1024)).toFixed(1);
+        const freeEl = document.getElementById("storageFreeText");
+        if (freeEl) freeEl.innerText = `${freeGb} GB Free (${data.free_percent}%)`;
+
+        const subs = data.subsystem_bytes || {};
+        const walKb = Math.round((subs.wal || 0) / 1024);
+        const walEl = document.getElementById("storageWalText");
+        if (walEl) walEl.innerText = `${walKb} KB`;
+
+        const dvrMb = ((subs.dvr || 0) / (1024 * 1024)).toFixed(1);
+        const dvrEl = document.getElementById("storageDvrText");
+        if (dvrEl) dvrEl.innerText = `${dvrMb} MB`;
+
+        const evidMb = ((subs.evidence || 0) / (1024 * 1024)).toFixed(1);
+        const evidEl = document.getElementById("storageEvidenceText");
+        if (evidEl) evidEl.innerText = `${evidMb} MB`;
+    } catch (e) {
+        console.error("loadStorageStatus error:", e);
+    }
+}
+
+async function triggerWalCheckpoint(mode) {
+    const token = localStorage.getItem("sentinel_token");
+    if (!token) {
+        alert("Authentication required. Please log in as Commander or Engineer.");
+        return;
+    }
+    try {
+        const res = await fetch("/api/storage/checkpoint", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ mode: mode })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert(`Checkpoint error: ${data.error || "Failed"}`);
+            return;
+        }
+        alert(`WAL Checkpoint (${mode}) complete!\nPages checkpointed: ${data.checkpointed_pages}\nWAL size: ${Math.round(data.wal_size_after / 1024)} KB`);
+        loadStorageStatus();
+    } catch (e) {
+        alert("Failed to trigger WAL checkpoint: " + e.message);
+    }
+}
+
+async function triggerStorageCleanup() {
+    const token = localStorage.getItem("sentinel_token");
+    if (!token) {
+        alert("Authentication required. Please log in as Commander or Engineer.");
+        return;
+    }
+    const policy = document.getElementById("storagePolicySelect")?.value || "all";
+    const dryRun = document.getElementById("storageDryRunToggle")?.checked ?? true;
+
+    try {
+        const res = await fetch("/api/storage/cleanup", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ policy: policy, dry_run: dryRun })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert(`Cleanup error: ${data.error || "Failed"}`);
+            return;
+        }
+
+        const box = document.getElementById("storageCleanupResultBox");
+        const ts = document.getElementById("storageResultTimestamp");
+        const content = document.getElementById("storageResultContent");
+
+        if (box && content) {
+            box.classList.remove("hidden");
+            if (ts) ts.innerText = new Date().toLocaleTimeString();
+            content.innerText = JSON.stringify(data, null, 2);
+        }
+        loadStorageStatus();
+    } catch (e) {
+        alert("Failed to execute storage cleanup: " + e.message);
+    }
+}
+

@@ -184,6 +184,20 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     CREATE INDEX IF NOT EXISTS idx_feedback_ts ON prediction_feedback(timestamp);
     CREATE INDEX IF NOT EXISTS idx_operator_actions_ts ON operator_actions(timestamp);
     """),
+    (7, """
+    CREATE TABLE IF NOT EXISTS storage_cleanup_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      policy_type TEXT NOT NULL,
+      items_inspected INTEGER NOT NULL,
+      items_archived INTEGER NOT NULL,
+      items_pruned INTEGER NOT NULL,
+      bytes_freed INTEGER NOT NULL,
+      dry_run INTEGER NOT NULL,
+      details_json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_cleanup_logs_ts ON storage_cleanup_logs(timestamp);
+    """),
 )
 
 
