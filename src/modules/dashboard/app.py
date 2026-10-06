@@ -886,6 +886,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
             result = engine.execute_replay(incident_id=incident_id, steps=trace)
             self._json(result.to_dict())
             return
+        elif path == "/api/counterfactual/explain":
+            query = urllib.parse.parse_qs(parsed.query)
+            incident_id = query.get("incident", ["INC-DEMO-001"])[0]
+            from replay.__main__ import build_sample_incident_trace
+            from src.modules.decision.counterfactual_engine import CounterfactualExplanationEngine
+            trace = build_sample_incident_trace(incident_id)
+            explainer = CounterfactualExplanationEngine()
+            explanation = explainer.explain_incident(incident_id=incident_id, steps=trace)
+            self._json(explanation.to_dict())
+            return
         else:
             self.send_response(404)
             self.end_headers()

@@ -2174,10 +2174,57 @@ async function showIncidentDetail(id) {
     <div class="grid md:grid-cols-2 gap-4 mt-4"><div><h4 class="text-xs font-bold uppercase text-slate-500">Temporal timeline</h4>${(item.incident_events||[]).map(e=>`<div class="text-xs mt-2 p-2 bg-white rounded border">${escapeHtml(e.event_type)} · ${escapeHtml(e.timestamp)}</div>`).join("")||'<p class="text-xs mt-2">No transitions</p>'}</div><div><h4 class="text-xs font-bold uppercase text-slate-500">Risk and assurance</h4><pre class="text-[10px] whitespace-pre-wrap mt-2 bg-white p-2 rounded border">${escapeHtml(JSON.stringify({risk:risk||"not available",assurance:assurance||"not available"},null,2))}</pre></div></div>
     <div class="mt-4"><h4 class="text-xs font-bold uppercase text-slate-500">Evidence integrity</h4>${(item.evidence||[]).map(e=>`<div class="mt-2 p-2 bg-white border rounded-lg flex justify-between gap-2 text-xs"><span>${escapeHtml(e.kind)} · ${escapeHtml(e.source_path)}</span><span class="font-bold ${e.hash_verified?'text-emerald-700':'text-rose-700'}">${e.hash_verified?'HASH VERIFIED':'HASH FAILED / MISSING'}</span></div>`).join("")||'<p class="text-xs mt-2">No evidence files attached</p>'}</div>
     <div class="mt-4"><h4 class="text-xs font-bold uppercase text-slate-500">Predictions and feedback</h4>${(item.predictions||[]).map(p=>`<div class="mt-2 p-2 bg-white border rounded-lg flex justify-between gap-2"><span class="text-xs">${escapeHtml(p.label)} · ${Math.round(p.confidence*100)}% · ${escapeHtml(p.model_id||"model unknown")} ${p.model_version?`v${escapeHtml(p.model_version)}`:""}<br><b>${escapeHtml(p.usage_restriction||"UNVERIFIED")}</b></span><span class="flex gap-1">${["CORRECT","INCORRECT","UNSURE"].map(label=>`<button onclick="submitFeedback(${p.id},'${label}')" class="px-2 py-1 border rounded text-[9px] font-bold">${label}</button>`).join("")}</span></div>`).join("")||'<p class="text-xs mt-2">No predictions</p>'}</div>
-    <div class="mt-4"><h4 class="text-xs font-bold uppercase text-slate-500">Actions and notes</h4>${[...(item.operator_actions||[]),...(item.incident_notes||[])].map(a=>`<div class="text-xs mt-2">${escapeHtml(a.action||"NOTE")} · ${escapeHtml(a.operator_id)} · ${escapeHtml(a.note||a.payload_json||"")}</div>`).join("")||'<p class="text-xs mt-2">No operator actions</p>'}</div>`;
+    <div class="mt-4"><h4 class="text-xs font-bold uppercase text-slate-500">Actions and notes</h4>${[...(item.operator_actions||[]),...(item.incident_notes||[])].map(a=>`<div class="text-xs mt-2">${escapeHtml(a.action||"NOTE")} · ${escapeHtml(a.operator_id)} · ${escapeHtml(a.note||a.payload_json||"")}</div>`).join("")||'<p class="text-xs mt-2">No operator actions</p>'}</div>
+    <div id="counterfactualSection" class="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+        <div class="flex items-center justify-between mb-2">
+            <h4 class="text-xs font-bold uppercase text-slate-700">Counterfactual Explanations &amp; Sensitivity (Phase 6E)</h4>
+            <span id="cfFidelityBadge" class="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-600">Computing...</span>
+        </div>
+        <div id="cfContent" class="text-xs text-slate-500">Analyzing decision sensitivity against 6D replay engine...</div>
+    </div>`;
     const legal={OPEN:["acknowledge","false-alarm","notes"],REVIEW_REQUIRED:["acknowledge","false-alarm","notes"],ACKNOWLEDGED:["confirm","false-alarm","escalate","resolve","notes"],CONFIRMED:["escalate","resolve","notes"],ESCALATED:["acknowledge","resolve","notes"],FALSE_ALARM:["resolve","notes"],CLOSED:["notes"]};
     const role=getCurrentUser()?.role; const permitted=role==="COMMANDER"?["acknowledge","confirm","false-alarm","escalate","resolve","notes"]:role==="OPERATOR"?["acknowledge","confirm","false-alarm","notes"]:[]; const actions=(legal[item.status]||[]).filter(x=>permitted.includes(x));
     if(actions.length) panel.innerHTML+=`<div class="mt-4 flex flex-wrap gap-2">${actions.map(action=>`<button onclick="incidentAction('${escapeHtml(item.incident_id)}','${action}',${item.version})" class="px-3 py-2 rounded-lg border bg-white text-[10px] font-bold uppercase">${action.replaceAll("-"," ")}</button>`).join("")}</div>`;
+
+    // Fetch and render counterfactual explanations asynchronously
+    fetch(`/api/counterfactual/explain?incident=${encodeURIComponent(id)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(cf => {
+            if (!cf) return;
+            const badge = document.getElementById("cfFidelityBadge");
+            const cfBox = document.getElementById("cfContent");
+            if (badge) {
+                badge.className = cf.fidelity_verified ? "text-[9px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold" : "text-[9px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold";
+                badge.innerText = cf.fidelity_verified ? "100% REPLAY FIDELITY" : "UNVERIFIED FIDELITY";
+            }
+            if (cfBox) {
+                const abl = cf.ablation_outcomes || {};
+                cfBox.innerHTML = `
+                    <div class="space-y-2">
+                        <div class="p-2 bg-white rounded border text-xs">
+                            <div class="font-semibold text-slate-800">${escapeHtml(cf.explanation_text)}</div>
+                            <div class="text-[10px] text-slate-500 mt-1">
+                                Top Driver: <b class="text-blue-700">${escapeHtml(cf.top_contributing_evidence.toUpperCase())}</b> &bull;
+                                Pivot Sensor: <b class="${cf.pivot_sensor ? 'text-amber-700' : 'text-slate-600'}">${escapeHtml(cf.pivot_sensor ? cf.pivot_sensor.toUpperCase() : 'None (Redundant)')}</b> &bull;
+                                Max Risk Drop: <b class="text-rose-700">${(cf.max_risk_drop * 100).toFixed(1)}%</b>
+                            </div>
+                            ${cf.why_not_triggered ? `<div class="mt-1 text-[11px] text-slate-600 bg-slate-50 p-1.5 rounded border border-dashed"><b>Suppression Rationale:</b> ${escapeHtml(cf.why_not_triggered)}</div>` : ''}
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            ${Object.keys(abl).map(k => {
+                                const a = abl[k];
+                                return `<div class="p-2 bg-white rounded border text-[11px]">
+                                    <div class="font-bold text-slate-700 uppercase">${escapeHtml(k.replace('_', ' '))}</div>
+                                    <div class="text-slate-600">Decision: <b>${escapeHtml(a.decision)}</b></div>
+                                    <div class="text-slate-500">Risk: ${(a.final_risk * 100).toFixed(0)}% (${a.risk_drop > 0 ? '-' + (a.risk_drop * 100).toFixed(0) + '%' : '0%'})</div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        })
+        .catch(() => {});
 }
 
 async function incidentAction(id,action,version){

@@ -189,3 +189,41 @@ All systems process identical timestamped scenario streams through a unified eva
 - **Failure Criteria**:
   - Any mutation to live database tables or trigger of physical actuators during replay constitutes an immediate safety failure.
   - Non-deterministic outputs across identical seeds/replays fails the determinism invariant.
+
+
+---
+
+## Experiment 6E-1: Counterfactual Explanations and Decision Stability Verification
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-06
+- **Status**: PRE-REGISTERED (Criteria locked prior to evaluation runs)
+
+### 2. Hypothesis
+- **Hypothesis**: "Systematic counterfactual ablation of individual sensor modalities provides exact, high-fidelity explanations of edge decisions, exposing critical sensors and sensitivity bounds without mutating live state."
+- **Explanation Fidelity Invariant**: Counterfactual explanations computed by the explanation engine must match bit-for-bit the exact outcomes produced by a true physical replay execution with that sensor removed:
+  $$\text{Fidelity}(\text{Counterfactual}) = 100\% \quad \text{iff} \quad \text{outcome}_{\text{counterfactual}} \equiv \text{outcome}_{\text{replay\_ablation}}$$
+- **Sensor Removal Monotonicity**: Removing any positive evidence stream can NEVER increase final risk:
+  $$\text{risk}(\text{without\_sensor } s) \le \text{risk}(\text{with\_sensor } s) \quad \forall s \in \{\text{camera}, \text{audio}, \text{sensors}\}$$
+
+### 3. Generated Explanations Structure
+For each evaluated incident, generate:
+1. `top_contributing_evidence`: Modality contributing greatest risk weight.
+2. `pivot_sensor`: Which sensor's removal causes a state transition (e.g. `DISPATCH_ALERT` $\to$ `REVIEW_REQUIRED` or `NORMAL`).
+3. `ablation_outcomes`: Explicit outcome map:
+   - `with_all`: baseline status & risk.
+   - `without_camera`: status & risk when camera dropped.
+   - `without_audio`: status & risk when audio dropped.
+   - `without_sensors`: status & risk when environmental sensors dropped.
+4. `highest_impact_missing_sensor`: Sensor whose absence reduces confidence the most.
+5. `suppression_reason`: Detailed forensic explanation if no emergency alert was triggered.
+
+### 4. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. $100\%$ explanation fidelity: every counterfactual ablation outcome matches live `SandboxedReplayEngine` run.
+  2. $100\%$ sensor-removal monotonicity: removing any evidence stream never increases risk.
+  3. Execution latency on a standard 3-step incident trace is $\le 25$ ms (safe for Raspberry Pi 4 CPU budget).
+  4. Explanations stored alongside incident metadata and surfaced in the dashboard.
+- **Failure Criteria**:
+  - Any instance where removing a sensor increases computed risk constitutes a safety invariant failure.
+  - Explanation fidelity $< 100\%$ constitutes an unfaithful explanation failure.

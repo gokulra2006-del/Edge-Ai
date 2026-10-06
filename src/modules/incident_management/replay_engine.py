@@ -187,10 +187,10 @@ class SandboxedReplayEngine:
             active_preds: Dict[str, str] = {}
             if "fire" in step.camera_classes:
                 active_preds["camera"] = "FIRE"
-            elif any("accident" in c or "crash" in c or "vehicle" in c for c in step.camera_classes):
-                active_preds["camera"] = "ACCIDENT"
             elif any("ambulance" in c or "emergency" in c for c in step.camera_classes):
                 active_preds["camera"] = "AMBULANCE"
+            elif any("accident" in c or "crash" in c or "vehicle" in c for c in step.camera_classes):
+                active_preds["camera"] = "ACCIDENT"
             else:
                 active_preds["camera"] = "NORMAL"
 
@@ -217,11 +217,8 @@ class SandboxedReplayEngine:
 
             candidate_class = max(class_votes, key=class_votes.get)  # type: ignore
 
-            # Raw confidence of the candidate class
-            raw_conf = class_votes[candidate_class]
-            if step.camera_classes and step.audio_class != "silence":
-                raw_conf /= 2.0  # normalize average if both active
-            raw_conf = min(1.0, max(0.0, raw_conf))
+            # Raw confidence of the candidate class normalized across configured modalities
+            raw_conf = min(1.0, max(0.0, class_votes[candidate_class] / 2.0))
 
             window_history.append(candidate_class)
             if len(window_history) > 10:
