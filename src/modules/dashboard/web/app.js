@@ -118,12 +118,28 @@ async function handleLoginSubmit(event) {
         // Local development server validates configured passwords. The browser
         // never contains them and no credentials are committed to Git.
         const verified = await fetch("/api/auth/login", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({username: userInput, password})})
-            .then(response => response.ok ? response.json() : null).catch(() => null);
-        if (!verified || verified.role !== matchedUser.role) {
-            if (errEl) { errEl.innerText = "Incorrect username or password."; errEl.classList.remove("hidden"); }
+            .then(async response => {
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    return { error: errData.error || "Login failed" };
+                }
+                return response.json();
+            }).catch(() => null);
+
+        if (!verified || verified.error) {
+            if (errEl) { errEl.innerText = (verified && verified.error) ? verified.error : "Incorrect username or password."; errEl.classList.remove("hidden"); }
             return;
         }
-        setCurrentUser({ ...matchedUser, authToken: verified.token, operatorId: verified.operator_id });
+
+        localStorage.setItem("sentinel_token", verified.token);
+        if (verified.csrf_token) localStorage.setItem("sentinel_csrf_token", verified.csrf_token);
+
+        setCurrentUser({
+            role: verified.role,
+            authToken: verified.token,
+            operatorId: verified.operator_id,
+            csrfToken: verified.csrf_token
+        });
         checkAuthAndRender();
         // Redirect to overview upon login
         switchPage("overview", true);
@@ -140,7 +156,19 @@ function quickLogin(roleKey) {
     if (password) password.focus();
 }
 
-function logout() {
+async function logout() {
+    const token = localStorage.getItem("sentinel_token");
+    try {
+        await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: {
+                "Authorization": token ? `Bearer ${token}` : "",
+                "X-CSRF-Token": localStorage.getItem("sentinel_csrf_token") || ""
+            }
+        });
+    } catch (e) {}
+    localStorage.removeItem("sentinel_token");
+    localStorage.removeItem("sentinel_csrf_token");
     setCurrentUser(null);
     checkAuthAndRender();
 }

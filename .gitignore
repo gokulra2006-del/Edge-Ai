@@ -49,3 +49,6 @@ data/test_tmp/
 reports/*.html
 reports/*.pdf
 reports/*.csv
+.env
+.env.*
+!.env.example

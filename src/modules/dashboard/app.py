@@ -39,6 +39,10 @@ from src.modules.assurance.device_health import HealthMonitor, OfflineSyncOutbox
 from src.modules.hardware.stream_service import CAMERA_STREAM, AUDIO_STREAM
 from src.modules.analytics.analytics_engine import AnalyticsEngine
 from src.modules.storage.storage_safety import StorageRetentionEngine, StorageSafetyStatus
+from src.modules.security.user_store import UserManager
+from src.modules.security.session_manager import SessionManager, SESSION_MANAGER
+from src.modules.security.rate_limiter import LoginRateLimiter, RATE_LIMITER
+from src.modules.security.permission_matrix import check_endpoint_permission
 
 DRIFT_MONITOR = ModelDriftMonitor(GOVERNED_REPOSITORY)
 HEALTH_MONITOR = HealthMonitor(GOVERNED_REPOSITORY)
@@ -47,6 +51,8 @@ DRIFT_MONITOR.ensure_default_baselines()
 ANALYTICS_ENGINE = AnalyticsEngine(GOVERNED_REPOSITORY)
 STORAGE_ENGINE = StorageRetentionEngine(GOVERNED_REPOSITORY)
 STORAGE_STATUS = StorageSafetyStatus(STORAGE_ENGINE)
+USER_MANAGER = UserManager()
+RATE_LIMITER.repository = GOVERNED_REPOSITORY
 
 _ANALYTICS_CACHE: dict[str, tuple[float, Any]] = {}
 ANALYTICS_CACHE_TTL = 5.0
@@ -55,16 +61,76 @@ ANALYTICS_CACHE_TTL = 5.0
 class DashboardHandler(BaseHTTPRequestHandler):
     db = DatabaseManager()
 
+    def _send_security_headers(self):
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("X-XSS-Protection", "1; mode=block")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        self.send_header("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:;")
+
     def _json(self, value, status=200):
-        self.send_response(status); self.send_header("Content-Type", "application/json"); self.send_header("Access-Control-Allow-Origin", "*"); self.end_headers()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self._send_security_headers()
+        self.end_headers()
         self.wfile.write(json.dumps(value, default=str).encode("utf-8"))
 
     def _payload(self):
-        length = int(self.headers.get("Content-Length", 0)); return json.loads(self.rfile.read(length) or b"{}")
+        length = int(self.headers.get("Content-Length", 0))
+        return json.loads(self.rfile.read(length) or b"{}")
 
     def _actor(self):
-        token = self.headers.get("Authorization", "").removeprefix("Bearer ")
-        return AUTH_SESSIONS.get(token)
+        token = ""
+        auth_hdr = self.headers.get("Authorization", "")
+        if auth_hdr.startswith("Bearer "):
+            token = auth_hdr.removeprefix("Bearer ").strip()
+        if not token:
+            cookie_hdr = self.headers.get("Cookie", "")
+            for part in cookie_hdr.split(";"):
+                part_strip = part.strip()
+                if part_strip.startswith("sentinel_token="):
+                    token = part_strip.removeprefix("sentinel_token=").strip()
+                    break
+
+        if not token:
+            return None
+
+        # Check in SessionManager first (with idle & absolute timeout enforcement)
+        session, err = SESSION_MANAGER.get_session(token)
+        if session:
+            AUTH_SESSIONS[token] = session
+            return session
+
+        # Fallback to legacy AUTH_SESSIONS dictionary (for test mocks)
+        if token in AUTH_SESSIONS:
+            return AUTH_SESSIONS[token]
+
+        return None
+
+    def _validate_csrf(self) -> bool:
+        cookie_hdr = self.headers.get("Cookie", "")
+        auth_hdr = self.headers.get("Authorization", "")
+        csrf_hdr = self.headers.get("X-CSRF-Token")
+
+        token = ""
+        if auth_hdr.startswith("Bearer "):
+            token = auth_hdr.removeprefix("Bearer ").strip()
+        elif "sentinel_token=" in cookie_hdr:
+            for part in cookie_hdr.split(";"):
+                if part.strip().startswith("sentinel_token="):
+                    token = part.strip().removeprefix("sentinel_token=").strip()
+                    break
+
+        if not token:
+            return True
+
+        if "sentinel_token=" in cookie_hdr and not auth_hdr:
+            return SESSION_MANAGER.validate_csrf(token, csrf_hdr)
+        if csrf_hdr:
+            return SESSION_MANAGER.validate_csrf(token, csrf_hdr)
+
+        return True
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -611,7 +677,31 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 cursor = conn.cursor()
                 cursor.execute("SELECT * FROM storage_cleanup_logs ORDER BY id DESC LIMIT ?", (limit,))
                 rows = [dict(r) for r in cursor.fetchall()]
-            self._json(rows)
+        elif path == "/api/auth/setup-status":
+            self._json({"first_run": USER_MANAGER.is_first_run()})
+            return
+
+        elif path == "/api/auth/me":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            self._json({
+                "operator_id": actor["operator_id"],
+                "role": actor["role"],
+                "csrf_token": actor.get("csrf_token")
+            })
+            return
+
+        elif path == "/api/auth/users":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            if actor["role"].upper() != "COMMANDER":
+                self._json({"error": f"{actor['role']} is not permitted to list users"}, 403)
+                return
+            self._json(USER_MANAGER.list_users())
             return
         else:
             self.send_response(404)
@@ -621,6 +711,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
+
+        # CSRF Protection on all state-changing actions
+        if path not in ("/api/auth/login", "/api/auth/setup-admin", "/api/trigger_scenario"):
+            if not self._validate_csrf():
+                self._json({"error": "CSRF validation failed"}, 403)
+                return
+
+        if path == "/api/auth/setup-admin":
+            if not USER_MANAGER.is_first_run():
+                self._json({"error": "First-run setup already completed"}, 403)
+                return
+            payload = self._payload()
+            username = str(payload.get("username", "commander")).lower().strip()
+            password = str(payload.get("password", ""))
+            if not password or len(password) < 8:
+                self._json({"error": "Password must be at least 8 characters long"}, 400)
+                return
+            res = USER_MANAGER.create_user(username, password, "COMMANDER")
+            self._json({"status": "admin_created", "username": res["username"], "role": "COMMANDER"})
+            return
 
         if path == "/api/reports/generate":
             actor = self._actor()
@@ -731,25 +841,98 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
 
         if path == "/api/auth/login":
-            length = int(self.headers.get("Content-Length", 0))
-            try:
-                payload = json.loads(self.rfile.read(length).decode("utf-8"))
-                users_path = ROOT_DIR / "src" / "config" / "dashboard_users.local.json"
-                users = json.loads(users_path.read_text(encoding="utf-8"))
-                username = str(payload.get("username", "")).lower()
-                record = users.get(username, {})
-                allowed = {"COMMANDER", "OPERATOR", "ENGINEER", "VIEWER"}
-                valid = record.get("role") in allowed and hmac.compare_digest(str(record.get("password", "")), str(payload.get("password", "")))
-            except (OSError, ValueError, json.JSONDecodeError):
-                valid, record = False, {}
-            self.send_response(200 if valid else 401)
+            client_ip = self.client_address[0] if self.client_address else "127.0.0.1"
+            payload = self._payload()
+            username = str(payload.get("username", "")).lower().strip()
+            password = str(payload.get("password", ""))
+
+            # Rate limiting / Lockout check
+            client_key = f"{client_ip}_{username}"
+            is_locked, remaining = RATE_LIMITER.is_locked_out(client_key)
+            if is_locked:
+                self._json({
+                    "error": f"Account temporarily locked due to excessive failed attempts. Try again in {remaining}s.",
+                    "locked": True,
+                    "remaining_seconds": remaining
+                }, 429)
+                return
+
+            valid, role, err = USER_MANAGER.authenticate(username, password)
+            if not valid:
+                locked, rem = RATE_LIMITER.record_failure(client_key, username, err or "INVALID_CREDENTIALS", ip=client_ip)
+                if locked:
+                    self._json({
+                        "error": f"Too many failed login attempts. Account locked for {rem}s.",
+                        "locked": True,
+                        "remaining_seconds": rem
+                    }, 429)
+                else:
+                    self._json({"error": "invalid credentials"}, 401)
+                return
+
+            # Success
+            RATE_LIMITER.record_success(client_key, username, ip=client_ip)
+            session = SESSION_MANAGER.create_session(username, role)
+            AUTH_SESSIONS[session["token"]] = session
+
+            response = {
+                "role": role,
+                "token": session["token"],
+                "operator_id": username,
+                "csrf_token": session["csrf_token"]
+            }
+
+            self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Set-Cookie", f"sentinel_token={session['token']}; HttpOnly; SameSite=Strict; Path=/")
+            self._send_security_headers()
             self.end_headers()
-            if valid:
-                token=secrets.token_urlsafe(24); AUTH_SESSIONS[token]={"operator_id":username,"role":record.get("role")}
-                response={"role":record.get("role"),"token":token,"operator_id":username}
-            else: response={"error":"invalid credentials"}
             self.wfile.write(json.dumps(response).encode("utf-8"))
+            return
+
+        if path == "/api/auth/logout":
+            token = ""
+            auth_hdr = self.headers.get("Authorization", "")
+            if auth_hdr.startswith("Bearer "):
+                token = auth_hdr.removeprefix("Bearer ").strip()
+            if not token:
+                cookie_hdr = self.headers.get("Cookie", "")
+                for part in cookie_hdr.split(";"):
+                    if part.strip().startswith("sentinel_token="):
+                        token = part.strip().removeprefix("sentinel_token=").strip()
+                        break
+
+            if token:
+                SESSION_MANAGER.invalidate_session(token)
+                AUTH_SESSIONS.pop(token, None)
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Set-Cookie", "sentinel_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
+            self._send_security_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "logged_out"}).encode("utf-8"))
+            return
+
+        if path == "/api/auth/users":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            if actor["role"].upper() != "COMMANDER":
+                self._json({"error": f"{actor['role']} is not permitted to create users"}, 403)
+                return
+            payload = self._payload()
+            u = payload.get("username")
+            p = payload.get("password")
+            r = payload.get("role")
+            try:
+                res = USER_MANAGER.create_user(u, p, r)
+                self._json(res)
+            except ValueError as e:
+                self._json({"error": str(e)}, 400)
             return
 
         if path.startswith("/api/incidents/"):
@@ -975,8 +1158,34 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # Support CORS preflight
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
+        self._send_security_headers()
+        self.end_headers()
+
+    def do_DELETE(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        if path.startswith("/api/auth/users/"):
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            if actor["role"].upper() != "COMMANDER":
+                self._json({"error": f"{actor['role']} is not permitted to delete users"}, 403)
+                return
+            if not self._validate_csrf():
+                self._json({"error": "CSRF validation failed"}, 403)
+                return
+            username = path.removeprefix("/api/auth/users/").strip()
+            ok = USER_MANAGER.delete_user(username)
+            if ok:
+                self._json({"status": "deleted", "username": username})
+            else:
+                self._json({"error": f"User {username} not found"}, 404)
+            return
+
+        self.send_response(404)
         self.end_headers()
 
     def _serve_file(self, file_path: Path, content_type: str):
@@ -984,6 +1193,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Cache-Control", "no-cache")
+            self._send_security_headers()
             self.end_headers()
             with open(file_path, "rb") as f:
                 self.wfile.write(f.read())

@@ -4,3 +4,5 @@
 
 opencv-python>=4.8.0
 pyaudio>=0.2.14
+bcrypt>=4.0.0
+reportlab>=4.0.0

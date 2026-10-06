@@ -125,3 +125,41 @@ python -m src.modules.storage checkpoint --mode TRUNCATE --role ENGINEER
 python -m src.modules.storage logs --limit 10
 ```
 
+## Security Hardening (Phase 5E)
+
+Sentinel-AI incorporates defense-in-depth security hardening designed for both local edge appliance management and operator remote access:
+
+### Core Security Controls
+- **Zero Hardcoded Secrets**: Secrets and configurations are loaded strictly from environment variables (see `.env.example`).
+- **Cryptographic Password Storage**: Passwords are saved with salted bcrypt hashes (`cost=12`). Existing legacy passwords are automatically migrated on login.
+- **First-Run Setup Flow**: When no users exist or on initial deployment, Sentinel-AI enters setup mode allowing initial Commander bootstrapping via CLI or the Web UI.
+- **Session Lifecycle & Invalidation**:
+  - Idle timeout: 30 minutes of inactivity revokes session.
+  - Absolute timeout: 8 hours maximum session duration regardless of activity.
+  - Revocation: `/api/auth/logout` explicitly deletes session tokens server-side.
+- **Brute-Force Rate Limiting & Audit**: 5 consecutive failed attempts trigger a 15-minute account lockout, with all failed attempts permanently logged to the SQLite audit ledger (`operator_actions`).
+- **CSRF Token Protection**: State-changing browser actions (`POST`, `PUT`, `DELETE`) require a valid `X-CSRF-Token` header.
+- **Hardened HTTP Headers**: Responses emit `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Content-Security-Policy`.
+- **Role Permission Regression Matrix**: Every API endpoint is mapped against allowed roles (`COMMANDER`, `OPERATOR`, `ENGINEER`, `OBSERVER`), verified continuously by automated regression tests.
+
+### User Management CLI Commands
+
+```bash
+# Check first-run setup status
+python -m src.modules.security status
+
+# Interactive first-run admin setup
+python -m src.modules.security setup-admin --username commander --role COMMANDER
+
+# Add a new operator account
+python -m src.modules.security add-user --username operator1 --role OPERATOR
+
+# List registered users and security status
+python -m src.modules.security list-users
+
+# Migrate any legacy plain-text passwords to salted bcrypt hashes
+python -m src.modules.security migrate-passwords
+
+# Delete a user
+python -m src.modules.security delete-user --username temp_user
+```
