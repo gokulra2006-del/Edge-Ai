@@ -2326,12 +2326,26 @@ async function changeStreamSource(stream) {
 /* ========================================================================= */
 
 let analyticsTrendsChartInstance = null;
+let analyticsAvailabilityChartInstance = null;
+let analyticsOutboxChartInstance = null;
 let currentTrendBucket = "1h";
 const analyticsClientCache = {
     key: "",
     timestamp: 0,
     data: null
 };
+
+function updateAnalyticsOfflineState() {
+    const offlineBanner = document.getElementById("analyticsOfflineBanner");
+    if (!offlineBanner) return;
+    if (!navigator.onLine) {
+        offlineBanner.classList.remove("hidden");
+    } else {
+        offlineBanner.classList.add("hidden");
+    }
+}
+window.addEventListener("online", updateAnalyticsOfflineState);
+window.addEventListener("offline", updateAnalyticsOfflineState);
 
 function getAnalyticsFilterParams() {
     const range = document.getElementById("analyticsFilterRange")?.value || "24h";
@@ -2350,11 +2364,17 @@ function getAnalyticsFilterParams() {
 }
 
 function restoreAnalyticsFiltersFromUrl() {
-    const hash = window.location.hash.replace("#", "");
-    const qIndex = hash.indexOf("?");
-    if (qIndex === -1) return;
-    const queryStr = hash.slice(qIndex + 1);
-    const params = new URLSearchParams(queryStr);
+    let params = null;
+    if (window.location.search && window.location.search.length > 1) {
+        params = new URLSearchParams(window.location.search);
+    } else {
+        const hash = window.location.hash.replace("#", "");
+        const qIndex = hash.indexOf("?");
+        if (qIndex !== -1) {
+            params = new URLSearchParams(hash.slice(qIndex + 1));
+        }
+    }
+    if (!params) return;
 
     const range = params.get("range");
     const zone = params.get("zone");
@@ -2372,6 +2392,10 @@ function restoreAnalyticsFiltersFromUrl() {
 function applyAnalyticsFilters() {
     const params = getAnalyticsFilterParams();
     window.location.hash = `analytics?${params.toString()}`;
+    if (window.history && window.history.replaceState) {
+        const newUrl = window.location.pathname + "?" + params.toString() + window.location.hash;
+        window.history.replaceState(null, "", newUrl);
+    }
     loadAnalytics(true);
 }
 
@@ -2383,6 +2407,9 @@ function resetAnalyticsFilters() {
     if (document.getElementById("analyticsFilterDemo")) document.getElementById("analyticsFilterDemo").checked = false;
 
     window.location.hash = "analytics";
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, "", window.location.pathname + "#analytics");
+    }
     loadAnalytics(true);
 }
 
@@ -2731,6 +2758,37 @@ function renderDeviceAvailability(avail) {
             </div>
         `;
     }).join("");
+
+    const canvas = document.getElementById("analyticsAvailabilityChart");
+    if (canvas && window.Chart) {
+        if (analyticsAvailabilityChartInstance) {
+            analyticsAvailabilityChartInstance.destroy();
+        }
+        const labels = Object.keys(comps);
+        const dataVals = labels.map(k => comps[k].availability_pct !== undefined ? comps[k].availability_pct : 100);
+        analyticsAvailabilityChartInstance = new Chart(canvas, {
+            type: "bar",
+            data: {
+                labels: labels.length > 0 ? labels.map(l => l.toUpperCase()) : ["No Data"],
+                datasets: [{
+                    label: "Uptime %",
+                    data: dataVals.length > 0 ? dataVals : [100],
+                    backgroundColor: "#10b981",
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: { min: 0, max: 100, ticks: { callback: v => v + '%' } },
+                    y: { grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
 }
 
 function renderSyncBacklog(outbox) {
@@ -2741,6 +2799,34 @@ function renderSyncBacklog(outbox) {
     const counts = outbox.counts || {};
     if (pEl) pEl.innerText = counts.PENDING || 0;
     if (dEl) dEl.innerText = counts.DEAD_LETTER || 0;
+
+    const canvas = document.getElementById("analyticsOutboxChart");
+    if (canvas && window.Chart) {
+        if (analyticsOutboxChartInstance) {
+            analyticsOutboxChartInstance.destroy();
+        }
+        const pending = counts.PENDING || 0;
+        const synced = counts.SYNCED || 0;
+        const dead = counts.DEAD_LETTER || 0;
+        const total = pending + synced + dead;
+        analyticsOutboxChartInstance = new Chart(canvas, {
+            type: "doughnut",
+            data: {
+                labels: ["Pending", "Synced", "Dead Letter"],
+                datasets: [{
+                    data: total > 0 ? [pending, synced, dead] : [0, 1, 0],
+                    backgroundColor: ["#f59e0b", "#10b981", "#ef4444"]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
+                }
+            }
+        });
+    }
 
     const recent = outbox.recent || [];
     if (!list) return;

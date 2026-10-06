@@ -195,9 +195,14 @@ def test_dashboard_ui_bundle_and_role_access():
     assert 'id="analyticsLoadingState"' in html_content
     assert 'id="analyticsEmptyState"' in html_content
     assert 'id="analyticsErrorState"' in html_content
+    assert 'id="analyticsOfflineBanner"' in html_content
+    assert 'id="analyticsAvailabilityChart"' in html_content
+    assert 'id="analyticsOutboxChart"' in html_content
 
     # JS Router and Role mappings
     assert '"analytics"' in js_content
     assert 'loadAnalytics' in js_content
     assert 'renderAnalyticsTrendsChart' in js_content
     assert 'renderZoneRiskList' in js_content
+    assert 'analyticsAvailabilityChartInstance' in js_content
+    assert 'analyticsOutboxChartInstance' in js_content
