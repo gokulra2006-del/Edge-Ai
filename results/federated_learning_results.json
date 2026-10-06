@@ -1,0 +1,107 @@
+{
+  "baselines": {
+    "centralized_pooled": {
+      "accuracy": 90.74,
+      "brier_score": 0.1202,
+      "ece": 0.2102,
+      "macro_f1": 0.7324,
+      "per_zone_macro_f1": {
+        "ZONE_A": 0.7546,
+        "ZONE_B": 0.7124,
+        "ZONE_C": 0.6353
+      }
+    },
+    "differential_privacy_fedavg": {
+      "accuracy": 90.37,
+      "brier_score": 0.436,
+      "clip_norm": 1.0,
+      "ece": 0.4241,
+      "macro_f1": 0.7175,
+      "noise_multiplier": 0.05
+    },
+    "fed_avg": {
+      "accuracy": 90.37,
+      "brier_score": 0.4011,
+      "communication": {
+        "avg_bytes_per_round": 4060.2,
+        "total_broadcast_bytes": 14454,
+        "total_upload_bytes": 9907,
+        "total_wire_bytes": 24361
+      },
+      "drift_f1_retention_pct": 100.0,
+      "drift_macro_f1": 0.7175,
+      "ece": 0.4724,
+      "macro_f1": 0.7175,
+      "per_zone_macro_f1": {
+        "ZONE_A": 0.7357,
+        "ZONE_B": 0.6857,
+        "ZONE_C": 0.66
+      }
+    },
+    "local_only": {
+      "average_cross_zone_f1": 0.0422,
+      "average_overall_macro_f1": 0.1157,
+      "per_zone": {
+        "ZONE_A": {
+          "cross_zone_f1": 0.0522,
+          "ece": 0.4862,
+          "native_zone_f1": 0.2115,
+          "overall_accuracy": 32.22,
+          "overall_macro_f1": 0.1218
+        },
+        "ZONE_B": {
+          "cross_zone_f1": 0.0384,
+          "ece": 0.4737,
+          "native_zone_f1": 0.202,
+          "overall_accuracy": 28.15,
+          "overall_macro_f1": 0.1098
+        },
+        "ZONE_C": {
+          "cross_zone_f1": 0.0361,
+          "ece": 0.4511,
+          "native_zone_f1": 0.2134,
+          "overall_accuracy": 30.0,
+          "overall_macro_f1": 0.1154
+        }
+      }
+    },
+    "robust_trimmed_mean": {
+      "accuracy": 90.37,
+      "brier_score": 0.4011,
+      "ece": 0.4724,
+      "macro_f1": 0.7175,
+      "per_zone_macro_f1": {
+        "ZONE_A": 0.7357,
+        "ZONE_B": 0.6857,
+        "ZONE_C": 0.66
+      }
+    }
+  },
+  "benchmark": "federated_multi_node_simulation",
+  "data_tag": "SYNTHETIC",
+  "git_hash": "2a3fb037f2a0b305d97ce815aadd7eb345aad988",
+  "governance_verification": {
+    "actuators_permitted": false,
+    "candidate_model_id": "sentinel_federated_v1",
+    "is_shadow_only": true,
+    "proposal_id": "PROP-20261006-7942",
+    "registry_status": "CANDIDATE"
+  },
+  "limitations": [
+    "Simulated multi-node environment on a single workstation.",
+    "Does not measure physical wide-area network latency, cellular jitter, or node hardware throttling.",
+    "All results are strictly tagged SYNTHETIC in accordance with research integrity rules."
+  ],
+  "parameters": {
+    "num_nodes": 3,
+    "rounds": 6,
+    "samples_per_node": 150,
+    "zones": [
+      "ZONE_A",
+      "ZONE_B",
+      "ZONE_C"
+    ]
+  },
+  "seed": 42,
+  "timestamp_utc": "2026-10-06T20:02:45.836281+00:00"
+}

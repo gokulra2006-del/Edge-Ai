@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-10-06T19:54:26.723648+00:00",
-  "git_hash": "de390e2",
+  "timestamp": "2026-10-06T20:06:01.480143+00:00",
+  "git_hash": "2a3fb03",
   "data_tag": "SYNTHETIC",
   "total_invariants": 8,
   "passed_invariants": 8,
@@ -45,7 +45,7 @@
       "invariant_id": "INV-03-COMMANDER-AUDIT-LOGGED",
       "name": "Commander Action Non-Repudiation",
       "passed": true,
-      "details": "Verified all Commander lifecycle transitions (escalate, confirm, acknowledge, resolve) are written to operator_actions ledger.",
+      "details": "Verified all Commander lifecycle transitions (resolve, acknowledge, escalate, confirm) are written to operator_actions ledger.",
       "violations": []
     },
     {

@@ -411,4 +411,54 @@ For each condition subgroup:
   - Missing any of the required physical validation vectors.
   - Database corruption or audit loss following power recovery test.
 
+---
+
+## Experiment 6J-1: Privacy-Preserving Multi-Node Federated Learning under Non-IID Zone Drift
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-06
+- **Status**: PRE-REGISTERED (Criteria locked prior to code execution)
+
+### 2. Hypothesis
+- **Hypothesis**: "Federated updates across zone-specific edge nodes improve non-IID cross-zone detection performance without uploading raw audio, video, or incident payloads. A simulation-first federated architecture with cryptographic update signatures, robust aggregation, and differential privacy clipping delivers generalized detection across heterogeneous zones while strictly preserving the edge privacy boundary."
+
+### 3. Primary Metrics & Target Thresholds
+1. **Cross-Zone Generalization (Non-IID Evaluation)**:
+   - Evaluated on partitioned, heterogeneous urban emergency distributions (Zone A: traffic accident skewed; Zone B: fire/hazard skewed; Zone C: violence/panic skewed).
+   - Federated global model Macro-F1 across all zones exceeds isolated local-only models on out-of-zone test distributions by $\ge 15.0\%$ relative improvement.
+   - Federated global model performance remains within $5.0\%$ Macro-F1 of a hypothetical (privacy-violating) centralized pooled baseline.
+2. **Confidence Calibration**:
+   - Global federated model Expected Calibration Error (ECE) $\le 0.150$ across non-IID test splits.
+3. **Privacy Boundary Invariant**:
+   - Zero raw audio waveforms, video frames, or incident metadata are included in node upload payloads ($0\text{ bytes}$ raw payload).
+   - Enforced by strict boundary assertion tests.
+4. **Communication Overhead**:
+   - Measured and reported in exact bytes per training round (client-to-server parameter upload + server-to-client global broadcast).
+5. **Robustness & Tamper Rejection**:
+   - 100% rejection rate for unsigned, forged, or payload-tampered model updates.
+   - Robust aggregation (Coordinate Trimmed-Mean / Median) maintains stable convergence in the presence of Byzantine or adversarial gradient updates compared to standard FedAvg.
+6. **Differential Privacy (DP) Budget**:
+   - Configurable gradient/delta clipping bound $C$ and calibrated noise multiplier $\sigma$, recording effective privacy parameters $(\epsilon, \delta)$.
+7. **Governance & Model Registry Gate**:
+   - Aggregated federated models enter the model registry strictly as `CANDIDATE`.
+   - Cannot actuate hardware or dispatch emergency responders without explicit human Commander/Engineer approval via the Phase 6G proposal workflow.
+
+### 4. Data Tagging & Honest Limitations
+- **Tagging**: Tagged strictly as `SYNTHETIC` (simulated multi-node environment on a single testbed).
+- **Honest Limitations**: While network bandwidth, serialization sizes, and multi-node gradient exchanges are faithfully measured, this simulation does not capture real-world wide-area network (WAN) packet loss, physical edge node compute throttling, or high-latency cellular connectivity.
+
+### 5. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Simulation engine successfully trains $N \ge 3$ nodes across non-IID zone partitions.
+  2. Federated model beats local-only models on cross-zone evaluation.
+  3. Privacy boundary test guarantees zero raw media leaves any node.
+  4. Cryptographic signature check rejects tampered node weights.
+  5. Aggregated model enters registry strictly as `CANDIDATE`.
+- **Failure Criteria**:
+  - Raw media found in node upload payloads.
+  - Aggregator accepts unsigned or tampered updates.
+  - Aggregated model automatically enters registry as `PRODUCTION`.
+  - Non-deterministic runs under identical random seeds.
+
+
 

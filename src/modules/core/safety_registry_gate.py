@@ -90,6 +90,10 @@ class SafetyAwareModelRegistry:
         )
         self.models[model_id] = rec
 
+    def get_model(self, model_id: str) -> Optional[RegisteredModelRecord]:
+        """Returns the registered record for a model, or None if not found."""
+        return self.models.get(model_id)
+
     def evaluate_execution_safety(
         self,
         model_id: str,
@@ -169,3 +173,6 @@ class SafetyAwareModelRegistry:
             is_shadow_only=False,
             safety_violations=[],
         )
+
+    execute_with_safety_guardrails = evaluate_execution_safety
+
