@@ -58,3 +58,50 @@ All systems process identical timestamped scenario streams through a unified eva
 - **Failure Criteria**:
   - If `static-fusion` or unimodal baselines outperform `temporal-ood-fusion` under corrupted sensor conditions, the hypothesis of adaptive degradation fails.
   - If network outage reduces local alert triggering or detection accuracy, the offline autonomy hypothesis fails.
+
+
+---
+
+## Experiment 6B-1: Uncertainty-Aware Fusion and Multi-Factor Explicit Risk Accounting
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-06
+- **Status**: PRE-REGISTERED (Criteria locked prior to evaluation runs)
+
+### 2. Hypothesis
+- **Hypothesis**: "Uncertainty-aware risk reduces false alarms without increasing missed emergencies."
+- **Mathematical Multi-Factor Formulation**:
+  $$\text{final\_risk} = \text{event\_confidence} \times \text{temporal\_consistency} \times \text{sensor\_agreement} \times \text{device\_health} \times \text{calibration\_quality} \times \prod_{i} \text{penalty}_i$$
+  where each factor is strictly bounded in $[0.0, 1.0]$.
+- **Invariance Rule**: Degrading any sensor or health input can NEVER increase $\text{final\_risk}$ (monotonic non-increasing property).
+- **Safety Fallback Guard**: When $\text{final\_risk}$ falls below the alert threshold ($0.50$) due to high uncertainty/health penalties, but raw evidence remains strong ($\text{event\_confidence} \ge 0.65$), the incident is routed to `REVIEW_REQUIRED` (human operator queue) rather than silently dropped.
+
+### 3. Factor Definitions & Bounds
+1. **$\text{event\_confidence} \in [0.0, 1.0]$**: Highest posterior class probability from raw modality detectors.
+2. **$\text{temporal\_consistency} \in [0.0, 1.0]$**: Ratio of window frames confirming the candidate class multiplied by window stability factor:
+   $$\text{temporal\_consistency} = \left(\frac{N_{\text{class}}}{W}\right) \times \min\left(1.0, \frac{W}{W_{\text{target}}}\right)$$
+3. **$\text{sensor\_agreement} \in [0.0, 1.0]$**: Cosine/Jaccard agreement among active modalities. If multiple sensors confirm identical event class, agreement $= 1.0$; if sensor readings contradict (e.g. vision fire but acoustic silence), agreement drops to $0.20 - 0.40$.
+4. **$\text{device\_health} \in [0.0, 1.0]$**: Normalized health score computed from camera FPS, audio clipping/silence flags, and sensor staleness:
+   $$\text{device\_health} = 0.40 \cdot H_{\text{camera}} + 0.40 \cdot H_{\text{audio}} + 0.20 \cdot H_{\text{sensors}}$$
+5. **$\text{calibration\_quality} \in [0.0, 1.0]$**: Expected calibration reliability score (defaults to $1.0$ until temperature scaling is active in 6C).
+6. **Penalties**:
+   - $\text{penalty}_{\text{ood}} = 0.60$ if out-of-distribution anomaly detected.
+   - $\text{penalty}_{\text{short\_evidence}} = 0.75$ if evidence duration $< 1.0$s.
+   - $\text{penalty}_{\text{unreliable\_zone}} = 0.85$ if GPS/zone covariance is high.
+
+### 4. Ablation Suite Under Test
+1. `full_uncertainty_aware`: Complete 5-factor risk model.
+2. `ablation_no_temporal`: $\text{temporal\_consistency} = 1.0$.
+3. `ablation_no_agreement`: $\text{sensor\_agreement} = 1.0$.
+4. `ablation_no_health`: $\text{device\_health} = 1.0$.
+5. `plain_fusion`: Unweighted raw confidence thresholding.
+
+### 5. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. False-alarm rate of `full_uncertainty_aware` is lower than or equal to `plain_fusion` across all scenarios.
+  2. Miss rate increase on genuine emergencies is $\le 2.0\%$ (mitigated by `REVIEW_REQUIRED` routing).
+  3. Monotonic non-increasing property holds for 100% of tested health degradations.
+  4. Decision logs persist all factor components with every incident record.
+- **Failure Criteria**:
+  - If uncertainty-aware risk increases false-alarm rate compared to plain fusion, hypothesis fails.
+  - If miss rate increases by $> 5.0\%$ without routing to human review, safety invariant fails.

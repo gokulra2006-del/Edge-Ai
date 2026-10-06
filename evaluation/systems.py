@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
 from evaluation.scenarios import ScenarioStep, EventClass
 
@@ -256,10 +256,119 @@ class TemporalOodFusionSystem(BaseSystemUnderTest):
         )
 
 
+class UncertaintyAwareFusionSystem(BaseSystemUnderTest):
+    """
+    Phase 6B: Uncertainty-Aware Fusion evaluating explicit multi-factor risk:
+    final_risk = event_confidence x temporal_consistency x sensor_agreement
+                 x device_health x calibration_quality x penalties
+    """
+
+    def __init__(self, name: str = "uncertainty-aware-fusion", enabled_factors: Optional[Set[str]] = None):
+        from src.modules.decision.uncertainty_fusion import UncertaintyAwareFusion
+        self.name = name
+        self.enabled_factors = enabled_factors
+        self.fusion_engine = UncertaintyAwareFusion(
+            alert_threshold=0.50,
+            strong_evidence_threshold=0.65,
+            target_window_steps=5,
+            enabled_factors=enabled_factors,
+        )
+        self.window_history: List[str] = []
+
+    def reset(self) -> None:
+        self.window_history = []
+
+    def process_step(self, step: ScenarioStep) -> SystemInference:
+        # 1. Modality inferences
+        a_inf = AudioOnlySystem().process_step(step)
+        v_inf = VisionOnlySystem().process_step(step)
+        s_inf = SensorOnlySystem().process_step(step)
+
+        # 2. Extract active classes and raw confidence
+        active_sensor_classes = {
+            "audio": a_inf.predicted_class,
+            "vision": v_inf.predicted_class,
+            "sensors": s_inf.predicted_class,
+        }
+
+        # Candidate class from majority vote or strongest signal
+        class_votes: Dict[EventClass, float] = {"NORMAL": 0.0, "ACCIDENT": 0.0, "FIRE": 0.0, "AMBULANCE": 0.0}
+        class_votes[a_inf.predicted_class] += a_inf.confidence
+        class_votes[v_inf.predicted_class] += v_inf.confidence
+        class_votes[s_inf.predicted_class] += s_inf.confidence
+
+        candidate_class = max(class_votes, key=class_votes.get)  # type: ignore
+        raw_conf = min(1.0, max(a_inf.confidence, v_inf.confidence, s_inf.confidence))
+
+        self.window_history.append(candidate_class)
+        if len(self.window_history) > 10:
+            self.window_history.pop(0)
+
+        # 3. Device health metrics
+        cam_health = 1.0 if step.vision.fps > 0.0 and step.vision.detected_classes else 0.0
+        aud_health = 1.0 if step.audio.decibels > 0.0 and step.audio.mel_top_class not in ("silence", "clipping_distortion") else 0.0
+        sens_health = 0.0 if (step.sensors.temperature <= 0.0 and step.sensors.smoke_ppm <= 0.0) else 1.0
+
+        is_ood = step.metadata.get("fault") == "conflicting_sensors" or len({c for c in active_sensor_classes.values() if c != "NORMAL"}) > 1
+
+        # 4. Evaluate explicit uncertainty decision
+        dec = self.fusion_engine.evaluate(
+            predicted_class=candidate_class,
+            raw_confidence=raw_conf,
+            window_history=self.window_history,
+            active_sensor_classes=active_sensor_classes,
+            device_health_inputs={"camera": cam_health, "audio": aud_health, "sensors": sens_health},
+            is_ood=is_ood,
+            evidence_duration_sec=step.timestamp_offset,
+            zone_reliability=1.0,
+            calibration_quality=1.0,
+        )
+
+        # If action is DISPATCH_ALERT or REVIEW_REQUIRED, treat as active for evaluation
+        is_alert = dec.action in ("DISPATCH_ALERT", "REVIEW_REQUIRED") and (dec.predicted_class != "NORMAL")
+
+        return SystemInference(
+            predicted_class=dec.predicted_class,  # type: ignore
+            confidence=dec.final_risk,
+            is_alert=is_alert,
+            ood_detected=is_ood,
+            assurance_mode="UNCERTAINTY_AWARE",
+            modality_weights={"audio": 0.4, "vision": 0.4, "sensors": 0.2},
+            metadata={
+                "risk_decision": dec.to_dict(),
+                "action": dec.action,
+                "reason": dec.reason,
+            },
+        )
+
+
+class UncertaintyAblationNoTemporal(UncertaintyAwareFusionSystem):
+    name = "ablation-no-temporal"
+    def __init__(self):
+        super().__init__(name="ablation-no-temporal", enabled_factors={"sensor_agreement", "device_health", "calibration_quality", "penalties"})
+
+
+class UncertaintyAblationNoAgreement(UncertaintyAwareFusionSystem):
+    name = "ablation-no-agreement"
+    def __init__(self):
+        super().__init__(name="ablation-no-agreement", enabled_factors={"temporal_consistency", "device_health", "calibration_quality", "penalties"})
+
+
+class UncertaintyAblationNoHealth(UncertaintyAwareFusionSystem):
+    name = "ablation-no-health"
+    def __init__(self):
+        super().__init__(name="ablation-no-health", enabled_factors={"temporal_consistency", "sensor_agreement", "calibration_quality", "penalties"})
+
+
 ALL_SYSTEMS = [
     AudioOnlySystem,
     VisionOnlySystem,
     SensorOnlySystem,
     StaticFusionSystem,
     TemporalOodFusionSystem,
+    UncertaintyAwareFusionSystem,
+    UncertaintyAblationNoTemporal,
+    UncertaintyAblationNoAgreement,
+    UncertaintyAblationNoHealth,
 ]
+

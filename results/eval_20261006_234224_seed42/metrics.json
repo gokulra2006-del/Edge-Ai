@@ -1,0 +1,3032 @@
+{
+  "run_id": "eval_20261006_234224_seed42",
+  "generated_at": "2026-10-06T18:12:32.035919+00:00",
+  "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+  "seed": 42,
+  "results": [
+    {
+      "system_name": "audio-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "none",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 4.52,
+        "mean_ttr_seconds": 22.76,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 23.9,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "58e0caefbe30c88e",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "vision-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "none",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 1.0,
+        "per_class_f1": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 100.0,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          1.0,
+          1.0
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.29,
+        "mean_ttr_seconds": 16.9,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 23.94,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "f209e12b9d159189",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "sensor-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "none",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.4812,
+        "per_class_f1": {
+          "NORMAL": 0.7429,
+          "ACCIDENT": 0.1818,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.5909,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.1,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 62.38,
+        "accuracy_pct": 67.19,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.4335,
+          0.5291
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 2.96,
+        "mean_ttr_seconds": 16.35,
+        "detected_count": 6,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 23.94,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "4763e7e006ecd5e8",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "static-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "none",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9296,
+        "per_class_f1": {
+          "NORMAL": 0.943,
+          "ACCIDENT": 0.7755,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.8922,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.6333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 10.89,
+        "accuracy_pct": 94.27,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.8908,
+          0.967
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 2.62,
+        "mean_ttr_seconds": 15.44,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 23.95,
+        "bandwidth_bytes_sec": 10457427.49,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "9e1435cc50b87ab1",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "temporal-ood-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "none",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8851,
+        "per_class_f1": {
+          "NORMAL": 0.9055,
+          "ACCIDENT": 0.7234,
+          "FIRE": 0.9552,
+          "AMBULANCE": 0.9565
+        },
+        "per_class_precision": {
+          "NORMAL": 0.8273,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.5667,
+          "FIRE": 0.9143,
+          "AMBULANCE": 0.9167
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 18.81,
+        "accuracy_pct": 90.1,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.8297,
+          0.9258
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.5,
+        "median_detection_latency_seconds": 0.5,
+        "p95_detection_latency_seconds": 0.5,
+        "mean_tta_seconds": 3.58,
+        "mean_ttr_seconds": 13.31,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 23.95,
+        "bandwidth_bytes_sec": 11163804.86,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "74f1e0338f077c56",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "uncertainty-aware-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "none",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.22,
+        "mean_ttr_seconds": 16.17,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 23.98,
+        "bandwidth_bytes_sec": 4711927.43,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "adee3dfecb3616c4",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-temporal",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "none",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.66,
+        "mean_ttr_seconds": 17.15,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.01,
+        "bandwidth_bytes_sec": 3325215.16,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "62c7eb9f8ec6275a",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-agreement",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "none",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.34,
+        "mean_ttr_seconds": 18.55,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.04,
+        "bandwidth_bytes_sec": 2610996.03,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "800aa4bd440acb71",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-health",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "none",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.72,
+        "mean_ttr_seconds": 15.58,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.06,
+        "bandwidth_bytes_sec": 4976812.95,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "048970832bbfee7a",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "audio-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "camera_dropout",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 4.61,
+        "mean_ttr_seconds": 16.94,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.46,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "6b3ab90666bf2e8d",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "vision-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "camera_dropout",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.1608,
+        "per_class_f1": {
+          "NORMAL": 0.6431,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.474,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 100.0,
+        "accuracy_pct": 47.4,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.1418,
+          0.1768
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": null,
+        "median_detection_latency_seconds": null,
+        "p95_detection_latency_seconds": null,
+        "mean_tta_seconds": null,
+        "mean_ttr_seconds": null,
+        "detected_count": 0,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.46,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "cf32b3da2a1c89ba",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "sensor-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "camera_dropout",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.4812,
+        "per_class_f1": {
+          "NORMAL": 0.7429,
+          "ACCIDENT": 0.1818,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.5909,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.1,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 62.38,
+        "accuracy_pct": 67.19,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.4335,
+          0.5291
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 2.61,
+        "mean_ttr_seconds": 13.42,
+        "detected_count": 6,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.46,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "e2abf27ecc9bc6b4",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "static-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "camera_dropout",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.31,
+        "mean_ttr_seconds": 25.79,
+        "detected_count": 6,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.46,
+        "bandwidth_bytes_sec": 17657709.39,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "d89c13465928d332",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "temporal-ood-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "camera_dropout",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.7759,
+        "per_class_f1": {
+          "NORMAL": 0.8585,
+          "ACCIDENT": 0.3333,
+          "FIRE": 0.9552,
+          "AMBULANCE": 0.9565
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7521,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 0.9143,
+          "AMBULANCE": 0.9167
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 29.7,
+        "accuracy_pct": 84.38,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7122,
+          0.835
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.5,
+        "median_detection_latency_seconds": 0.5,
+        "p95_detection_latency_seconds": 0.5,
+        "mean_tta_seconds": 3.56,
+        "mean_ttr_seconds": 16.27,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.46,
+        "bandwidth_bytes_sec": 12764763.99,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "ee419889ddb65b03",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "uncertainty-aware-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "camera_dropout",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.5,
+        "mean_ttr_seconds": 17.08,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.46,
+        "bandwidth_bytes_sec": 4814575.39,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "0567c7bb26b1388d",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-temporal",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "camera_dropout",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.72,
+        "mean_ttr_seconds": 19.31,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.46,
+        "bandwidth_bytes_sec": 4943874.46,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "654ca9659ecd7e61",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-agreement",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "camera_dropout",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.69,
+        "mean_ttr_seconds": 23.78,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.47,
+        "bandwidth_bytes_sec": 5270313.74,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "a4fe1a7d31d282d2",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-health",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "camera_dropout",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.86,
+        "mean_ttr_seconds": 19.04,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.5,
+        "bandwidth_bytes_sec": 2751640.27,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "1d517f29d9c7a6fd",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "audio-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "audio_silence",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.1608,
+        "per_class_f1": {
+          "NORMAL": 0.6431,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.474,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 100.0,
+        "accuracy_pct": 47.4,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.1418,
+          0.1768
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": null,
+        "median_detection_latency_seconds": null,
+        "p95_detection_latency_seconds": null,
+        "mean_tta_seconds": null,
+        "mean_ttr_seconds": null,
+        "detected_count": 0,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.61,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "6b930c0468a6001b",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "vision-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "audio_silence",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 1.0,
+        "per_class_f1": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 100.0,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          1.0,
+          1.0
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.62,
+        "mean_ttr_seconds": 16.74,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.61,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "e7c63b9ba4a20767",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "sensor-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "audio_silence",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.4812,
+        "per_class_f1": {
+          "NORMAL": 0.7429,
+          "ACCIDENT": 0.1818,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.5909,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.1,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 62.38,
+        "accuracy_pct": 67.19,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.4335,
+          0.5291
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.71,
+        "mean_ttr_seconds": 21.04,
+        "detected_count": 6,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.61,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "5cee67b6fce773eb",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "static-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "audio_silence",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 1.0,
+        "per_class_f1": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 100.0,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          1.0,
+          1.0
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.55,
+        "mean_ttr_seconds": 14.59,
+        "detected_count": 6,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.61,
+        "bandwidth_bytes_sec": 10834068.42,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "438ab7a1586ea70c",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "temporal-ood-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "audio_silence",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.953,
+        "per_class_f1": {
+          "NORMAL": 0.9529,
+          "ACCIDENT": 0.9474,
+          "FIRE": 0.9552,
+          "AMBULANCE": 0.9565
+        },
+        "per_class_precision": {
+          "NORMAL": 0.91,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.9,
+          "FIRE": 0.9143,
+          "AMBULANCE": 0.9167
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 8.91,
+        "accuracy_pct": 95.31,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9201,
+          0.9794
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.5,
+        "median_detection_latency_seconds": 0.5,
+        "p95_detection_latency_seconds": 0.5,
+        "mean_tta_seconds": 4.02,
+        "mean_ttr_seconds": 22.61,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.61,
+        "bandwidth_bytes_sec": 7772541.88,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "a7c7254c11f17cb7",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "uncertainty-aware-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "audio_silence",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9951,
+        "per_class_f1": {
+          "NORMAL": 0.9945,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.9859
+        },
+        "per_class_precision": {
+          "NORMAL": 0.9891,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.9722
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 0.99,
+        "accuracy_pct": 99.48,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9843,
+          1.0
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.47,
+        "mean_ttr_seconds": 19.27,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.61,
+        "bandwidth_bytes_sec": 5095055.4,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "59fd3e1ec77c8894",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-temporal",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "audio_silence",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9951,
+        "per_class_f1": {
+          "NORMAL": 0.9945,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.9859
+        },
+        "per_class_precision": {
+          "NORMAL": 0.9891,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.9722
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 0.99,
+        "accuracy_pct": 99.48,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9843,
+          1.0
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 4.78,
+        "mean_ttr_seconds": 17.25,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.61,
+        "bandwidth_bytes_sec": 2565103.47,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "75c90f177dd56c45",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-agreement",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "audio_silence",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9951,
+        "per_class_f1": {
+          "NORMAL": 0.9945,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.9859
+        },
+        "per_class_precision": {
+          "NORMAL": 0.9891,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.9722
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 0.99,
+        "accuracy_pct": 99.48,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9843,
+          1.0
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 4.09,
+        "mean_ttr_seconds": 16.88,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.61,
+        "bandwidth_bytes_sec": 2865938.95,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "20d3c10261febdba",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-health",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "audio_silence",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9951,
+        "per_class_f1": {
+          "NORMAL": 0.9945,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.9859
+        },
+        "per_class_precision": {
+          "NORMAL": 0.9891,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.9722
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 0.99,
+        "accuracy_pct": 99.48,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9843,
+          1.0
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.56,
+        "mean_ttr_seconds": 18.51,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.61,
+        "bandwidth_bytes_sec": 2420064.79,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "adf350700814b945",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "audio-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "sensor_noise",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.73,
+        "mean_ttr_seconds": 15.56,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.72,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "d949c3e2e1bca8cb",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "vision-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "sensor_noise",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 1.0,
+        "per_class_f1": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 100.0,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          1.0,
+          1.0
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 4.1,
+        "mean_ttr_seconds": 18.82,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.72,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "f86433d89c446fda",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "sensor-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "sensor_noise",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.2835,
+        "per_class_f1": {
+          "NORMAL": 0.6335,
+          "ACCIDENT": 0.0645,
+          "FIRE": 0.4359,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7286,
+          "ACCIDENT": 1.0,
+          "FIRE": 0.281,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 0.5604,
+          "ACCIDENT": 0.0333,
+          "FIRE": 0.9714,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 43.96,
+        "miss_rate_pct": 18.81,
+        "accuracy_pct": 44.79,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.24,
+          0.3312
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.222,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 1.0,
+        "mean_tta_seconds": 3.51,
+        "mean_ttr_seconds": 16.97,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.73,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "1c163e3d95bc9d78",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "static-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "sensor_noise",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9887,
+        "per_class_f1": {
+          "NORMAL": 0.9891,
+          "ACCIDENT": 0.9655,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.9785,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.9333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 1.98,
+        "accuracy_pct": 98.96,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9699,
+          1.0
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 4.14,
+        "mean_ttr_seconds": 18.27,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.73,
+        "bandwidth_bytes_sec": 11824480.41,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "fbde3c5ffe295b8a",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "temporal-ood-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "sensor_noise",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.953,
+        "per_class_f1": {
+          "NORMAL": 0.9529,
+          "ACCIDENT": 0.9474,
+          "FIRE": 0.9552,
+          "AMBULANCE": 0.9565
+        },
+        "per_class_precision": {
+          "NORMAL": 0.91,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.9,
+          "FIRE": 0.9143,
+          "AMBULANCE": 0.9167
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 8.91,
+        "accuracy_pct": 95.31,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9201,
+          0.9794
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.5,
+        "median_detection_latency_seconds": 0.5,
+        "p95_detection_latency_seconds": 0.5,
+        "mean_tta_seconds": 3.16,
+        "mean_ttr_seconds": 18.29,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.73,
+        "bandwidth_bytes_sec": 12493518.63,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "4cc0d88e028669c4",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "uncertainty-aware-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "sensor_noise",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9768,
+        "per_class_f1": {
+          "NORMAL": 0.9785,
+          "ACCIDENT": 0.9286,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.9579,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.8667,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 3.96,
+        "accuracy_pct": 97.92,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9542,
+          0.9954
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 2.77,
+        "mean_ttr_seconds": 20.32,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.73,
+        "bandwidth_bytes_sec": 3494930.25,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "553cfca4bf40abfc",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-temporal",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "sensor_noise",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9768,
+        "per_class_f1": {
+          "NORMAL": 0.9785,
+          "ACCIDENT": 0.9286,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.9579,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.8667,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 3.96,
+        "accuracy_pct": 97.92,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9542,
+          0.9954
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 5.2,
+        "mean_ttr_seconds": 18.37,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.73,
+        "bandwidth_bytes_sec": 2406415.54,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "a44993dc2b11008d",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-agreement",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "sensor_noise",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9768,
+        "per_class_f1": {
+          "NORMAL": 0.9785,
+          "ACCIDENT": 0.9286,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.9579,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.8667,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 3.96,
+        "accuracy_pct": 97.92,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9542,
+          0.9954
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.15,
+        "mean_ttr_seconds": 14.21,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.73,
+        "bandwidth_bytes_sec": 2213236.55,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "76b3dc2cb8f35f7b",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-health",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "sensor_noise",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9768,
+        "per_class_f1": {
+          "NORMAL": 0.9785,
+          "ACCIDENT": 0.9286,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.9579,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.8667,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 3.96,
+        "accuracy_pct": 97.92,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.9542,
+          0.9954
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.75,
+        "mean_ttr_seconds": 18.07,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.73,
+        "bandwidth_bytes_sec": 3619120.54,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "a750d29d3a1239f4",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "audio-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "network_outage",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.82,
+        "mean_ttr_seconds": 15.9,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.75,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "d4e7b7c18e5d8c12",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "vision-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "network_outage",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 1.0,
+        "per_class_f1": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 100.0,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          1.0,
+          1.0
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 2.92,
+        "mean_ttr_seconds": 17.52,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.75,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "24579a87193ccf29",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "sensor-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "network_outage",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.4812,
+        "per_class_f1": {
+          "NORMAL": 0.7429,
+          "ACCIDENT": 0.1818,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.5909,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.1,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 62.38,
+        "accuracy_pct": 67.19,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.4335,
+          0.5291
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.53,
+        "mean_ttr_seconds": 16.68,
+        "detected_count": 6,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.75,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "c2c025742aab5782",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "static-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "network_outage",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.9296,
+        "per_class_f1": {
+          "NORMAL": 0.943,
+          "ACCIDENT": 0.7755,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.8922,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.6333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 10.89,
+        "accuracy_pct": 94.27,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.8908,
+          0.967
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.68,
+        "mean_ttr_seconds": 15.96,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.75,
+        "bandwidth_bytes_sec": 8661450.77,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "f57c4053606a1fb0",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "temporal-ood-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "network_outage",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8851,
+        "per_class_f1": {
+          "NORMAL": 0.9055,
+          "ACCIDENT": 0.7234,
+          "FIRE": 0.9552,
+          "AMBULANCE": 0.9565
+        },
+        "per_class_precision": {
+          "NORMAL": 0.8273,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.5667,
+          "FIRE": 0.9143,
+          "AMBULANCE": 0.9167
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 18.81,
+        "accuracy_pct": 90.1,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.8297,
+          0.9258
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.5,
+        "median_detection_latency_seconds": 0.5,
+        "p95_detection_latency_seconds": 0.5,
+        "mean_tta_seconds": 3.66,
+        "mean_ttr_seconds": 14.67,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.75,
+        "bandwidth_bytes_sec": 12561206.26,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "fb7660339aebea1b",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "uncertainty-aware-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "network_outage",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.65,
+        "mean_ttr_seconds": 15.58,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.75,
+        "bandwidth_bytes_sec": 2162961.39,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "38eb0ece309d318b",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-temporal",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "network_outage",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.1,
+        "mean_ttr_seconds": 16.88,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.75,
+        "bandwidth_bytes_sec": 5055021.91,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "90991a62c4930b64",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-agreement",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "network_outage",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 2.66,
+        "mean_ttr_seconds": 15.3,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.75,
+        "bandwidth_bytes_sec": 4615904.71,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "32d0701c21a0b5a8",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-health",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "network_outage",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.8042,
+        "per_class_f1": {
+          "NORMAL": 0.8835,
+          "ACCIDENT": 0.3333,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.7913,
+          "ACCIDENT": 1.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 23.76,
+        "accuracy_pct": 87.5,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.7515,
+          0.858
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.35,
+        "mean_ttr_seconds": 16.87,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.75,
+        "bandwidth_bytes_sec": 2289632.55,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "bda45961f6081d02",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "audio-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "conflicting_sensors",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.1608,
+        "per_class_f1": {
+          "NORMAL": 0.6431,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.474,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 100.0,
+        "accuracy_pct": 47.4,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.1418,
+          0.1768
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": null,
+        "median_detection_latency_seconds": null,
+        "p95_detection_latency_seconds": null,
+        "mean_tta_seconds": null,
+        "mean_ttr_seconds": null,
+        "detected_count": 0,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.77,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "8f33ca6ec6738c57",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "vision-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "conflicting_sensors",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.0771,
+        "per_class_f1": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.3084,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.1823,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 100.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 18.23,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.0576,
+          0.0966
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.52,
+        "mean_ttr_seconds": 18.49,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.77,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "d090b13e533cf83a",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "sensor-only",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "conflicting_sensors",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.2079,
+        "per_class_f1": {
+          "NORMAL": 0.65,
+          "ACCIDENT": 0.1818,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.4815,
+          "ACCIDENT": 1.0,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 1.0,
+          "ACCIDENT": 0.1,
+          "FIRE": 0.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 0.0,
+        "miss_rate_pct": 97.03,
+        "accuracy_pct": 48.96,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.1608,
+          0.257
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.21,
+        "mean_ttr_seconds": 15.16,
+        "detected_count": 3,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.77,
+        "bandwidth_bytes_sec": 24576000.0,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "bc3a1b949a195419",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "static-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "conflicting_sensors",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.0771,
+        "per_class_f1": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.3084,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.1823,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 100.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 18.23,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.0576,
+          0.0966
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": null,
+        "median_detection_latency_seconds": null,
+        "p95_detection_latency_seconds": null,
+        "mean_tta_seconds": null,
+        "mean_ttr_seconds": null,
+        "detected_count": 0,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.77,
+        "bandwidth_bytes_sec": 10846021.33,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "92379ac3572148d2",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "temporal-ood-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "conflicting_sensors",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.0771,
+        "per_class_f1": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.3084,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 0.1823,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.0,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 100.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 18.23,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.0576,
+          0.0966
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": null,
+        "median_detection_latency_seconds": null,
+        "p95_detection_latency_seconds": null,
+        "mean_tta_seconds": null,
+        "mean_ttr_seconds": null,
+        "detected_count": 0,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.77,
+        "bandwidth_bytes_sec": 10753007.83,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "8d244b4595e2a185",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "uncertainty-aware-fusion",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "conflicting_sensors",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.1236,
+        "per_class_f1": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.1818,
+          "FIRE": 0.3125,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 0.1852,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.1,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 100.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 19.79,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.0789,
+          0.1754
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.46,
+        "mean_ttr_seconds": 13.52,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.78,
+        "bandwidth_bytes_sec": 2208780.82,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "7475d00555a430ec",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-temporal",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "conflicting_sensors",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.1236,
+        "per_class_f1": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.1818,
+          "FIRE": 0.3125,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 0.1852,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.1,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 100.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 19.79,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.0789,
+          0.1754
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 4.27,
+        "mean_ttr_seconds": 19.03,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.78,
+        "bandwidth_bytes_sec": 3089688.45,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "4c819b92675c04f4",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-agreement",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "conflicting_sensors",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.1236,
+        "per_class_f1": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.1818,
+          "FIRE": 0.3125,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 0.1852,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.1,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 100.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 19.79,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.0789,
+          0.1754
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 3.5,
+        "mean_ttr_seconds": 17.92,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.78,
+        "bandwidth_bytes_sec": 2767785.76,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "7e977fff5620e47b",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    },
+    {
+      "system_name": "ablation-no-health",
+      "scenario_set": "eval_20261006_234224_seed42",
+      "fault_type": "conflicting_sensors",
+      "data_tag": "SYNTHETIC",
+      "classification": {
+        "macro_f1": 0.1236,
+        "per_class_f1": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.1818,
+          "FIRE": 0.3125,
+          "AMBULANCE": 0.0
+        },
+        "per_class_precision": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 1.0,
+          "FIRE": 0.1852,
+          "AMBULANCE": 0.0
+        },
+        "per_class_recall": {
+          "NORMAL": 0.0,
+          "ACCIDENT": 0.1,
+          "FIRE": 1.0,
+          "AMBULANCE": 0.0
+        },
+        "false_alarm_rate_pct": 100.0,
+        "miss_rate_pct": 0.0,
+        "accuracy_pct": 19.79,
+        "total_samples": 192,
+        "bootstrap_ci_macro_f1": [
+          0.0789,
+          0.1754
+        ]
+      },
+      "latency": {
+        "mean_detection_latency_seconds": 0.0,
+        "median_detection_latency_seconds": 0.0,
+        "p95_detection_latency_seconds": 0.0,
+        "mean_tta_seconds": 2.85,
+        "mean_ttr_seconds": 12.91,
+        "detected_count": 9,
+        "total_events": 9
+      },
+      "resources": {
+        "cpu_usage_pct": 0.0,
+        "memory_peak_mb": 24.78,
+        "bandwidth_bytes_sec": 3782436.05,
+        "power_watts": null,
+        "measurement_status": "SIMULATED_HOST"
+      },
+      "config_hash": "eba5df7de1faacdd",
+      "metadata": {
+        "git_hash": "3d50a47da3c9a752b13a4f874d4f8b30a882324c",
+        "seed": 42
+      }
+    }
+  ]
+}
