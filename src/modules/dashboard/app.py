@@ -858,6 +858,24 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 return
             self._json(USER_MANAGER.list_users())
             return
+        elif path in ("/api/calibration/metrics", "/api/calibration/diagram"):
+            from src.modules.calibration.calibration_engine import (
+                ModelCalibrationManager,
+                compute_calibration_metrics,
+            )
+            # Simulated representative edge test sample pool
+            samples = [
+                {"conf": 0.95, "pred": "ACCIDENT", "label": "ACCIDENT", "class": "ACCIDENT", "device": "camera", "zone": "ZONE_A_INTERSECTION", "drift_period": "PRE_DRIFT"},
+                {"conf": 0.88, "pred": "FIRE", "label": "FIRE", "class": "FIRE", "device": "camera", "zone": "ZONE_A_INTERSECTION", "drift_period": "PRE_DRIFT"},
+                {"conf": 0.82, "pred": "AMBULANCE", "label": "AMBULANCE", "class": "AMBULANCE", "device": "audio", "zone": "ZONE_B_INTERSECTION", "drift_period": "PRE_DRIFT"},
+                {"conf": 0.70, "pred": "NORMAL", "label": "NORMAL", "class": "NORMAL", "device": "sensors", "zone": "ZONE_B_INTERSECTION", "drift_period": "PRE_DRIFT"},
+                {"conf": 0.92, "pred": "ACCIDENT", "label": "ACCIDENT", "class": "ACCIDENT", "device": "camera", "zone": "ZONE_C_CORRIDOR", "drift_period": "POST_DRIFT"},
+                {"conf": 0.85, "pred": "FIRE", "label": "NORMAL", "class": "FIRE", "device": "sensors", "zone": "ZONE_C_CORRIDOR", "drift_period": "POST_DRIFT"},
+            ]
+            mgr = ModelCalibrationManager()
+            strat = mgr.evaluate_stratified_slices(samples)
+            self._json(strat)
+            return
         else:
             self.send_response(404)
             self.end_headers()

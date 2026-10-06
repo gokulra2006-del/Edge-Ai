@@ -84,13 +84,15 @@ ENDPOINT_PERMISSIONS: List[Tuple[str, str, Set[str], str]] = [
     ("GET", r"^/api/monitoring/streams$", ALL_ROLES, "Ingestion streams status"),
     ("GET", r"^/api/monitoring/outbox$", ALL_ROLES, "Offline sync outbox status"),
 
-    # 8. Operational Analytics & Intelligence (Phase 5A/5B)
+    # 8. Operational Analytics & Intelligence (Phase 5A/5B/6C)
     ("GET", r"^/api/analytics/overview$", ALL_ROLES, "Operations overview KPI metrics"),
     ("GET", r"^/api/analytics/trends$", ALL_ROLES, "Incident volume timeseries trends"),
     ("GET", r"^/api/analytics/zones$", ALL_ROLES, "Zone risk assessment"),
     ("GET", r"^/api/analytics/models$", ALL_ROLES, "Model assurance metrics & confusion matrix"),
     ("GET", r"^/api/analytics/availability$", ALL_ROLES, "Subsystem availability breakdown"),
     ("GET", r"^/api/analytics/outbox(-history)?$", ALL_ROLES, "Outbox replay sync history"),
+    ("GET", r"^/api/calibration/metrics$", ALL_ROLES, "Confidence calibration ECE, MCE, and Brier metrics"),
+    ("GET", r"^/api/calibration/diagram$", ALL_ROLES, "Reliability diagram data and zone calibration breakdown"),
 
     # 9. Reporting and Exports (Phase 5C)
     ("GET", r"^/api/reports/csv/incidents$", OPS_ROLES, "Export sanitized incident CSV"),

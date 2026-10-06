@@ -105,3 +105,47 @@ All systems process identical timestamped scenario streams through a unified eva
 - **Failure Criteria**:
   - If uncertainty-aware risk increases false-alarm rate compared to plain fusion, hypothesis fails.
   - If miss rate increases by $> 5.0\%$ without routing to human review, safety invariant fails.
+
+
+---
+
+## Experiment 6C-1: Post-Hoc Confidence Calibration (Temperature Scaling & Isotonic Regression)
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-06
+- **Status**: PRE-REGISTERED (Criteria locked prior to evaluation runs)
+
+### 2. Hypothesis
+- **Hypothesis**: "Post-hoc confidence calibration lowers Expected Calibration Error (ECE) and Brier Score, and prevents overconfident false alarms during distribution shifts and post-drift operational periods."
+- **Held-Out Split Invariant**: Calibrators are fitted strictly on a held-out calibration split (50% calibration, 50% test); NEVER fitted on test data (zero leakage).
+- **OOD Confidence Cap Rule**: On synthetic anomaly or Out-of-Distribution (OOD) inputs, calibrated confidence must be strictly capped ($\le 0.40$) and flagged; 100% confidence on OOD data is strictly prohibited.
+
+### 3. Mathematical Metrics
+1. **Expected Calibration Error (ECE)**:
+   $$\text{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{N} |\text{acc}(B_m) - \text{conf}(B_m)|$$
+   over $M=10$ equal-width probability bins.
+2. **Maximum Calibration Error (MCE)**:
+   $$\text{MCE} = \max_{m \in \{1,\dots,M\}} |\text{acc}(B_m) - \text{conf}(B_m)|$$
+3. **Brier Score**:
+   $$\text{Brier} = \frac{1}{N} \sum_{i=1}^{N} \sum_{k=1}^{K} (p_{ik} - y_{ik})^2$$
+
+### 4. Calibration Methods Evaluated
+1. `uncalibrated`: Raw softmax output from edge neural networks.
+2. `temperature_scaling`: Single learned temperature parameter $T > 0$ optimizing Negative Log Likelihood: $\hat{p} = \sigma(z / T)$.
+3. `isotonic_regression`: Non-parametric piecewise constant isotonic fitting on class probabilities.
+
+### 5. Multi-Slice Stratification
+- Per-class calibration (`NORMAL`, `ACCIDENT`, `FIRE`, `AMBULANCE`).
+- Calibration by device (`camera-node-b`, `audio-node-b`, `sensors-node-b`).
+- Calibration by corridor zone (`ZONE_A_INTERSECTION`, `ZONE_B_INTERSECTION`, `ZONE_C_CORRIDOR`).
+- Calibration before drift vs after drift (using `drift_snapshots` historical timestamps).
+
+### 6. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Temperature scaling and isotonic regression reduce ECE by at least $\ge 25\%$ relative to uncalibrated predictions.
+  2. Zero test-set leakage: calibrator weights fit only on calibration split.
+  3. 100% compliance with OOD cap: max confidence on OOD inputs $\le 0.40$.
+  4. Integration with Phase 6B: $\text{calibration\_quality} = 1.0 - \text{ECE}$ successfully modulates the risk formula.
+- **Failure Criteria**:
+  - If calibration increases Brier score or ECE on the held-out test split, hypothesis fails.
+  - If any OOD input yields confidence $> 0.50$, safety guard fails.
