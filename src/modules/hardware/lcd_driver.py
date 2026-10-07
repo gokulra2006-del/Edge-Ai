@@ -87,7 +87,13 @@ class LCDDriver(BaseHardwareDriver):
         self.initialize()
 
     def initialize(self) -> bool:
-        """Initializes the LCD in 4-bit mode."""
+        """Initializes the LCD in 4-bit mode if enabled, else leaves GPIO 26 unused."""
+        if not getattr(HARDWARE_CONFIG, "enable_lcd", False):
+            self.status = DriverStatus.SIMULATED
+            self.is_simulated = True
+            self.error_message = "LCD disabled; GPIO 26 / Physical Pin 37 strictly preserved as UNUSED."
+            return True
+
         if not RPI_GPIO_AVAILABLE:
             self.status = DriverStatus.SIMULATED
             self.is_simulated = True

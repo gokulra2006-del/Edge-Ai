@@ -126,6 +126,9 @@ class HardwareConfiguration:
     # Global Simulation Fallback Enable
     allow_simulation_fallback: bool = True
 
+    # Auxiliary Display (Set to False to guarantee GPIO 26 / Physical Pin 37 remains strictly UNUSED)
+    enable_lcd: bool = False
+
     def validate_pin_assignments(self) -> List[str]:
         """Checks for duplicate physical or BCM pin assignments."""
         errors = []

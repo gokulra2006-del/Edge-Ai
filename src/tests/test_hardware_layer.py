@@ -100,6 +100,12 @@ class TestHardwareAbstractionLayer(unittest.TestCase):
         self.assertIn("drivers", health)
         self.assertGreaterEqual(len(health["drivers"]), 7)
 
+    def test_gpio26_physical_pin37_strictly_unused(self):
+        """Asserts that GPIO26 / physical pin 37 is not claimed and LCD remains disabled by default."""
+        self.assertFalse(HARDWARE_CONFIG.enable_lcd)
+        self.assertTrue(HARDWARE_HUB.lcd.is_simulated)
+        self.assertIn("strictly preserved as UNUSED", HARDWARE_HUB.lcd.error_message)
+
 
 if __name__ == "__main__":
     unittest.main()
