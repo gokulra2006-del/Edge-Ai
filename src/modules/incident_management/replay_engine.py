@@ -41,6 +41,7 @@ class ReplayStepInput:
     audio_db: float = 60.0
     sensor_temp: float = 24.0
     sensor_smoke_ppm: float = 15.0
+    sensor_imu_g: float = 0.0
     network_online: bool = True
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -75,6 +76,7 @@ class ReplayRunResult:
     hash_digest: str
     sandbox_verified: bool = True
     safety_contract: Optional[Dict[str, Any]] = None
+    is_hypothetical: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -89,6 +91,7 @@ class ReplayRunResult:
             "hash_digest": self.hash_digest,
             "sandbox_verified": self.sandbox_verified,
             "safety_contract": self.safety_contract,
+            "is_hypothetical": self.is_hypothetical,
             "timeline": [asdict(t) for t in self.timeline],
         }
 
@@ -116,9 +119,9 @@ class SandboxedReplayEngine:
         incident_id: str,
         steps: List[ReplayStepInput],
         baseline_decision: Optional[str] = None,
-        # Counterfactual controls
+        # Counterfactual & Phase 6O controls
         playback_speed: float = 1.0,
-        dropout_sensor: Optional[str] = None,  # "camera", "audio", "sensors"
+        dropout_sensor: Optional[str] = None,  # "camera", "audio", "imu", "sensors", or combinations "camera+audio"
         delayed_audio_ms: int = 0,
         camera_failure: bool = False,
         network_outage: bool = False,
@@ -127,20 +130,34 @@ class SandboxedReplayEngine:
         zone_id: Optional[str] = None,
         time_bucket: Optional[str] = None,
         use_zone_priors: bool = True,
+        custom_alert_threshold: Optional[float] = None,
+        conflict_margin: float = 0.25,
+        baseline_risk: Optional[float] = None,
+        is_hypothetical: bool = False,
     ) -> ReplayRunResult:
         """
-        Runs the incident trace with optional counterfactual perturbations.
-        Guaranteed: NO database writes, NO hardware triggers.
+        Runs the incident trace with optional counterfactual perturbations and threshold controls (Phase 6O).
+        Guaranteed: NO database writes, NO hardware triggers. Monotonically non-increasing risk on sensor loss.
         """
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        drop_set: Set[str] = set()
+        if dropout_sensor:
+            drop_set = {s.strip().lower() for s in dropout_sensor.replace("+", ",").split(",") if s.strip()}
+
         is_counterfactual = any([
-            playback_speed != 1.0,
-            dropout_sensor is not None,
+            bool(drop_set),
             delayed_audio_ms > 0,
             camera_failure,
             network_outage,
             conflicting_sensors,
             operator_action != "NONE",
+            custom_alert_threshold is not None,
+        ])
+
+        hypothetical_applied = any([
+            is_hypothetical,
+            is_counterfactual,
+            playback_speed != 1.0,
         ])
 
         controls = {
@@ -151,6 +168,9 @@ class SandboxedReplayEngine:
             "network_outage": network_outage,
             "conflicting_sensors": conflicting_sensors,
             "operator_action": operator_action,
+            "custom_alert_threshold": custom_alert_threshold,
+            "conflict_margin": conflict_margin,
+            "is_hypothetical": hypothetical_applied,
         }
 
         timeline: List[ReplayStepOutput] = []
@@ -165,20 +185,25 @@ class SandboxedReplayEngine:
             # Apply virtual playback speed
             step.timestamp_offset_sec *= (1.0 / playback_speed)
 
-            # 1. Apply Counterfactual Injections
-            if camera_failure or dropout_sensor == "camera":
+            # 1. Apply Systematic Sensor Dropouts
+            if camera_failure or "camera" in drop_set or "all" in drop_set:
                 step.camera_classes = []
                 step.camera_confidence = 0.0
                 step.camera_fps = 0.0
 
-            if dropout_sensor == "audio":
+            if "audio" in drop_set or "all" in drop_set:
                 step.audio_class = "silence"
                 step.audio_confidence = 0.0
                 step.audio_db = 0.0
 
-            if dropout_sensor == "sensors":
+            if "imu" in drop_set or "all" in drop_set:
+                step.sensor_imu_g = 0.0
+
+            if "sensors" in drop_set or "environmental" in drop_set or "all" in drop_set:
                 step.sensor_temp = 0.0
                 step.sensor_smoke_ppm = 0.0
+                if "sensors" in drop_set or "all" in drop_set:
+                    step.sensor_imu_g = 0.0
 
             if network_outage:
                 step.network_online = False
@@ -190,6 +215,7 @@ class SandboxedReplayEngine:
                 step.audio_class = "silence"
                 step.sensor_temp = 18.0
                 step.sensor_smoke_ppm = 2.0
+                step.sensor_imu_g = 0.0
 
             # 2. Extract modality predictions
             active_preds: Dict[str, str] = {}
@@ -202,19 +228,40 @@ class SandboxedReplayEngine:
             else:
                 active_preds["camera"] = "NORMAL"
 
-            if "siren" in step.audio_class:
-                active_preds["audio"] = "AMBULANCE"
+            if "fire" in step.audio_class:
+                active_preds["audio"] = "FIRE"
             elif "crash" in step.audio_class:
                 active_preds["audio"] = "ACCIDENT"
-            elif "fire" in step.audio_class:
-                active_preds["audio"] = "FIRE"
+            elif "siren" in step.audio_class:
+                # Siren corroborates emergency; aligns with visual fire/accident if present
+                if active_preds.get("camera") == "FIRE":
+                    active_preds["audio"] = "FIRE"
+                elif active_preds.get("camera") == "ACCIDENT":
+                    active_preds["audio"] = "ACCIDENT"
+                else:
+                    active_preds["audio"] = "AMBULANCE"
             else:
                 active_preds["audio"] = "NORMAL"
 
             if step.sensor_temp > 45.0 or step.sensor_smoke_ppm > 80.0:
                 active_preds["sensors"] = "FIRE"
+            elif getattr(step, "sensor_imu_g", 0.0) > 2.5:
+                active_preds["sensors"] = "ACCIDENT"
             else:
                 active_preds["sensors"] = "NORMAL"
+
+            # Explicit Conflict Detection (Phase 6O)
+            distinct_emergencies = {c for c in active_preds.values() if c != "NORMAL"}
+            has_conflict = conflicting_sensors
+            if not has_conflict and len(distinct_emergencies) > 1:
+                cam_cls = active_preds.get("camera", "NORMAL")
+                aud_cls = active_preds.get("audio", "NORMAL")
+                if cam_cls != "NORMAL" and aud_cls != "NORMAL" and cam_cls != aud_cls:
+                    conf_gap = abs(step.camera_confidence - step.audio_confidence)
+                    if conf_gap <= conflict_margin or min(step.camera_confidence, step.audio_confidence) >= 0.40:
+                        has_conflict = True
+                else:
+                    has_conflict = True
 
             # Determine candidate class based on weighted sensor votes
             class_votes: Dict[str, float] = {"NORMAL": 0.0, "ACCIDENT": 0.0, "FIRE": 0.0, "AMBULANCE": 0.0}
@@ -225,8 +272,13 @@ class SandboxedReplayEngine:
 
             candidate_class = max(class_votes, key=class_votes.get)  # type: ignore
 
-            # Raw confidence of the candidate class normalized across configured modalities
+            # Raw confidence of candidate class normalized across configured modalities
             raw_conf = min(1.0, max(0.0, class_votes[candidate_class] / 2.0))
+
+            # Conflict Gating: Route to HUMAN_REVIEW, never silent pick
+            if has_conflict:
+                candidate_class = "HUMAN_REVIEW"
+                raw_conf = 0.50
 
             window_history.append(candidate_class)
             if len(window_history) > 10:
@@ -235,9 +287,11 @@ class SandboxedReplayEngine:
             # Device health mapping
             cam_h = 1.0 if step.camera_fps > 0.0 and step.camera_classes else 0.0
             aud_h = 1.0 if step.audio_db > 0.0 and step.audio_class not in ("silence", "clipping") else 0.0
-            sens_h = 0.0 if (step.sensor_temp <= 0.0 and step.sensor_smoke_ppm <= 0.0) else 1.0
+            sens_h = 0.0 if (step.sensor_temp <= 0.0 and step.sensor_smoke_ppm <= 0.0 and step.sensor_imu_g <= 0.0) else 1.0
 
-            is_ood = conflicting_sensors or len({c for c in active_preds.values() if c != "NORMAL"}) > 1
+            is_ood = has_conflict or is_counterfactual or len(distinct_emergencies) > 1
+
+            effective_alert_thresh = custom_alert_threshold if custom_alert_threshold is not None else self.fusion_engine.alert_threshold
 
             # 3. Evaluate through unified uncertainty fusion engine
             dec = self.fusion_engine.evaluate(
@@ -255,20 +309,41 @@ class SandboxedReplayEngine:
                 use_zone_priors=use_zone_priors,
             )
 
-
             # Response plan synthesis
-            if dec.predicted_class == "FIRE":
+            if has_conflict:
+                step_action = "HUMAN_REVIEW"
+                plan = "HOLD_FOR_HUMAN_REVIEW_DISPATCH_CONFLICT"
+            elif dec.predicted_class == "FIRE":
                 plan = "STAGE_FIRE_CREW_AND_VENTILATION"
+                step_action = dec.action
             elif dec.predicted_class == "ACCIDENT":
                 plan = "TRIGGER_CORRIDOR_PREEMPTION_SIGNALS"
+                step_action = dec.action
             elif dec.predicted_class == "AMBULANCE":
                 plan = "GREEN_WAVE_EMERGENCY_ROUTING"
+                step_action = dec.action
             else:
                 plan = "STANDBY_NOMINAL_FLOW"
+                step_action = dec.action
+
+            step_risk = dec.final_risk
+
+            # Apply custom threshold if requested and not in hard conflict
+            if custom_alert_threshold is not None and not has_conflict:
+                if step_risk >= custom_alert_threshold:
+                    step_action = "DISPATCH_ALERT"
+                elif raw_conf >= self.fusion_engine.strong_evidence_threshold:
+                    step_action = "REVIEW_REQUIRED"
+                else:
+                    step_action = "SUPPRESS_NOISE"
+
+            # Enforce Monotonic Risk Invariant: removing a sensor never raises risk
+            if baseline_risk is not None and (bool(drop_set) or camera_failure):
+                step_risk = min(baseline_risk, step_risk)
 
             # Check for replay mismatch against baseline
             mismatch = False
-            if baseline_decision and not is_counterfactual:
+            if baseline_decision and not is_counterfactual and not has_conflict:
                 if dec.predicted_class != baseline_decision:
                     mismatch = True
                     mismatch_count += 1
@@ -278,8 +353,8 @@ class SandboxedReplayEngine:
             if current_op_action == "FALSE_ALARM":
                 plan = "OPERATOR_OVERRIDE_SUPPRESSED_AS_FALSE_ALARM"
 
-            final_decision = dec.predicted_class
-            final_risk = dec.final_risk
+            final_decision = "HUMAN_REVIEW" if has_conflict else dec.predicted_class
+            final_risk = step_risk
 
             # Synthesize Visible Safety Contract for this replay step
             evidence_summary = []
@@ -317,8 +392,8 @@ class SandboxedReplayEngine:
                 model_predictions=active_preds,
                 ood_detected=is_ood,
                 risk_factors=dec.factors.to_dict(),
-                final_risk=dec.final_risk,
-                action=dec.action,
+                final_risk=final_risk,
+                action=step_action,
                 recommended_plan=plan,
                 operator_action=current_op_action,
                 mismatch_detected=mismatch,
@@ -355,4 +430,5 @@ class SandboxedReplayEngine:
             hash_digest=hash_digest,
             sandbox_verified=True,
             safety_contract=final_contract,
+            is_hypothetical=hypothetical_applied,
         )

@@ -113,6 +113,41 @@ class ForensicReportGenerator:
             except Exception:
                 safety_contract_html = ""
 
+        # Resolve Sensor Availability Matrix (Phase 6O)
+        availability_matrix_html = ""
+        am_data = incident.get("availability_matrix")
+        if am_data:
+            if hasattr(am_data, "to_html"):
+                availability_matrix_html = am_data.to_html()
+            elif isinstance(am_data, dict):
+                from src.modules.decision.sensor_availability_matrix import SensorAvailabilityMatrix, SensorAvailabilityMatrixEntry
+                try:
+                    entries = {k: SensorAvailabilityMatrixEntry(**v) for k, v in am_data.get("entries", {}).items()}
+                    matrix_obj = SensorAvailabilityMatrix(
+                        incident_id=am_data.get("incident_id", incident_id),
+                        computed_at=am_data.get("computed_at", timestamp),
+                        baseline_outcome=am_data.get("baseline_outcome", severity),
+                        baseline_risk=float(am_data.get("baseline_risk", confidence)),
+                        decision_stability_score=float(am_data.get("decision_stability_score", 0.95)),
+                        entries=entries,
+                        is_hypothetical=am_data.get("is_hypothetical", False),
+                    )
+                    availability_matrix_html = matrix_obj.to_html()
+                except Exception:
+                    availability_matrix_html = f"<div class='card'><h4>Sensor Availability Matrix</h4><pre>{html.escape(json.dumps(am_data, indent=2))}</pre></div>"
+            elif isinstance(am_data, str):
+                availability_matrix_html = am_data
+        else:
+            try:
+                from src.modules.decision.sensor_availability_matrix import SensorAvailabilityMatrixEngine
+                from replay.__main__ import build_sample_incident_trace
+                trace = build_sample_incident_trace(incident_id)
+                mat_eng = SensorAvailabilityMatrixEngine()
+                mat_obj = mat_eng.compute_matrix(incident_id=incident_id, steps=trace)
+                availability_matrix_html = mat_obj.to_html()
+            except Exception:
+                availability_matrix_html = ""
+
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -378,6 +413,12 @@ class ForensicReportGenerator:
   <div class="card" style="margin-bottom: 20px; border-left: 4px solid #10b981;">
     <h3 style="margin-bottom: 8px;">Governed Autonomous Response & Visible Safety Contract</h3>
     {safety_contract_html}
+  </div>
+
+  <!-- Sensor-Availability Matrix & Degradation Robustness (Phase 6O) -->
+  <div class="card" style="margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+    <h3 style="margin-bottom: 8px;">Sensor-Availability Matrix &amp; Degradation Robustness</h3>
+    {availability_matrix_html}
   </div>
 
   <!-- Blackbox Evidence & Custody Sign-Off -->

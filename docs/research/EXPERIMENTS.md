@@ -589,6 +589,52 @@ For each condition subgroup:
   - An action is blocked without recording a policy rule ID from 6F.
   - Incongruence between stored evidence/risk factors and the displayed safety contract.
 
+---
+
+## Experiment 6O-1: Sensor-Availability Matrix and Threshold Controls
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-07
+- **Status**: PRE-REGISTERED (Criteria locked prior to code execution)
+
+### 2. Hypothesis
+- **Hypothesis**: "Showing how each incident's outcome changes when each sensor is removed, or when sensors conflict, lets operators judge decision robustness; evaluated by decision stability and agreement with real replays."
+- **Core Mechanisms**:
+  1. **Systematic Modality Ablation Matrix**: For every incident, systematic sensor removal (single sensors: camera, audio, IMU, environmental; and sensor-pair combinations: camera+audio, camera+IMU, audio+IMU; plus conflict condition) is evaluated via the unified 6D replay engine and 6B uncertainty fusion.
+  2. **Explicit Conflict Resolution**: When active modalities disagree beyond a configured margin ($\Delta_{\text{conf}} \le \text{margin}$ with opposing non-normal classes), the outcome is routed to `HUMAN_REVIEW`, strictly prohibiting silent resolution or arbitrary modal tie-breaking.
+  3. **Hypothetical Replay Controls**: Operators can explore alternative confidence thresholds (e.g. 0.30 - 0.90) and alternative decisions (e.g. override, acknowledge, false alarm), with all output explicitly tagged as `is_hypothetical=True`.
+  4. **Monotonic Risk Invariant**: Removing a sensor can never raise risk ($Risk_{\text{ablation}} \le Risk_{\text{baseline}}$); the matrix outcome must equal what a real replay with that sensor removed produces bit-for-bit.
+  5. **Edge Budget & Lazy Caching**: On Raspberry Pi 4 hardware, matrix computation is evaluated lazily on request or cached in the background, never blocking the critical millisecond alert path.
+
+### 3. Primary Metrics & Target Thresholds
+1. **Monotonic Risk Invariant Rate**:
+   - $100\%$ of sensor removal evaluations satisfy $Risk_{\text{ablation}} \le Risk_{\text{baseline}} + \epsilon$ ($\epsilon = 0.0001$).
+2. **Replay Engine Congruence**:
+   - $100\%$ bit-exact agreement between the matrix outcomes and independent direct 6D sandboxed replay execution.
+3. **Explicit Conflict Gating**:
+   - $100\%$ of conflicting modality injection scenarios result in `HUMAN_REVIEW` (0.0% silent picks).
+4. **Decision Stability Score**:
+   - Metric measuring the fraction of single-sensor ablations that maintain the baseline event classification or gracefully transition to human review rather than flipping to an erroneous contradictory emergency. Baseline target $\ge 0.85$.
+5. **Execution Latency Budget**:
+   - Real-time alert path latency overhead: $0.0\text{ms}$ (lazily computed or background cached).
+   - Lazy generation latency: $\le 50\text{ms}$ for full 9-condition matrix on edge CPU.
+
+### 4. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Availability matrix computed per incident covering all individual sensors and sensor pairs.
+  2. Outcome levels accurately mapped (`CRITICAL`, `HIGH`, `REVIEW_REQUIRED`, `LOW_CONFIDENCE`, `HUMAN_REVIEW`).
+  3. Invariant: removing a sensor never raises risk.
+  4. Invariant: matrix outcome equals real replay output bit-for-bit.
+  5. Explicit conflict detection routing to `HUMAN_REVIEW` when modalities disagree within margin.
+  6. Hypothetical controls for alternative thresholds and operator decisions.
+  7. Displayed on incident page and forensic reports with zero external CDN dependencies.
+  8. Decision stability metric integrated into Phase 6A evaluation framework.
+- **Failure Criteria**:
+  - Removing a sensor inflates risk above baseline.
+  - A multimodal conflict is silently resolved without `HUMAN_REVIEW`.
+  - Matrix calculation blocks or delays live real-time incident detection.
+  - Incongruence between availability matrix and direct 6D replay.
+
 
 
 

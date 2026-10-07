@@ -245,3 +245,91 @@ def compute_latency_metrics(
         detected_count=n,
         total_events=total_events,
     )
+
+
+@dataclass
+class DecisionStabilityMetrics:
+    mean_stability_score: float
+    camera_loss_stability_pct: float
+    audio_loss_stability_pct: float
+    sensor_loss_stability_pct: float
+    monotonic_risk_invariant_pct: float
+    total_evaluations: int
+
+
+def compute_decision_stability_under_sensor_loss(
+    baseline_outcomes: List[Dict[str, Any]],
+    ablation_outcomes: List[Dict[str, Dict[str, Any]]],
+) -> DecisionStabilityMetrics:
+    """
+    Computes Phase 6O decision stability under systematic sensor loss and verifies
+    the monotonic risk invariant (removing a sensor never raises risk).
+    """
+    if not baseline_outcomes or not ablation_outcomes:
+        return DecisionStabilityMetrics(
+            mean_stability_score=1.0,
+            camera_loss_stability_pct=100.0,
+            audio_loss_stability_pct=100.0,
+            sensor_loss_stability_pct=100.0,
+            monotonic_risk_invariant_pct=100.0,
+            total_evaluations=0,
+        )
+
+    n = min(len(baseline_outcomes), len(ablation_outcomes))
+    stable_cam, stable_aud, stable_sens = 0, 0, 0
+    monotonic_holds = 0
+    total_checks = 0
+
+    for i in range(n):
+        base = baseline_outcomes[i]
+        abl = ablation_outcomes[i]
+        b_class = base.get("predicted_class", base.get("decision", "NORMAL"))
+        b_risk = float(base.get("final_risk", 0.0))
+
+        # Camera
+        cam = abl.get("without_camera", {})
+        if cam:
+            c_class = cam.get("predicted_class", cam.get("decision", "NORMAL"))
+            c_risk = float(cam.get("final_risk", 0.0))
+            if c_class == b_class or cam.get("outcome_level") in ("REVIEW_REQUIRED", "HUMAN_REVIEW"):
+                stable_cam += 1
+            if c_risk <= b_risk + 1e-4:
+                monotonic_holds += 1
+            total_checks += 1
+
+        # Audio
+        aud = abl.get("without_audio", {})
+        if aud:
+            a_class = aud.get("predicted_class", aud.get("decision", "NORMAL"))
+            a_risk = float(aud.get("final_risk", 0.0))
+            if a_class == b_class or aud.get("outcome_level") in ("REVIEW_REQUIRED", "HUMAN_REVIEW"):
+                stable_aud += 1
+            if a_risk <= b_risk + 1e-4:
+                monotonic_holds += 1
+            total_checks += 1
+
+        # Sensor / Environmental
+        sens = abl.get("without_sensors", abl.get("without_environmental", {}))
+        if sens:
+            s_class = sens.get("predicted_class", sens.get("decision", "NORMAL"))
+            s_risk = float(sens.get("final_risk", 0.0))
+            if s_class == b_class or sens.get("outcome_level") in ("REVIEW_REQUIRED", "HUMAN_REVIEW"):
+                stable_sens += 1
+            if s_risk <= b_risk + 1e-4:
+                monotonic_holds += 1
+            total_checks += 1
+
+    cam_pct = round((stable_cam / max(1, n)) * 100.0, 2)
+    aud_pct = round((stable_aud / max(1, n)) * 100.0, 2)
+    sens_pct = round((stable_sens / max(1, n)) * 100.0, 2)
+    mono_pct = round((monotonic_holds / max(1, total_checks)) * 100.0, 2)
+    mean_stab = round((cam_pct + aud_pct + sens_pct) / (3.0 * 100.0), 4)
+
+    return DecisionStabilityMetrics(
+        mean_stability_score=mean_stab,
+        camera_loss_stability_pct=cam_pct,
+        audio_loss_stability_pct=aud_pct,
+        sensor_loss_stability_pct=sens_pct,
+        monotonic_risk_invariant_pct=mono_pct,
+        total_evaluations=n,
+    )

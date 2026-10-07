@@ -57,6 +57,8 @@ USER_MANAGER = UserManager()
 RATE_LIMITER.repository = GOVERNED_REPOSITORY
 from src.modules.autonomous_response.safety_contract import GovernedResponseEngine
 GOVERNED_RESPONSE_ENGINE = GovernedResponseEngine(GOVERNED_REPOSITORY)
+from src.modules.decision.sensor_availability_matrix import SensorAvailabilityMatrixEngine
+SENSOR_AVAILABILITY_ENGINE = SensorAvailabilityMatrixEngine(repository=GOVERNED_REPOSITORY)
 
 SERVER_START_TIME = time.time()
 try:
@@ -997,6 +999,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
             )
             self._json({"contract": contract.to_dict(), "plan": plan.to_dict()})
             return
+        elif path == "/api/incident/availability-matrix":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            query = urllib.parse.parse_qs(parsed.query)
+            incident_id = query.get("incident", query.get("incident_id", ["INC-DEMO-001"]))[0]
+            fmt = query.get("format", ["json"])[0]
+
+            matrix = SENSOR_AVAILABILITY_ENGINE.compute_matrix_for_incident(incident_id=incident_id)
+            if fmt == "html":
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(matrix.to_html().encode("utf-8"))
+                return
+
+            self._json(matrix.to_dict())
+            return
         elif path == "/api/governance/disagreements":
             from src.modules.governance.feedback_loop import LabelQualityTracker
             tracker = LabelQualityTracker(GOVERNED_REPOSITORY)
@@ -1052,6 +1074,40 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 network_outage=bool(payload.get("network_outage", False)),
                 conflicting_sensors=bool(payload.get("conflicting_sensors", False)),
                 operator_action=payload.get("operator_action", "NONE"),
+            )
+            self._json(result.to_dict())
+            return
+
+        if path == "/api/replay/hypothetical":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            payload = self._payload()
+            incident_id = str(payload.get("incident_id", "INC-DEMO-001"))
+            custom_threshold = payload.get("custom_alert_threshold")
+            if custom_threshold is not None:
+                try:
+                    custom_threshold = float(custom_threshold)
+                except (ValueError, TypeError):
+                    self._json({"error": "custom_alert_threshold must be a float"}, 400)
+                    return
+            operator_action = payload.get("operator_action", "NONE")
+            drop_modalities = payload.get("drop_modalities")
+            if isinstance(drop_modalities, list):
+                drop_modalities = set(drop_modalities)
+            elif not isinstance(drop_modalities, set):
+                drop_modalities = None
+            dropout_sensor = payload.get("dropout_sensor")
+            conflicting_sensors = bool(payload.get("conflicting_sensors", False))
+
+            result = SENSOR_AVAILABILITY_ENGINE.replay_hypothetical(
+                incident_id=incident_id,
+                custom_alert_threshold=custom_threshold,
+                operator_action=operator_action,
+                drop_modalities=drop_modalities,
+                dropout_sensor=dropout_sensor,
+                conflicting_sensors=conflicting_sensors,
             )
             self._json(result.to_dict())
             return

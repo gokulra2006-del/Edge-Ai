@@ -1,6 +1,7 @@
 """Governed incident persistence.  SQLite writes are isolated from inference."""
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -279,17 +280,35 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     CREATE INDEX IF NOT EXISTS idx_contracts_incident ON safety_contracts(incident_id);
     CREATE INDEX IF NOT EXISTS idx_plans_incident ON response_plans(incident_id);
     """),
+    (12, """
+    CREATE TABLE IF NOT EXISTS incident_availability_matrices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      incident_id TEXT NOT NULL,
+      computed_at TEXT NOT NULL,
+      baseline_outcome TEXT NOT NULL,
+      baseline_risk REAL NOT NULL,
+      stability_score REAL NOT NULL,
+      matrix_json TEXT NOT NULL,
+      FOREIGN KEY(incident_id) REFERENCES incidents(incident_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_matrix_incident ON incident_availability_matrices(incident_id);
+    """),
 )
 
 
-def _connection(db_path: Path) -> sqlite3.Connection:
+@contextlib.contextmanager
+def _connection(db_path: Path):
     db_path.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(str(db_path), timeout=1.0)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA journal_mode=WAL")
     con.execute("PRAGMA foreign_keys=ON")
     con.execute("PRAGMA busy_timeout=1000")
-    return con
+    try:
+        with con:
+            yield con
+    finally:
+        con.close()
 
 
 class MigrationRunner:
@@ -426,8 +445,16 @@ class IncidentRepository:
         return self.writer.submit(lambda c: c.execute("UPDATE incidents SET risk_level=?, risk_breakdown_json=?, updated_at=? WHERE incident_id=?", (level,json.dumps(breakdown,sort_keys=True),utc_now(),incident_id)))
     def close_incident(self, incident_id: str, outcome: str) -> bool:
         return self.writer.submit(lambda c: c.execute("UPDATE incidents SET status=?, outcome=?, updated_at=? WHERE incident_id=?", (IncidentStatus.CLOSED.value,outcome,utc_now(),incident_id)))
+    def store_availability_matrix(self, incident_id: str, baseline_outcome: str, baseline_risk: float, stability_score: float, matrix_json: str, computed_at: str | None = None) -> bool:
+        ts = computed_at or utc_now()
+        return self.writer.submit(
+            lambda c: c.execute(
+                "INSERT INTO incident_availability_matrices(incident_id, computed_at, baseline_outcome, baseline_risk, stability_score, matrix_json) VALUES(?,?,?,?,?,?)",
+                (incident_id, ts, baseline_outcome, baseline_risk, stability_score, matrix_json),
+            )
+        )
     def rows(self, table: str, incident_id: str | None = None) -> list[dict[str, Any]]:
-        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes","device_health_events","sync_outbox","drift_snapshots","model_baselines","safety_contracts","response_plans"}
+        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes","device_health_events","sync_outbox","drift_snapshots","model_baselines","safety_contracts","response_plans","incident_availability_matrices"}
         if table not in allowed: raise ValueError("invalid table")
         if incident_id is None:
             order_col = "created_at" if table in ("incidents", "model_baselines", "response_plans") else "id"

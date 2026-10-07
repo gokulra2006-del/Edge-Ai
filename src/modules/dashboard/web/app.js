@@ -2243,6 +2243,34 @@ async function showIncidentDetail(id) {
             <span id="scBadge" class="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-600">Loading...</span>
         </div>
         <div id="scContent" class="text-xs text-slate-500">Loading safety contract and response plan...</div>
+    </div>
+    <div id="availabilityMatrixSection" class="mt-4 p-3 bg-white border border-slate-200 rounded-xl">
+        <div class="flex items-center justify-between mb-2">
+            <h4 class="text-xs font-bold uppercase text-slate-700">Sensor-Availability Matrix &amp; Threshold Controls (Phase 6O)</h4>
+            <span id="samStabilityBadge" class="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-600">Loading...</span>
+        </div>
+        <div id="samControls" class="mb-3 p-2 bg-slate-50 border rounded text-xs flex flex-wrap items-center gap-3">
+            <label class="flex items-center gap-1 font-semibold text-slate-700">
+                Confidence Threshold:
+                <input type="range" id="samThreshSlider" min="0.1" max="0.95" step="0.05" value="0.75" class="w-24 accent-blue-600" oninput="document.getElementById('samThreshVal').innerText = (this.value*100).toFixed(0)+'%';">
+                <span id="samThreshVal" class="font-mono text-blue-700 font-bold ml-1">75%</span>
+            </label>
+            <label class="flex items-center gap-1 font-semibold text-slate-700">
+                Operator Action:
+                <select id="samOpActionSelect" class="border rounded px-1.5 py-0.5 text-xs bg-white">
+                    <option value="NONE">NONE (Baseline)</option>
+                    <option value="ACKNOWLEDGE">ACKNOWLEDGE</option>
+                    <option value="OVERRIDE_FALSE_ALARM">OVERRIDE FALSE ALARM</option>
+                    <option value="ESCALATE">ESCALATE</option>
+                </select>
+            </label>
+            <button onclick="runHypotheticalReplay('${escapeHtml(item.incident_id)}')" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded text-[10px] font-mono shadow-sm">SIMULATE HYPOTHETICAL</button>
+            <button onclick="resetAvailabilityMatrix('${escapeHtml(item.incident_id)}')" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[10px] font-mono">RESET</button>
+        </div>
+        <div id="samHypoNotice" class="hidden mb-2 p-1.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-800 font-bold font-mono">
+            ⚠️ HYPOTHETICAL SIMULATION RESULT - Not an official system alert
+        </div>
+        <div id="samContent" class="text-xs text-slate-500 overflow-x-auto">Loading degradation matrix...</div>
     </div>`;
     const legal={OPEN:["acknowledge","false-alarm","notes"],REVIEW_REQUIRED:["acknowledge","false-alarm","notes"],ACKNOWLEDGED:["confirm","false-alarm","escalate","resolve","notes"],CONFIRMED:["escalate","resolve","notes"],ESCALATED:["acknowledge","resolve","notes"],FALSE_ALARM:["resolve","notes"],CLOSED:["notes"]};
     const role=getCurrentUser()?.role; const permitted=role==="COMMANDER"?["acknowledge","confirm","false-alarm","escalate","resolve","notes"]:role==="OPERATOR"?["acknowledge","confirm","false-alarm","notes"]:[]; const actions=(legal[item.status]||[]).filter(x=>permitted.includes(x));
@@ -2351,6 +2379,120 @@ async function showIncidentDetail(id) {
             }
         })
         .catch(() => {});
+
+    // Fetch and render sensor-availability matrix (Phase 6O)
+    loadSensorAvailabilityMatrix(id);
+}
+
+async function loadSensorAvailabilityMatrix(id) {
+    try {
+        const res = await fetch(`/api/incident/availability-matrix?incident=${encodeURIComponent(id)}&format=json`, { headers: authHeaders() });
+        if (!res.ok) return;
+        const mat = await res.json();
+        renderAvailabilityMatrix(mat);
+    } catch (e) {
+        console.error("Failed to load availability matrix", e);
+    }
+}
+
+function renderAvailabilityMatrix(mat) {
+    const badge = document.getElementById("samStabilityBadge");
+    const box = document.getElementById("samContent");
+    if (badge && mat) {
+        const stabPct = (mat.decision_stability_score * 100).toFixed(0);
+        badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-sky-100 text-sky-800 font-bold";
+        badge.innerText = `DECISION STABILITY: ${stabPct}%`;
+    }
+    if (box && mat && mat.entries) {
+        const rows = Object.values(mat.entries).map(e => {
+            let badgeClass = "bg-slate-100 text-slate-700";
+            if (e.outcome_level === "CRITICAL") badgeClass = "bg-rose-100 text-rose-800 font-bold border border-rose-200";
+            else if (e.outcome_level === "HIGH") badgeClass = "bg-orange-100 text-orange-800 font-bold border border-orange-200";
+            else if (e.outcome_level === "REVIEW_REQUIRED") badgeClass = "bg-amber-100 text-amber-800 font-bold border border-amber-200";
+            else if (e.outcome_level === "HUMAN_REVIEW") badgeClass = "bg-purple-100 text-purple-800 font-bold border border-purple-200";
+            else if (e.outcome_level === "NOMINAL") badgeClass = "bg-emerald-100 text-emerald-800 font-bold border border-emerald-200";
+
+            return `
+                <tr class="border-b border-slate-100 hover:bg-slate-50 text-xs">
+                    <td class="py-1.5 px-2 font-medium text-slate-800">${escapeHtml(e.description)}</td>
+                    <td class="py-1.5 px-2 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-mono ${badgeClass}">${escapeHtml(e.outcome_level)}</span></td>
+                    <td class="py-1.5 px-2 font-mono text-[11px] text-slate-700">${escapeHtml(e.predicted_class)}</td>
+                    <td class="py-1.5 px-2 font-mono text-[11px] text-right font-semibold">${(e.final_risk * 100).toFixed(1)}%</td>
+                    <td class="py-1.5 px-2 font-mono text-[10px] text-slate-500">${escapeHtml(e.action)}</td>
+                </tr>
+            `;
+        }).join("");
+
+        box.innerHTML = `
+            <table class="w-full text-left border-collapse mt-1">
+                <thead>
+                    <tr class="bg-slate-50 text-[10px] text-slate-500 uppercase border-b border-slate-200">
+                        <th class="py-1.5 px-2">Condition</th>
+                        <th class="py-1.5 px-2 text-center">Outcome Level</th>
+                        <th class="py-1.5 px-2">Predicted Class</th>
+                        <th class="py-1.5 px-2 text-right">Risk Score</th>
+                        <th class="py-1.5 px-2">Policy Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        `;
+    }
+}
+
+async function runHypotheticalReplay(id) {
+    const threshInput = document.getElementById("samThreshSlider");
+    const opSelect = document.getElementById("samOpActionSelect");
+    const notice = document.getElementById("samHypoNotice");
+    if (!threshInput || !opSelect) return;
+
+    const threshold = parseFloat(threshInput.value);
+    const action = opSelect.value;
+
+    try {
+        const res = await fetch("/api/replay/hypothetical", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({
+                incident_id: id,
+                custom_alert_threshold: threshold,
+                operator_action: action,
+            }),
+        });
+        if (!res.ok) return;
+        const hypoRun = await res.json();
+        if (notice) notice.classList.remove("hidden");
+        const matRes = await fetch(`/api/incident/availability-matrix?incident=${encodeURIComponent(id)}`, { headers: authHeaders() });
+        if (matRes.ok) {
+            const mat = await matRes.json();
+            if (mat.entries && mat.entries.ALL_SENSORS) {
+                mat.entries.ALL_SENSORS.description = `Hypothetical Run (Thresh: ${(threshold*100).toFixed(0)}%, Op: ${action})`;
+                mat.entries.ALL_SENSORS.final_risk = hypoRun.final_risk;
+                mat.entries.ALL_SENSORS.predicted_class = hypoRun.final_decision;
+                const lastStep = hypoRun.timeline?.slice(-1)[0];
+                if (lastStep) mat.entries.ALL_SENSORS.action = lastStep.action;
+                mat.is_hypothetical = true;
+            }
+            renderAvailabilityMatrix(mat);
+        }
+    } catch (e) {
+        console.error("Hypothetical replay failed", e);
+    }
+}
+
+function resetAvailabilityMatrix(id) {
+    const notice = document.getElementById("samHypoNotice");
+    if (notice) notice.classList.add("hidden");
+    const threshInput = document.getElementById("samThreshSlider");
+    if (threshInput) {
+        threshInput.value = "0.75";
+        document.getElementById("samThreshVal").innerText = "75%";
+    }
+    const opSelect = document.getElementById("samOpActionSelect");
+    if (opSelect) opSelect.value = "NONE";
+    loadSensorAvailabilityMatrix(id);
 }
 
 async function approveResponsePlanAction(planId, actionId, incidentId) {

@@ -100,6 +100,8 @@ ENDPOINT_PERMISSIONS: List[Tuple[str, str, Set[str], str]] = [
     ("GET", r"^/api/incident/timeline/print$", ALL_ROLES, "Offline printable explainable decision timeline report (Phase 6M)"),
     ("GET", r"^/api/incident/safety-contract$", ALL_ROLES, "Visible safety contract details (Phase 6N)"),
     ("POST", r"^/api/response-plan/approve$", OPS_ROLES, "Approve proposed action in response plan (Phase 6N)"),
+    ("GET", r"^/api/incident/availability-matrix$", ALL_ROLES, "Sensor availability matrix (Phase 6O)"),
+    ("POST", r"^/api/replay/hypothetical$", OPS_ROLES, "Hypothetical replay with custom thresholds (Phase 6O)"),
 
     # 9. Reporting and Exports (Phase 5C)
     ("GET", r"^/api/reports/csv/incidents$", OPS_ROLES, "Export sanitized incident CSV"),

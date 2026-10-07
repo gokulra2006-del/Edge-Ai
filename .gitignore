@@ -3,6 +3,7 @@
 __pycache__/
 .pytest_cache/
 .pytest-tmp/
+.pytest_tmp/
 src/config/dashboard_users.local.json
 data/new_dataset/
 models/new_dataset/runs/
