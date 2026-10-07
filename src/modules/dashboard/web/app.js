@@ -2073,6 +2073,61 @@ async function triggerIncidentReplay() {
     }
 }
 
+async function viewExplainableTimeline() {
+    const incId = document.getElementById("replayIncidentId")?.value || "INC-DEMO-001";
+    const box = document.getElementById("replayResultsBox");
+    const title = document.getElementById("replaySummaryTitle");
+    const digestBadge = document.getElementById("replayDigestBadge");
+    const list = document.getElementById("replayTimelineList");
+
+    if (box) box.classList.remove("hidden");
+    if (list) list.innerHTML = `<div class="text-slate-400">Loading explainable decision timeline for ${incId}...</div>`;
+
+    try {
+        const token = localStorage.getItem("sentinel_token");
+        const res = await fetch(`/api/incident/timeline?incident=${encodeURIComponent(incId)}`, {
+            headers: {
+                "Authorization": token ? `Bearer ${token}` : "",
+            },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        if (title) title.innerText = `EXPLAINABLE TIMELINE: ${data.incident_id} (Completeness: ${(data.completeness_score * 100).toFixed(0)}%, Latency: ${data.assembly_duration_ms.toFixed(1)}ms)`;
+        if (digestBadge) digestBadge.innerText = `STEPS: ${data.steps.length}`;
+
+        if (list && data.steps) {
+            list.innerHTML = data.steps.map(s => {
+                const arrivals = s.raw_evidence.map(e => `${e.modality}: ${JSON.stringify(e.details)}`).join(" | ");
+                const preds = Object.entries(s.model_predictions).map(([k, v]) => `${k}→${v}`).join(", ");
+                return `
+                    <div class="p-2.5 rounded bg-slate-800 border border-slate-700 space-y-1">
+                        <div class="flex items-center justify-between text-[10px]">
+                            <span class="text-blue-400 font-bold">Step ${s.step_idx + 1} (+${s.timestamp_offset_sec.toFixed(2)}s)</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-amber-300 font-bold">Risk: ${(s.final_risk * 100).toFixed(1)}%</span>
+                                ${s.ood_detected ? '<span class="px-1 py-0.5 rounded bg-amber-900/60 text-amber-300 text-[9px]">OOD</span>' : '<span class="text-emerald-400 text-[9px]">IN-DIST</span>'}
+                            </div>
+                        </div>
+                        <div class="text-slate-300 text-[10px]"><strong class="text-slate-400">Raw:</strong> ${arrivals}</div>
+                        <div class="text-slate-300 text-[10px]"><strong class="text-slate-400">Preds:</strong> ${preds}</div>
+                        <div class="text-slate-200 text-[10px]"><strong class="text-slate-400">Plan:</strong> ${s.decision_action} &bull; ${s.recommended_plan}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (e) {
+        if (list) list.innerHTML = `<div class="text-rose-400">Timeline fetch failed: ${e.message}</div>`;
+    }
+}
+
+function printExplainableTimeline() {
+    const incId = document.getElementById("replayIncidentId")?.value || "INC-DEMO-001";
+    const token = localStorage.getItem("sentinel_token");
+    const printUrl = `/api/incident/timeline/print?incident=${encodeURIComponent(incId)}`;
+    window.open(printUrl, "_blank");
+}
+
 function toggleSidebar() {
     const drawer = document.getElementById("sidebarDrawer");
     const overlay = document.getElementById("sidebarOverlay");

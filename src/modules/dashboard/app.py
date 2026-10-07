@@ -919,6 +919,37 @@ class DashboardHandler(BaseHTTPRequestHandler):
             explanation = explainer.explain_incident(incident_id=incident_id, steps=trace)
             self._json(explanation.to_dict())
             return
+        elif path == "/api/incident/timeline":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            query = urllib.parse.parse_qs(parsed.query)
+            incident_id = query.get("incident", ["INC-DEMO-001"])[0]
+            zone_id = query.get("zone", [None])[0]
+            from src.modules.decision.explainable_timeline import ExplainableTimelineEngine
+            timeline_engine = ExplainableTimelineEngine(repository=GOVERNED_REPOSITORY)
+            timeline = timeline_engine.generate_timeline(incident_id=incident_id, zone_id=zone_id)
+            self._json(timeline.to_dict())
+            return
+        elif path == "/api/incident/timeline/print":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            query = urllib.parse.parse_qs(parsed.query)
+            incident_id = query.get("incident", ["INC-DEMO-001"])[0]
+            zone_id = query.get("zone", [None])[0]
+            from src.modules.decision.explainable_timeline import ExplainableTimelineEngine
+            timeline_engine = ExplainableTimelineEngine(repository=GOVERNED_REPOSITORY)
+            timeline = timeline_engine.generate_timeline(incident_id=incident_id, zone_id=zone_id)
+            print_html = timeline.to_offline_html()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(print_html.encode("utf-8"))
+            return
         elif path == "/api/governance/disagreements":
             from src.modules.governance.feedback_loop import LabelQualityTracker
             tracker = LabelQualityTracker(GOVERNED_REPOSITORY)

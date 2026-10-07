@@ -1476,9 +1476,15 @@
                                 <option value="network">Network Outage</option>
                             </select>
                         </div>
-                        <div class="flex items-end">
-                            <button onclick="triggerIncidentReplay()" class="btn-press w-full p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs">
-                                RUN SANDBOX REPLAY
+                        <div class="flex items-end gap-2">
+                            <button onclick="triggerIncidentReplay()" class="btn-press flex-1 p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs" title="Run sandboxed incident replay">
+                                RUN REPLAY
+                            </button>
+                            <button onclick="viewExplainableTimeline()" class="btn-press flex-1 p-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs" title="Open Explainable Multi-Modal Timeline (Phase 6M)">
+                                TIMELINE
+                            </button>
+                            <button onclick="printExplainableTimeline()" class="btn-press p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs" title="Print Forensic Timeline Report">
+                                🖨️
                             </button>
                         </div>
                     </div>

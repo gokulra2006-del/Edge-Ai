@@ -96,6 +96,8 @@ ENDPOINT_PERMISSIONS: List[Tuple[str, str, Set[str], str]] = [
     ("GET", r"^/api/replay/timeline$", ALL_ROLES, "Digital twin incident replay timeline and risk trajectory"),
     ("POST", r"^/api/replay/execute$", ALL_ROLES, "Execute sandboxed counterfactual incident replay"),
     ("GET", r"^/api/counterfactual/explain$", ALL_ROLES, "Counterfactual decision explanations and ablation sensitivity"),
+    ("GET", r"^/api/incident/timeline$", ALL_ROLES, "Explainable multi-modal decision timeline (Phase 6M)"),
+    ("GET", r"^/api/incident/timeline/print$", ALL_ROLES, "Offline printable explainable decision timeline report (Phase 6M)"),
 
     # 9. Reporting and Exports (Phase 5C)
     ("GET", r"^/api/reports/csv/incidents$", OPS_ROLES, "Export sanitized incident CSV"),
