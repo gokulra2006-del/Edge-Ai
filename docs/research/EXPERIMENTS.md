@@ -542,6 +542,54 @@ For each condition subgroup:
   - Evaluation test data is used to calculate priors (data leakage).
   - Suppression of real anomalies in quiet zones.
 
+---
+
+## Experiment 6N-1: Governed Autonomous Response with Visible Safety Contract
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-07
+- **Status**: PRE-REGISTERED (Criteria locked prior to code execution)
+
+### 2. Hypothesis
+- **Hypothesis**: "Showing evidence, uncertainty, and approval requirements for each proposed action reduces unauthorized or unreviewed actions without delaying authorized ones."
+- **Core Mechanism**:
+  1. **AI Proposes Only**: The AI decision system only produces `PROPOSED` actions within an explicit response plan. Physical execution and emergency dispatches unconditionally require human approval by an authorized role.
+  2. **Visible Safety Contract**: Every decision record binds an immutable safety contract containing:
+     - What the AI detected (event class, confidence, timestamp, zone).
+     - Which evidence supports it (multi-sensor modalities, sensor readings, and key evidence items).
+     - What uncertainty remains (6B multi-factor risk components: temporal consistency, sensor agreement, health, calibration, penalties).
+     - What action is proposed (e.g. traffic signal preemption, dispatch request, evacuation advisory).
+     - Which human role must approve it (`OPERATOR` for tactical actions, `COMMANDER` for dispatch/escalation/resolution).
+     - Why an action was blocked if blocked (policy rule ID from Phase 6F, e.g. `INV-04-NO-AUTOMATIC-DISPATCH`, `INV-05-RESEARCH-MODEL-BOUNDARY`, `INV-01-VIEWER-NO-ACTUATION`).
+  3. **Model Tier Invariance**: `RESEARCH_ONLY` models are architecturally prohibited from proposing physical actuation or emergency dispatch (`INV-05`).
+
+### 3. Primary Metrics & Target Thresholds
+1. **Unauthorized / Unreviewed Action Rate**:
+   - Zero unauthorized or unreviewed actuations/dispatches executed ($0.0\%$, verified across 100% of execution paths).
+2. **Approval Latency / Completion Time Accounting**:
+   - Response-plan completion time (duration from plan proposal timestamp to final status: `APPROVED`, `BLOCKED`, `EXECUTED`, or `EXPIRED`) is measured and recorded per plan.
+   - P95 response plan resolution time remains $\le 5.0$ seconds in automated triage simulation.
+3. **Contract Completeness & Congruence**:
+   - 100% of generated decision records contain a congruent, non-null safety contract matching stored telemetry and predictions.
+4. **Audit Trail Accountability**:
+   - 100% of authorization failures and blocked actions produce immutable records in the `operator_actions` audit ledger.
+
+### 4. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Response-plan object per incident tracking proposed actions with required approver role, status (`PROPOSED`, `APPROVED`, `BLOCKED`, `EXECUTED`, `EXPIRED`), timestamps, and actor ID.
+  2. Stored safety contract with AI detection, evidence list, 6B uncertainty factors, proposed action, required approver role, and block reason ID.
+  3. Strict enforcement: AI only proposes; external dispatch and physical actuation cannot execute without human approval.
+  4. Blocked actions and authorization rejections logged to audit ledger with corresponding 6F invariant rule IDs.
+  5. Response-plan completion duration tracked per plan.
+  6. Safety contract included in forensic reports (5C/10) and sandboxed replay output (6D).
+  7. Offline compatibility (zero CDN) and role permission matrix enforcement.
+- **Failure Criteria**:
+  - Any physical actuation or external dispatch executes without explicit human approval.
+  - A `RESEARCH_ONLY` model successfully proposes physical actuation.
+  - An action is blocked without recording a policy rule ID from 6F.
+  - Incongruence between stored evidence/risk factors and the displayed safety contract.
+
+
 
 
 

@@ -10,6 +10,7 @@ Generates comprehensive, high-resolution styled HTML/PDF forensic reports:
 - Direct Blackbox DVR recording links & Print-to-PDF ready CSS.
 """
 import hashlib
+import html
 import json
 import time
 from typing import Any, Dict, Optional
@@ -82,6 +83,35 @@ class ForensicReportGenerator:
         badge_bg = "#ffe4e6" if is_critical else ("#eff6ff" if "EMERGENCY" in event_type else "#ecfdf5")
         badge_color = "#9f1239" if is_critical else ("#1e40af" if "EMERGENCY" in event_type else "#065f46")
         badge_border = "#fecdd3" if is_critical else ("#bfdbfe" if "EMERGENCY" in event_type else "#a7f3d0")
+
+        # Resolve Visible Safety Contract (Phase 6N)
+        safety_contract_html = ""
+        sc_data = incident.get("safety_contract")
+        if sc_data:
+            if hasattr(sc_data, "to_html"):
+                safety_contract_html = sc_data.to_html()
+            elif isinstance(sc_data, dict):
+                from src.modules.autonomous_response.safety_contract import VisibleSafetyContract
+                try:
+                    safety_contract_html = VisibleSafetyContract(**sc_data).to_html()
+                except Exception:
+                    safety_contract_html = f"<div class='card'><h4>Visible Safety Contract</h4><pre>{html.escape(json.dumps(sc_data, indent=2))}</pre></div>"
+            elif isinstance(sc_data, str):
+                safety_contract_html = sc_data
+        else:
+            try:
+                from src.modules.autonomous_response.safety_contract import GovernedResponseEngine
+                eng = GovernedResponseEngine(repository=None)
+                _, sc_obj = eng.synthesize_response_plan(
+                    incident_id=incident_id,
+                    detected_class=event_type,
+                    confidence=float(confidence if confidence <= 1.0 else confidence / 100.0),
+                    evidence_summary=evidence if isinstance(evidence, list) else [str(evidence)],
+                    risk_factors=incident.get("risk_factors", {"temporal_uncertainty": 0.05, "sensor_agreement": 0.95}),
+                )
+                safety_contract_html = sc_obj.to_html()
+            except Exception:
+                safety_contract_html = ""
 
         html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -342,6 +372,12 @@ class ForensicReportGenerator:
   <div class="card" style="margin-bottom: 20px;">
     <h3>Corroborating Evidence Chain & Deep Inference Proof</h3>
     {"".join(f'<div class="evidence-item">{item}</div>' for item in evidence)}
+  </div>
+
+  <!-- Governed Autonomous Response & Visible Safety Contract (Phase 6N) -->
+  <div class="card" style="margin-bottom: 20px; border-left: 4px solid #10b981;">
+    <h3 style="margin-bottom: 8px;">Governed Autonomous Response & Visible Safety Contract</h3>
+    {safety_contract_html}
   </div>
 
   <!-- Blackbox Evidence & Custody Sign-Off -->

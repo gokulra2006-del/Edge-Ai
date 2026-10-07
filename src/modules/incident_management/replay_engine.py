@@ -58,6 +58,7 @@ class ReplayStepOutput:
     recommended_plan: str
     operator_action: str
     mismatch_detected: bool = False
+    safety_contract: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -73,6 +74,7 @@ class ReplayRunResult:
     mismatch_count: int
     hash_digest: str
     sandbox_verified: bool = True
+    safety_contract: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -86,6 +88,7 @@ class ReplayRunResult:
             "mismatch_count": self.mismatch_count,
             "hash_digest": self.hash_digest,
             "sandbox_verified": self.sandbox_verified,
+            "safety_contract": self.safety_contract,
             "timeline": [asdict(t) for t in self.timeline],
         }
 
@@ -105,6 +108,8 @@ class SandboxedReplayEngine:
             strong_evidence_threshold=strong_evidence_threshold,
             target_window_steps=5,
         )
+        from src.modules.autonomous_response.safety_contract import GovernedResponseEngine
+        self.governed_engine = GovernedResponseEngine(repository=None)
 
     def execute_replay(
         self,
@@ -276,6 +281,29 @@ class SandboxedReplayEngine:
             final_decision = dec.predicted_class
             final_risk = dec.final_risk
 
+            # Synthesize Visible Safety Contract for this replay step
+            evidence_summary = []
+            if step.camera_classes:
+                evidence_summary.append(f"Visual classes detected: {', '.join(step.camera_classes)}")
+            if step.audio_class and step.audio_class != "silence":
+                evidence_summary.append(f"Acoustic classification: {step.audio_class} ({round(step.audio_db, 1)} dB)")
+            if step.sensor_temp > 40.0:
+                evidence_summary.append(f"Thermal anomaly: {round(step.sensor_temp, 1)} °C")
+            if step.sensor_smoke_ppm > 50.0:
+                evidence_summary.append(f"Combustion smoke gas: {round(step.sensor_smoke_ppm, 1)} PPM")
+            if not evidence_summary:
+                evidence_summary.append("Nominal multi-sensor baseline telemetry")
+
+            _, contract_obj = self.governed_engine.synthesize_response_plan(
+                incident_id=incident_id,
+                detected_class=dec.predicted_class,
+                confidence=dec.raw_confidence,
+                evidence_summary=evidence_summary,
+                risk_factors=dec.factors.to_dict(),
+                model_id="sandboxed_detector_v1",
+                model_usage_restriction="PRODUCTION",
+            )
+
             step_out = ReplayStepOutput(
                 step_idx=idx,
                 timestamp_offset_sec=round(step.timestamp_offset_sec, 3),
@@ -294,6 +322,7 @@ class SandboxedReplayEngine:
                 recommended_plan=plan,
                 operator_action=current_op_action,
                 mismatch_detected=mismatch,
+                safety_contract=contract_obj.to_dict(),
             )
             timeline.append(step_out)
 
@@ -311,6 +340,8 @@ class SandboxedReplayEngine:
         hash_digest = hashlib.sha256(digest_payload.encode("utf-8")).hexdigest()
         replay_id = f"REPLAY-{incident_id}-{hash_digest[:10]}"
 
+        final_contract = timeline[-1].safety_contract if timeline else None
+
         return ReplayRunResult(
             replay_id=replay_id,
             incident_id=incident_id,
@@ -323,4 +354,5 @@ class SandboxedReplayEngine:
             mismatch_count=mismatch_count,
             hash_digest=hash_digest,
             sandbox_verified=True,
+            safety_contract=final_contract,
         )

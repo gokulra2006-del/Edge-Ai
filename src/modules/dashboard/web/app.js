@@ -2236,6 +2236,13 @@ async function showIncidentDetail(id) {
             <span id="cfFidelityBadge" class="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-600">Computing...</span>
         </div>
         <div id="cfContent" class="text-xs text-slate-500">Analyzing decision sensitivity against 6D replay engine...</div>
+    </div>
+    <div id="safetyContractSection" class="mt-4 p-3 bg-white border border-slate-200 rounded-xl">
+        <div class="flex items-center justify-between mb-2">
+            <h4 class="text-xs font-bold uppercase text-slate-700">Governed Autonomous Response &amp; Visible Safety Contract (Phase 6N)</h4>
+            <span id="scBadge" class="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-600">Loading...</span>
+        </div>
+        <div id="scContent" class="text-xs text-slate-500">Loading safety contract and response plan...</div>
     </div>`;
     const legal={OPEN:["acknowledge","false-alarm","notes"],REVIEW_REQUIRED:["acknowledge","false-alarm","notes"],ACKNOWLEDGED:["confirm","false-alarm","escalate","resolve","notes"],CONFIRMED:["escalate","resolve","notes"],ESCALATED:["acknowledge","resolve","notes"],FALSE_ALARM:["resolve","notes"],CLOSED:["notes"]};
     const role=getCurrentUser()?.role; const permitted=role==="COMMANDER"?["acknowledge","confirm","false-alarm","escalate","resolve","notes"]:role==="OPERATOR"?["acknowledge","confirm","false-alarm","notes"]:[]; const actions=(legal[item.status]||[]).filter(x=>permitted.includes(x));
@@ -2280,6 +2287,86 @@ async function showIncidentDetail(id) {
             }
         })
         .catch(() => {});
+
+    // Fetch and render visible safety contract (Phase 6N)
+    fetch(`/api/incident/safety-contract?incident=${encodeURIComponent(id)}`, { headers: authHeaders() })
+        .then(r => r.ok ? r.json() : null)
+        .then(res => {
+            if (!res) return;
+            const sc = res.contract;
+            const plan = res.plan;
+            const badge = document.getElementById("scBadge");
+            const box = document.getElementById("scContent");
+            if (badge && sc) {
+                if (sc.is_blocked) {
+                    badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold";
+                    badge.innerText = `BLOCKED (${sc.blocked_rule_id || "POLICY"})`;
+                } else {
+                    badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold";
+                    badge.innerText = "PROPOSALS PENDING HUMAN APPROVAL";
+                }
+            }
+            if (box && sc) {
+                const uncEntries = Object.entries(sc.uncertainty_factors || {}).map(([k, v]) => `${escapeHtml(k)}: <b>${typeof v === 'number' ? v.toFixed(2) : v}</b>`).join(" &bull; ");
+                const evItems = (sc.evidence || []).map(e => `<li>${escapeHtml(e)}</li>`).join("");
+                const actions = (plan?.actions || sc.proposed_actions || []).map(a => {
+                    const isProposed = a.status === "PROPOSED";
+                    const isBlocked = a.status === "BLOCKED";
+                    const statColor = isBlocked ? "text-rose-700" : (a.status === "EXECUTED" ? "text-emerald-700" : "text-amber-700");
+                    const userRole = getCurrentUser()?.role;
+                    const canApprove = isProposed && (userRole === "COMMANDER" || (userRole === "OPERATOR" && !a.action_type.includes("DISPATCH")));
+                    return `
+                        <div class="p-2 bg-slate-50 border rounded flex items-center justify-between text-xs mt-1">
+                            <div>
+                                <span class="font-bold text-slate-800">${escapeHtml(a.description || a.action_type)}</span>
+                                <span class="text-[10px] text-slate-500 ml-2">[Role: <b class="font-mono">${escapeHtml(a.required_approver_role)}</b> &bull; Status: <b class="${statColor}">${escapeHtml(a.status)}</b>]</span>
+                                ${a.blocked_rule_id ? `<div class="text-[10px] text-rose-600 mt-0.5"><b>Blocked by:</b> ${escapeHtml(a.blocked_rule_id)} - ${escapeHtml(a.blocked_reason||"")}</div>` : ""}
+                                ${a.acted_by ? `<div class="text-[10px] text-slate-500">Acted by: <b>${escapeHtml(a.acted_by)}</b> (${escapeHtml(a.acted_role||"")}) at ${escapeHtml(a.acted_at||"")}</div>` : ""}
+                            </div>
+                            ${canApprove ? `<button onclick="approveResponsePlanAction('${escapeHtml(plan.plan_id)}', '${escapeHtml(a.action_id)}', '${escapeHtml(id)}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[10px] transition shadow-sm font-mono">APPROVE &amp; EXECUTE</button>` : ""}
+                        </div>
+                    `;
+                }).join("");
+
+                box.innerHTML = `
+                    <div class="space-y-2">
+                        <div class="text-xs text-slate-700">
+                            <b>AI Detection:</b> <span class="font-bold text-blue-700">${escapeHtml(sc.detected_class)}</span> (${(sc.confidence*100).toFixed(1)}% conf) &bull; <b>Required Approver:</b> <span class="font-mono font-bold">${escapeHtml(sc.required_approver_role)}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border">
+                            <b>Supporting Evidence:</b>
+                            <ul class="list-disc ml-4 mt-0.5">${evItems || "<li>Baseline telemetry</li>"}</ul>
+                        </div>
+                        <div class="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border">
+                            <b>Uncertainty Profile (6B Factors):</b>
+                            <div class="mt-0.5 font-mono text-[10px]">${uncEntries}</div>
+                        </div>
+                        <div class="mt-2">
+                            <b class="text-xs text-slate-800">Governed Response Plan Actions (AI Proposes, Human Approves):</b>
+                            <div class="mt-1">${actions || "<p class='text-xs text-slate-400'>No actions proposed</p>"}</div>
+                        </div>
+                        ${plan?.completion_duration_seconds != null ? `<div class="text-[10px] text-slate-500 font-mono">Plan Resolution Duration: <b>${plan.completion_duration_seconds.toFixed(2)}s</b></div>` : ""}
+                    </div>
+                `;
+            }
+        })
+        .catch(() => {});
+}
+
+async function approveResponsePlanAction(planId, actionId, incidentId) {
+    if (!confirm("Are you sure you want to approve and execute this governed action?")) return;
+    const res = await fetch("/api/response-plan/approve", {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ plan_id: planId, action_id: actionId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+        showIncidentDetail(incidentId);
+    } else {
+        alert(data.error || "Approval failed");
+        showIncidentDetail(incidentId);
+    }
 }
 
 async function incidentAction(id,action,version){

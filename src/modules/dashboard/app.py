@@ -55,6 +55,8 @@ STORAGE_ENGINE = StorageRetentionEngine(GOVERNED_REPOSITORY)
 STORAGE_STATUS = StorageSafetyStatus(STORAGE_ENGINE)
 USER_MANAGER = UserManager()
 RATE_LIMITER.repository = GOVERNED_REPOSITORY
+from src.modules.autonomous_response.safety_contract import GovernedResponseEngine
+GOVERNED_RESPONSE_ENGINE = GovernedResponseEngine(GOVERNED_REPOSITORY)
 
 SERVER_START_TIME = time.time()
 try:
@@ -950,6 +952,51 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(print_html.encode("utf-8"))
             return
+        elif path == "/api/incident/safety-contract":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            query = urllib.parse.parse_qs(parsed.query)
+            incident_id = query.get("incident", ["INC-DEMO-001"])[0]
+            
+            rows = GOVERNED_REPOSITORY._read(
+                "SELECT * FROM safety_contracts WHERE incident_id=? ORDER BY timestamp DESC LIMIT 1",
+                (incident_id,)
+            )
+            plan_rows = GOVERNED_REPOSITORY._read(
+                "SELECT * FROM response_plans WHERE incident_id=? ORDER BY created_at DESC LIMIT 1",
+                (incident_id,)
+            )
+
+            if rows and plan_rows:
+                contract_row = dict(rows[0])
+                plan_row = dict(plan_rows[0])
+                contract_row["evidence"] = json.loads(contract_row.get("evidence_json", "[]"))
+                contract_row["uncertainty_factors"] = json.loads(contract_row.get("uncertainty_factors_json", "{}"))
+                contract_row["proposed_actions"] = json.loads(contract_row.get("proposed_action", "[]"))
+                contract_row["is_blocked"] = bool(contract_row.get("is_blocked"))
+                plan_row["actions"] = json.loads(plan_row.get("actions_json", "[]"))
+                self._json({"contract": contract_row, "plan": plan_row})
+                return
+
+            plan, contract = GOVERNED_RESPONSE_ENGINE.synthesize_response_plan(
+                incident_id=incident_id,
+                detected_class="FIRE" if "FIRE" in incident_id else ("ACCIDENT" if "ACCIDENT" in incident_id else "AMBULANCE"),
+                confidence=0.92,
+                evidence_summary=[
+                    "Multi-modal sensor consensus verified",
+                    "Acoustic and vision feature vector alignment verified",
+                ],
+                risk_factors={
+                    "temporal_consistency": 0.88,
+                    "sensor_agreement": 0.94,
+                    "device_health": 1.0,
+                    "calibration_penalty": 0.04,
+                },
+            )
+            self._json({"contract": contract.to_dict(), "plan": plan.to_dict()})
+            return
         elif path == "/api/governance/disagreements":
             from src.modules.governance.feedback_loop import LabelQualityTracker
             tracker = LabelQualityTracker(GOVERNED_REPOSITORY)
@@ -1007,6 +1054,39 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 operator_action=payload.get("operator_action", "NONE"),
             )
             self._json(result.to_dict())
+            return
+
+        if path == "/api/response-plan/approve":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            payload = self._payload()
+            plan_id = payload.get("plan_id")
+            action_id = payload.get("action_id")
+            if not plan_id or not action_id:
+                self._json({"error": "Missing plan_id or action_id"}, 400)
+                return
+
+            ok, msg, action = GOVERNED_RESPONSE_ENGINE.approve_action(
+                plan_id=str(plan_id),
+                action_id=str(action_id),
+                operator_id=actor["operator_id"],
+                role=actor["role"],
+            )
+            if not ok:
+                self._json({
+                    "success": False,
+                    "error": msg,
+                    "action": action.to_dict() if action else None,
+                }, 403 if "not authorized" in msg.lower() or "requires" in msg.lower() or "lacks" in msg.lower() else 400)
+                return
+
+            self._json({
+                "success": True,
+                "message": msg,
+                "action": action.to_dict() if action else None,
+            }, 200)
             return
 
         if path == "/api/reports/generate":

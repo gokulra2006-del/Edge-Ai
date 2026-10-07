@@ -249,6 +249,36 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     ALTER TABLE evidence ADD COLUMN key_id TEXT;
     ALTER TABLE evidence ADD COLUMN encryption_algo TEXT;
     """),
+    (11, """
+    CREATE TABLE IF NOT EXISTS safety_contracts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      incident_id TEXT NOT NULL,
+      decision_id TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      detected_class TEXT NOT NULL,
+      confidence REAL NOT NULL,
+      evidence_json TEXT NOT NULL,
+      uncertainty_factors_json TEXT NOT NULL,
+      proposed_action TEXT NOT NULL,
+      required_approver_role TEXT NOT NULL,
+      is_blocked INTEGER NOT NULL DEFAULT 0,
+      blocked_rule_id TEXT,
+      blocked_reason TEXT,
+      FOREIGN KEY(incident_id) REFERENCES incidents(incident_id)
+    );
+    CREATE TABLE IF NOT EXISTS response_plans (
+      plan_id TEXT PRIMARY KEY,
+      incident_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      completed_at TEXT,
+      completion_duration_seconds REAL,
+      actions_json TEXT NOT NULL,
+      FOREIGN KEY(incident_id) REFERENCES incidents(incident_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_contracts_incident ON safety_contracts(incident_id);
+    CREATE INDEX IF NOT EXISTS idx_plans_incident ON response_plans(incident_id);
+    """),
 )
 
 
@@ -397,12 +427,12 @@ class IncidentRepository:
     def close_incident(self, incident_id: str, outcome: str) -> bool:
         return self.writer.submit(lambda c: c.execute("UPDATE incidents SET status=?, outcome=?, updated_at=? WHERE incident_id=?", (IncidentStatus.CLOSED.value,outcome,utc_now(),incident_id)))
     def rows(self, table: str, incident_id: str | None = None) -> list[dict[str, Any]]:
-        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes","device_health_events","sync_outbox","drift_snapshots","model_baselines"}
+        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes","device_health_events","sync_outbox","drift_snapshots","model_baselines","safety_contracts","response_plans"}
         if table not in allowed: raise ValueError("invalid table")
         if incident_id is None:
-            order_col = "created_at" if table in ("incidents", "model_baselines") else "id"
+            order_col = "created_at" if table in ("incidents", "model_baselines", "response_plans") else "id"
             return [dict(r) for r in self._read(f"SELECT * FROM {table} ORDER BY {order_col} DESC")]
-        key = "incident_id"; return [dict(r) for r in self._read(f"SELECT * FROM {table} WHERE {key}=? ORDER BY id" if table != "incidents" else "SELECT * FROM incidents WHERE incident_id=?", (incident_id,))]
+        key = "incident_id"; return [dict(r) for r in self._read(f"SELECT * FROM {table} WHERE {key}=? ORDER BY {('created_at' if table == 'response_plans' else 'id')}" if table != "incidents" else "SELECT * FROM incidents WHERE incident_id=?", (incident_id,))]
     def close(self) -> None: self.writer.close()
 
 
