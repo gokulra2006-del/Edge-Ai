@@ -144,17 +144,82 @@ ENDPOINT_PERMISSIONS: List[Tuple[str, str, Set[str], str]] = [
 ]
 
 
+def audit_denied_action(
+    repository: Any,
+    operator_id: str,
+    role: str,
+    action: str,
+    reason: str,
+    endpoint: Optional[str] = None,
+    method: Optional[str] = None,
+    incident_id: str = "SYSTEM",
+) -> None:
+    """
+    Audit logs every denied action or authorization failure into operator_actions ledger.
+    Who, role, endpoint/action, timestamp, reason.
+    """
+    if not repository:
+        return
+
+    from src.modules.database.governed_store import utc_now
+    import json
+
+    ts = utc_now()
+    payload = {
+        "operator_id": operator_id,
+        "role": role,
+        "action": action,
+        "endpoint": endpoint or action,
+        "method": method or "UNKNOWN",
+        "reason": reason,
+        "timestamp": ts,
+    }
+    payload_str = json.dumps(payload, sort_keys=True)
+    action_name = f"DENIED:{action}" if not action.startswith("DENIED:") else action
+
+    def _write(db):
+        db.execute(
+            """
+            INSERT OR IGNORE INTO incidents(incident_id, incident_uuid, event_type, zone_id, status, created_at, updated_at)
+            VALUES(?, ?, 'AUDIT', 'SYSTEM', 'CLOSED', ?, ?)
+            """,
+            (incident_id, f"audit-{incident_id}", ts, ts),
+        )
+        db.execute(
+            """
+            INSERT INTO operator_actions (incident_id, timestamp, operator_id, action, approved, payload_json)
+            VALUES (?, ?, ?, ?, 0, ?)
+            """,
+            (incident_id, ts, operator_id, action_name, payload_str),
+        )
+
+    try:
+        repository.writer.submit(_write)
+    except Exception:
+        # Fallback for direct sqlite connections in test harnesses
+        try:
+            with repository._read_connection() as db:
+                _write(db)
+        except Exception:
+            pass
+
+
 def check_endpoint_permission(
     path: str,
     method: str,
     role: Optional[str] = None,
+    operator_id: Optional[str] = None,
+    repository: Optional[Any] = None,
 ) -> Tuple[bool, int, str]:
     """
     Checks if a request path and method are permitted for the given role.
+    If repository is provided, any authorization denial (403 or 401) is automatically
+    audit-logged to the operator_actions ledger.
     Returns: (is_permitted, status_code, message)
     """
     method_upper = method.upper()
     role_upper = role.upper() if role else None
+    op_id = operator_id or (f"operator_{role_upper.lower()}" if role_upper else "unauthenticated")
 
     # Search for matching rule
     matched_rule = None
@@ -165,7 +230,18 @@ def check_endpoint_permission(
 
     if not matched_rule:
         # Route not registered in security matrix!
-        return False, 404, f"Endpoint {method_upper} {path} is not recognized or permitted"
+        msg = f"Endpoint {method_upper} {path} is not recognized or permitted"
+        if repository and role_upper:
+            audit_denied_action(
+                repository=repository,
+                operator_id=op_id,
+                role=role_upper,
+                action=f"{method_upper}:{path}",
+                reason="Unrecognized or unregistered endpoint",
+                endpoint=path,
+                method=method_upper,
+            )
+        return False, 404, msg
 
     allowed_roles, desc = matched_rule
 
@@ -175,10 +251,34 @@ def check_endpoint_permission(
 
     # 2. Authentication required
     if not role_upper:
-        return False, 401, "Authentication required"
+        msg = "Authentication required"
+        if repository:
+            audit_denied_action(
+                repository=repository,
+                operator_id=op_id,
+                role="ANONYMOUS",
+                action=f"{method_upper}:{path}",
+                reason=msg,
+                endpoint=path,
+                method=method_upper,
+            )
+        return False, 401, msg
 
     # 3. Role verification
     if role_upper in allowed_roles:
         return True, 200, "OK"
 
-    return False, 403, f"Role {role_upper} is not authorized for {desc}"
+    reason = f"Role {role_upper} is not authorized for {desc}"
+    if repository:
+        audit_denied_action(
+            repository=repository,
+            operator_id=op_id,
+            role=role_upper,
+            action=f"{method_upper}:{path}",
+            reason=reason,
+            endpoint=path,
+            method=method_upper,
+        )
+
+    return False, 403, reason
+

@@ -460,5 +460,50 @@ For each condition subgroup:
   - Aggregated model automatically enters registry as `PRODUCTION`.
   - Non-deterministic runs under identical random seeds.
 
+---
+
+## Experiment 6K-1: Authenticated Evidence Encryption at Rest with Key Rotation and Tamper Detection
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-07
+- **Status**: PRE-REGISTERED (Criteria locked prior to code execution)
+
+### 2. Hypothesis
+- **Hypothesis**: "Authenticated encryption at rest (AES-256-GCM) protects forensic evidence files from unauthorized extraction and storage-level bit-rot or malicious modification without breaking the cryptographic chain of custody (plaintext SHA-256 matching stored incident manifests), while providing seamless key rotation, transparent retention pruning, and comprehensive audit accountability for every access or authorization failure."
+
+### 3. Primary Metrics & Target Thresholds
+1. **Tamper Detection Rate**:
+   - 100% of single-bit modifications in ciphertext, nonce, or tag fail AES-GCM authentication (`InvalidTag`) and abort plaintext release.
+2. **Chain of Custody Invariance**:
+   - Plaintext SHA-256 hash computed pre-encryption strictly matches post-decryption digest across all keys, migrations, and rotations.
+3. **Key Rotation Continuity**:
+   - Multi-key KeyRing decrypts historic evidence encrypted under retired key IDs and transparently re-encrypts to the active key with 0 data loss.
+4. **Access Governance & Audit Accountability**:
+   - Decryption authorized strictly for permitted operational roles (`COMMANDER`, `OPERATOR`, `ENGINEER`).
+   - 100% of decryption events and 100% of denied authorization actions (`role x forbidden-action`) produce tamper-evident audit records in `operator_actions`.
+5. **Storage & Retention Compatibility**:
+   - Phase 5D storage retention manager prunes and archives encrypted evidence files safely based on file age and policy rules without requiring plaintext decryption.
+
+### 4. Data Tagging & Honest Limitations
+- **Tagging**: Tagged `SYNTHETIC` for generated incident test evidence.
+- **Honest Limitations**: AES-256-GCM protects evidence confidentiality and integrity at rest on the local file system. It relies on the security of the host environment variable or external key file path (`EVIDENCE_ENCRYPTION_KEY`). Key storage in hardware HSMs / TPMs remains a physical deployment consideration.
+
+### 5. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Authenticated encryption module (`AES-256-GCM`) with envelope format containing magic header, key ID, nonce, and ciphertext tag.
+  2. External key resolution via environment variable or external key file.
+  3. Key rotation mechanism supporting multiple active and historic keys.
+  4. Migration command encrypting existing unencrypted evidence files while preserving database SHA-256 hashes.
+  5. Automated tamper test confirming 100% tamper detection.
+  6. Automated wrong-key test confirming authentication failure.
+  7. Audit logging of every decryption attempt and every denied role action.
+  8. Retention manager (5D) and Merkle evidence packaging (5C) updated for encrypted files.
+- **Failure Criteria**:
+  - Plaintext hash mismatch after decryption.
+  - Ciphertext tampering undetected.
+  - Decryption allowed for unauthorized roles (e.g. VIEWER).
+  - Missing audit record on decryption or authorization denial.
+
+
 
 

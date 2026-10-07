@@ -244,6 +244,11 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     (9, """
     ALTER TABLE evidence ADD COLUMN condition_metadata_json TEXT DEFAULT '{}';
     """),
+    (10, """
+    ALTER TABLE evidence ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE evidence ADD COLUMN key_id TEXT;
+    ALTER TABLE evidence ADD COLUMN encryption_algo TEXT;
+    """),
 )
 
 
@@ -355,10 +360,38 @@ class IncidentRepository:
         return self.writer.submit(lambda c: c.execute("INSERT INTO prediction_feedback(prediction_id,label,corrected_class,operator_id,operator_role,timestamp,comment) VALUES(?,?,?,?,?,?,?)", (prediction_id,label,corrected_class,operator_id,operator_role,utc_now(),comment)))
     def add_assurance_state(self, incident_id: str, model_id: str | None, state: str, payload: dict[str, Any] | None = None) -> bool:
         return self.writer.submit(lambda c: c.execute("INSERT INTO assurance_states(incident_id,timestamp,model_id,state,payload_json) VALUES(?,?,?,?,?)", (incident_id,utc_now(),model_id,state,json.dumps(payload or {},sort_keys=True))))
-    def attach_evidence(self, incident_id: str, kind: str, source: Path, condition_metadata: dict[str, Any] | None = None) -> bool:
-        source = Path(source); digest = sha256(source.read_bytes()).hexdigest()
+    def attach_evidence(
+        self,
+        incident_id: str,
+        kind: str,
+        source: Path,
+        condition_metadata: dict[str, Any] | None = None,
+        encrypted: int = 0,
+        key_id: str | None = None,
+        encryption_algo: str | None = None,
+        plaintext_sha256: str | None = None,
+    ) -> bool:
+        source = Path(source)
+        if plaintext_sha256:
+            digest = plaintext_sha256
+        elif source.exists() and source.stat().st_size >= 46 and source.read_bytes()[:12] == b"SEN_EVID_V1\x00":
+            raw_b = source.read_bytes()
+            k_len = raw_b[12]
+            n_len = raw_b[13 + k_len]
+            hash_offset = 14 + k_len + n_len
+            digest = raw_b[hash_offset : hash_offset + 32].hex()
+            encrypted = 1
+            key_id = raw_b[13 : 13 + k_len].decode("utf-8", errors="replace")
+            encryption_algo = "AES-256-GCM"
+        else:
+            digest = sha256(source.read_bytes()).hexdigest()
         cond_json = json.dumps(condition_metadata or {}, sort_keys=True)
-        return self.writer.submit(lambda c: c.execute("INSERT INTO evidence(incident_id,timestamp,kind,source_path,sha256,condition_metadata_json) VALUES(?,?,?,?,?,?)", (incident_id,utc_now(),kind,str(source),digest,cond_json)))
+        return self.writer.submit(
+            lambda c: c.execute(
+                "INSERT INTO evidence(incident_id,timestamp,kind,source_path,sha256,condition_metadata_json,encrypted,key_id,encryption_algo) VALUES(?,?,?,?,?,?,?,?,?)",
+                (incident_id, utc_now(), kind, str(source), digest, cond_json, encrypted, key_id, encryption_algo),
+            )
+        )
     def update_incident_risk(self, incident_id: str, level: str, breakdown: dict[str, Any]) -> bool:
         return self.writer.submit(lambda c: c.execute("UPDATE incidents SET risk_level=?, risk_breakdown_json=?, updated_at=? WHERE incident_id=?", (level,json.dumps(breakdown,sort_keys=True),utc_now(),incident_id)))
     def close_incident(self, incident_id: str, outcome: str) -> bool:

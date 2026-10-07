@@ -416,13 +416,18 @@ class StorageRetentionEngine:
         for item in safe_to_delete:
             p = Path(item["source_path"])
             sz = 0
-            if p.exists() and p.is_file():
-                sz = p.stat().st_size
-                if not dry_run:
-                    try:
-                        p.unlink()
-                    except Exception as e:
-                        LOGGER.error(f"Failed to delete evidence file {p}: {e}")
+            candidate_paths = [p]
+            if not p.name.endswith(".enc"):
+                candidate_paths.append(p.with_name(p.name + ".enc"))
+
+            for target_p in set(candidate_paths):
+                if target_p.exists() and target_p.is_file():
+                    sz += target_p.stat().st_size
+                    if not dry_run:
+                        try:
+                            target_p.unlink()
+                        except Exception as e:
+                            LOGGER.error(f"Failed to delete evidence file {target_p}: {e}")
             freed_bytes += sz
             pruned_count += 1
             pruned_ids.append(item["id"])

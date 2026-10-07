@@ -16,6 +16,7 @@ from src.modules.security.rate_limiter import (
 from src.modules.security.permission_matrix import (
     ENDPOINT_PERMISSIONS,
     check_endpoint_permission,
+    audit_denied_action,
 )
 
 __all__ = [
@@ -29,4 +30,6 @@ __all__ = [
     "RATE_LIMITER",
     "ENDPOINT_PERMISSIONS",
     "check_endpoint_permission",
+    "audit_denied_action",
 ]
+

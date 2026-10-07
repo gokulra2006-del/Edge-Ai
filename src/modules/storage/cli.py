@@ -46,6 +46,12 @@ def main() -> None:
     logs_p = subparsers.add_parser("logs", help="Display recent storage cleanup history")
     logs_p.add_argument("--limit", type=int, default=10, help="Number of records to show")
 
+    # 5. Encrypt Evidence Migration (Phase 6K)
+    enc_p = subparsers.add_parser("encrypt-evidence", help="Migrate unencrypted evidence files to AES-256-GCM authenticated encryption")
+    enc_p.add_argument("--evidence-dir", default="data/evidence", help="Directory of evidence files")
+    enc_p.add_argument("--dry-run", action="store_true", help="Simulate encryption without modifying files")
+    enc_p.add_argument("--role", default="ENGINEER", help="Operator role for authorization")
+
     args = parser.parse_args()
 
     repo = IncidentRepository()
@@ -56,6 +62,21 @@ def main() -> None:
         if args.command == "status":
             stat = status_helper.get_status()
             print(json.dumps(stat, indent=2))
+            return
+
+        elif args.command == "encrypt-evidence":
+            role_upper = args.role.upper()
+            if role_upper not in ("COMMANDER", "ENGINEER"):
+                print(f"Error: Role {args.role} is not authorized to execute evidence encryption migration.", file=sys.stderr)
+                sys.exit(1)
+            from scripts.storage.migrate_evidence_encryption import migrate_unencrypted_evidence
+            res = migrate_unencrypted_evidence(
+                evidence_dir=args.evidence_dir,
+                db_path=repo.db_path,
+                dry_run=args.dry_run,
+                operator_id=args.role,
+            )
+            print(json.dumps(res, indent=2))
             return
 
         elif args.command == "checkpoint":

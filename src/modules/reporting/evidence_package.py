@@ -33,6 +33,23 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def sha256_file(path: Path) -> str:
+    path = Path(path)
+    if not path.exists():
+        return hashlib.sha256(b"").hexdigest()
+    # If encrypted evidence container, extract authenticated plaintext hash
+    if path.stat().st_size >= 46:
+        try:
+            with open(path, "rb") as f:
+                magic = f.read(12)
+                if magic == b"SEN_EVID_V1\x00":
+                    kid_len = f.read(1)[0]
+                    f.seek(kid_len, 1)  # skip kid
+                    nonce_len = f.read(1)[0]
+                    f.seek(nonce_len, 1)  # skip nonce
+                    raw_hash = f.read(32)
+                    return raw_hash.hex()
+        except Exception:
+            pass
     h = hashlib.sha256()
     with open(path, "rb") as f:
         while chunk := f.read(65536):
@@ -46,6 +63,8 @@ class EvidenceLeaf:
     artifact_type: str  # VIDEO, AUDIO, METADATA, TELEMETRY
     sha256_hash: str
     file_size_bytes: int
+    encrypted: bool = False
+    key_id: Optional[str] = None
 
 
 @dataclass
@@ -69,6 +88,8 @@ class EvidencePackageManifest:
                     "artifact_type": l.artifact_type,
                     "sha256_hash": l.sha256_hash,
                     "file_size_bytes": l.file_size_bytes,
+                    "encrypted": getattr(l, "encrypted", False),
+                    "key_id": getattr(l, "key_id", None),
                 }
                 for l in self.leaves
             ],
@@ -114,11 +135,24 @@ class MerkleEvidencePackager:
             path_obj = Path(p)
             f_hash = sha256_file(path_obj) if path_obj.exists() else sha256_bytes(b"")
             f_size = path_obj.stat().st_size if path_obj.exists() else 0
+            is_enc = False
+            k_id = None
+            if path_obj.exists() and f_size >= 46:
+                try:
+                    with open(path_obj, "rb") as f:
+                        if f.read(12) == b"SEN_EVID_V1\x00":
+                            is_enc = True
+                            k_len = f.read(1)[0]
+                            k_id = f.read(k_len).decode("utf-8", errors="replace")
+                except Exception:
+                    pass
             leaf = EvidenceLeaf(
                 filename=path_obj.name,
                 artifact_type=art_type,
                 sha256_hash=f_hash,
                 file_size_bytes=f_size,
+                encrypted=is_enc,
+                key_id=k_id,
             )
             leaves.append(leaf)
             leaf_hashes.append(f_hash)

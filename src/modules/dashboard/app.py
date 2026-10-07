@@ -42,7 +42,7 @@ from src.modules.storage.storage_safety import StorageRetentionEngine, StorageSa
 from src.modules.security.user_store import UserManager
 from src.modules.security.session_manager import SessionManager, SESSION_MANAGER
 from src.modules.security.rate_limiter import LoginRateLimiter, RATE_LIMITER
-from src.modules.security.permission_matrix import check_endpoint_permission
+from src.modules.security.permission_matrix import check_endpoint_permission, audit_denied_action
 from src.modules.core.version import get_version_info
 from src.modules.maintenance.recovery import run_startup_recovery
 
@@ -87,6 +87,27 @@ class DashboardHandler(BaseHTTPRequestHandler):
             pass
 
     def _json(self, value, status=200):
+        # Audit log authorization failures (403 and 401)
+        if status in (401, 403):
+            try:
+                actor = self._actor() if hasattr(self, "_actor") else None
+                op_id = actor.get("operator_id") or actor.get("username") if actor else "unauthenticated"
+                role = actor.get("role") if actor else "ANONYMOUS"
+                endpoint = getattr(self, "path", "UNKNOWN")
+                method = getattr(self, "command", "UNKNOWN")
+                err_msg = value.get("error") if isinstance(value, dict) else str(value)
+                audit_denied_action(
+                    repository=GOVERNED_REPOSITORY,
+                    operator_id=op_id,
+                    role=role,
+                    action=f"{method}:{endpoint}",
+                    reason=err_msg or "Forbidden",
+                    endpoint=endpoint,
+                    method=method,
+                )
+            except Exception:
+                pass
+
         self._drain_rfile()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -94,6 +115,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self._send_security_headers()
         self.end_headers()
         self.wfile.write(json.dumps(value, default=str).encode("utf-8"))
+
 
     def _payload(self):
         if hasattr(self, "_cached_payload"):
