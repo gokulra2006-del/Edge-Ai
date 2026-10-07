@@ -77,11 +77,65 @@ def extract_mel_spectrogram(file_path: str) -> np.ndarray:
         return np.zeros((N_MELS, 63), dtype=np.float32)
 
 
-def collect_sound_files():
-    """Gathers all audio file paths from sireNNet and ESC-50 datasets."""
+def collect_sound_files(target_classes: Optional[List[str]] = None):
+    """
+    Gathers all audio file paths from:
+    1. 'Audio Dataset' or 'data/audio_dataset' (custom 6-class dataset matching project PPT)
+    2. sireNNet Dataset
+    3. ESC-50 Dataset
+    """
     file_list = []
+    classes = target_classes or CLASSES
 
-    # 1. sireNNet Dataset
+    # Check for direct custom 'Audio Dataset' directory (matching user PPT structure)
+    custom_roots = [
+        BASE_DIR / "Audio Dataset",
+        BASE_DIR / "data" / "audio_dataset",
+        BASE_DIR / "data" / "Audio Dataset",
+        BASE_DIR / "audio_dataset",
+    ]
+
+    class_aliases = {
+        "normal_traffic": ["normal_traffic", "traffic", "background_traffic"],
+        "ambulance": ["ambulance", "ambulance_siren"],
+        "fire_engine": ["fire_engine", "firetruck", "firetruck_siren"],
+        "crash": ["crash", "car_crash", "impact"],
+        "breaking_glass": ["breaking_glass", "glass_breaking", "glass"],
+        "horn": ["horn", "car_horn"],
+        "ambulance_siren": ["ambulance_siren", "ambulance"],
+        "firetruck_siren": ["firetruck_siren", "fire_engine", "firetruck"],
+        "car_horn": ["car_horn", "horn"],
+        "police_siren": ["police_siren", "police"],
+    }
+
+    found_custom_root = None
+    for r in custom_roots:
+        if r.exists() and r.is_dir():
+            found_custom_root = r
+            break
+
+    if found_custom_root:
+        print(f"Detected custom audio dataset directory at: {found_custom_root}")
+        for cls_name in classes:
+            aliases = class_aliases.get(cls_name, [cls_name])
+            class_idx = classes.index(cls_name)
+            folder_found = False
+            for alias in aliases:
+                folder = found_custom_root / alias
+                if folder.exists() and folder.is_dir():
+                    folder_found = True
+                    for ext in ("*.wav", "*.mp3", "*.flac", "*.ogg"):
+                        for f in folder.glob(ext):
+                            file_list.append((str(f), class_idx))
+                    break
+
+        if len(file_list) > 0:
+            print(f"Loaded {len(file_list)} files from custom dataset folder: {found_custom_root}")
+            random.seed(42)
+            random.shuffle(file_list)
+            return file_list, classes
+
+    # Fallback to sireNNet and ESC-50 if no custom dataset folder found
     siren_map = {
         "traffic": "normal_traffic",
         "ambulance": "ambulance_siren",
@@ -94,12 +148,12 @@ def collect_sound_files():
 
     for src_folder, target_class in siren_map.items():
         cdir = siren_base / src_folder
-        if cdir.exists():
-            class_idx = CLASSES.index(target_class)
+        if cdir.exists() and target_class in classes:
+            class_idx = classes.index(target_class)
             for f in cdir.glob("*.wav"):
                 file_list.append((str(f), class_idx))
 
-    # 2. ESC-50 Dataset (Breaking glass & Car horn)
+    # ESC-50 Dataset (Breaking glass & Car horn)
     esc_map = {
         "glass_breaking": "breaking_glass",
         "car_horn": "car_horn"
@@ -112,16 +166,16 @@ def collect_sound_files():
             reader = csv.DictReader(fl)
             for r in reader:
                 cat = r["category"]
-                if cat in esc_map:
+                if cat in esc_map and esc_map[cat] in classes:
                     target_class = esc_map[cat]
-                    class_idx = CLASSES.index(target_class)
+                    class_idx = classes.index(target_class)
                     fpath = audio_dir / r["filename"]
                     if fpath.exists():
                         file_list.append((str(fpath), class_idx))
 
     random.seed(42)
     random.shuffle(file_list)
-    return file_list
+    return file_list, classes
 
 
 def prepare_dataset():
@@ -129,8 +183,8 @@ def prepare_dataset():
     print("STEP 1: AUDIO DATASET PREPARATION (Librosa Mel-Spectrograms)")
     print("=" * 65)
 
-    files = collect_sound_files()
-    print(f"Discovered {len(files)} sound files across {len(CLASSES)} classes: {CLASSES}")
+    files, final_classes = collect_sound_files()
+    print(f"Discovered {len(files)} sound files across {len(final_classes)} classes: {final_classes}")
 
     # Process all files
     X = []
@@ -167,7 +221,7 @@ def prepare_dataset():
         X_train=X_train, y_train=y_train,
         X_val=X_val, y_val=y_val,
         X_test=X_test, y_test=y_test,
-        classes=np.array(CLASSES)
+        classes=np.array(final_classes)
     )
     print(f"\nPrepared dataset saved to: {DATA_OUT_PATH} ({os.path.getsize(DATA_OUT_PATH) / (1024*1024):.2f} MB)")
     print("Dataset preparation complete!")
