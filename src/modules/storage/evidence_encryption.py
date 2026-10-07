@@ -403,7 +403,7 @@ class EvidenceEncryptor:
             raise FileNotFoundError(f"Encrypted evidence container not found: {src}")
 
         envelope = src.read_bytes()
-        clean_name = src.name[:-4] if src.name.endswith(".enc") else src.name
+        clean_name = src.name.removesuffix(".enc")
         target = Path(dest_path) if dest_path else src.with_name(clean_name + ".dec")
 
         plaintext = self.decrypt_bytes(

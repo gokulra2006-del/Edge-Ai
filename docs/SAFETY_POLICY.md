@@ -1,7 +1,7 @@
 # Sentinel-AI Platform Safety Policy Verification Report
 
-**Execution Timestamp**: `2026-10-07T09:11:53.408656+00:00`  
-**Git Commit Hash**: `7ae48d9`  
+**Execution Timestamp**: `2026-10-07T11:49:40.085859+00:00`  
+**Git Commit Hash**: `719d4e3`  
 **Data Tag**: `SYNTHETIC`  
 **Overall Status**: **PASSED (0 VIOLATIONS)**  
 **Invariants Verified**: 8 / 8 Passing
@@ -15,7 +15,7 @@
 |:---|:---|:---|:---:|:---|
 | `INV-01-VIEWER-NO-ACTUATION` | **Viewer Actuation Guard** | Core Invariant | ✅ PASS | Tested 3 actuator endpoints against role VIEWER; all returned 403 Forbidden. |
 | `INV-02-OPERATOR-NO-RESOLVE` | **Operator Resolution Guard** | Core Invariant | ✅ PASS | Verified that both permission matrix and OperatorWorkflow reject OPERATOR resolution with PermissionDenied. |
-| `INV-03-COMMANDER-AUDIT-LOGGED` | **Commander Action Non-Repudiation** | Core Invariant | ✅ PASS | Verified all Commander lifecycle transitions (resolve, confirm, acknowledge, escalate) are written to operator_actions ledger. |
+| `INV-03-COMMANDER-AUDIT-LOGGED` | **Commander Action Non-Repudiation** | Core Invariant | ✅ PASS | Verified all Commander lifecycle transitions (resolve, acknowledge, escalate, confirm) are written to operator_actions ledger. |
 | `INV-04-NO-AUTOMATIC-DISPATCH` | **Manual Emergency Dispatch Gate** | Core Invariant | ✅ PASS | Verified decision engines only synthesize recommendations; physical dispatch requires human Commander escalation. |
 | `INV-05-RESEARCH-MODEL-BOUNDARY` | **Model Registry Restriction Gate** | Core Invariant | ✅ PASS | Verified status (PRODUCTION / CANDIDATE / RESEARCH_ONLY) strictly enforced at actuation boundary. |
 | `INV-06-CLOSED-INCIDENT-IMMUTABLE` | **Closed Incident Immutability** | Core Invariant | ✅ PASS | Verified that CLOSED incidents strictly reject all transitions (acknowledge, confirm, escalate, resolve, false_alarm). |
@@ -56,7 +56,7 @@
 
 ### INV-03-COMMANDER-AUDIT-LOGGED: Commander Action Non-Repudiation
 - **Result**: PASSED
-- **Verification Trail**: Verified all Commander lifecycle transitions (resolve, confirm, acknowledge, escalate) are written to operator_actions ledger.
+- **Verification Trail**: Verified all Commander lifecycle transitions (resolve, acknowledge, escalate, confirm) are written to operator_actions ledger.
 
 ### INV-04-NO-AUTOMATIC-DISPATCH: Manual Emergency Dispatch Gate
 - **Result**: PASSED

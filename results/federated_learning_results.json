@@ -79,12 +79,12 @@
   },
   "benchmark": "federated_multi_node_simulation",
   "data_tag": "SYNTHETIC",
-  "git_hash": "2a3fb037f2a0b305d97ce815aadd7eb345aad988",
+  "git_hash": "719d4e3eb66bd5cdd737481d76423c3e69a2465d",
   "governance_verification": {
     "actuators_permitted": false,
     "candidate_model_id": "sentinel_federated_v1",
     "is_shadow_only": true,
-    "proposal_id": "PROP-20261006-7942",
+    "proposal_id": "PROP-20261007-6494",
     "registry_status": "CANDIDATE"
   },
   "limitations": [
@@ -103,5 +103,5 @@
     ]
   },
   "seed": 42,
-  "timestamp_utc": "2026-10-06T20:02:45.836281+00:00"
+  "timestamp_utc": "2026-10-07T11:49:41.376342+00:00"
 }
