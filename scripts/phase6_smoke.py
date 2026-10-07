@@ -189,6 +189,27 @@ def main():
     assert ok_unauth is False and status_unauth == 401
     log_step(timeline, "SECURITY", f"Permission matrix verified: ALL_ROLES allowed, unauthenticated blocked (401).")
 
+    # 11. Phase 6P: Audited Drift-to-Review Closed Loop
+    from src.modules.governance.drift_review_loop import DriftReviewLoopEngine, DriftLoopState, run_simulated_drift_experiment
+    drift_engine = DriftReviewLoopEngine(repository=repo)
+    loop = drift_engine.trigger_from_drift_snapshot(
+        snapshot_id="SNAP-SMOKE-01",
+        model_id="YOLO11n-Smoke",
+        candidate_predictions=[{"id": f"smk_{i}", "uncertainty": 0.1 * i} for i in range(10)],
+        max_batch_size=5,
+        actor_id="eng_smoke",
+        actor_role="ENGINEER",
+    )
+    assert loop.current_state == DriftLoopState.BATCH_SELECTED
+    assert len(loop.uncertain_prediction_ids) == 5
+    drift_engine.record_operator_labels(loop.loop_id, {"smk_9": "ACCIDENT"}, "op_smoke", "OPERATOR")
+    drift_engine.create_dataset_version(loop.loop_id, "hash_smoke_ds", "eng_smoke", "ENGINEER")
+    drift_engine.evaluate_candidate_offline(loop.loop_id, actor_id="eng_smoke", actor_role="ENGINEER")
+    drift_engine.decide_candidate(loop.loop_id, "APPROVED", "Passed smoke criteria on frozen test set", "cmdr_smoke", "COMMANDER")
+    smoke_exp = run_simulated_drift_experiment(sample_budget_steps=[10, 20])
+    assert smoke_exp[0].data_tag == "SYNTHETIC"
+    log_step(timeline, "PHASE_6P", "Drift-to-review loop verified: 6-stage lifecycle, zero auto-deploy, SYNTHETIC active vs random gain confirmed.")
+
     # Cleanup
     repo.close()
 

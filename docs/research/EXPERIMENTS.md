@@ -635,6 +635,55 @@ For each condition subgroup:
   - Matrix calculation blocks or delays live real-time incident detection.
   - Incongruence between availability matrix and direct 6D replay.
 
+---
+
+## Experiment 6P-1: Drift-to-Review Closed Loop and Active-Learning Recovery Evaluation
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-07
+- **Status**: PRE-REGISTERED (Criteria locked prior to evaluation runs)
+
+### 2. Hypothesis
+- **Hypothesis**: "When drift is detected, selecting the most uncertain recent samples for operator labeling and producing a candidate model recovers performance faster per labeled sample than random selection; the human decides whether to deploy."
+- **Core Workflow**:
+  $$\text{Drift Detected} \xrightarrow{\text{Active Selection}} \text{Batch Selected} \xrightarrow{\text{Flooding Capped}} \text{Review Tasks} \xrightarrow{\text{Operator Labeling}} \text{Dataset Snapshot} \xrightarrow{\text{Offline Eval}} \text{Candidate Model} \xrightarrow{\text{Human Gate}} \text{Approve / Reject}$$
+- **Key Constraints**:
+  1. **Automated Batch Ingestion with Flooding Guard**: A drift snapshot indicating drift (`status != NOMINAL` or $\text{PSI} > 0.25$) automatically forms a review batch prioritized by Phase 6G active learning scores (least-confidence, margin, OOD), capped at `max_batch_size` (default 25) so human operators are never flooded.
+  2. **Audited State Progression**: Every stage records immutable state, UTC timestamps, actor IDs and roles, dataset SHA-256 version hash, candidate model version, and before/after metrics on a frozen evaluation test set.
+  3. **Strict Non-Autonomous Deployment Guarantee**: Candidate evaluation runs offline and is manually triggered or scheduled by an engineer. The system NEVER replaces or deploys the live production model automatically.
+  4. **Strict Role-Gated Decision**: Approving or rejecting candidate models is strictly restricted to `ENGINEER` or `COMMANDER` roles, audit-logged with a mandatory rationale.
+  5. **Rejected Candidate Retention**: Rejected candidate models and proposals are never purged; they remain permanently in the audit log for safety retrospectives.
+
+### 3. Primary Metrics & Target Thresholds
+1. **F1 Recovery Rate per Labeled Sample**:
+   $$\text{Recovery Efficiency} = \frac{\Delta \text{Macro-F1}_{\text{Active}}}{\Delta \text{Macro-F1}_{\text{Random}}} > 1.20$$
+   Measured across incremental labeled sample budgets with 95% bootstrap confidence intervals.
+2. **Audit Trail Completeness**:
+   - $100\%$ of lifecycle stages contain valid timestamps, actor identity, role attribution, dataset hash, and evaluation deltas.
+3. **Flooding Guard Compliance**:
+   - $100\%$ of created review batches satisfy $|\text{Batch}| \le \text{max\_batch\_size}$ regardless of total drifted sample volume.
+4. **Autonomous Deployment Prohibition**:
+   - $0.0\%$ automated production deployments (strictly $100\%$ gated behind human `ENGINEER` or `COMMANDER` approval).
+5. **Test-Set Non-Leakage**:
+   - $0.0\%$ sample overlap between review dataset snapshots and frozen evaluation test splits.
+6. **Data Provenance Tag**:
+   - All evaluation results tagged with explicit provenance (`SYNTHETIC` for synthetic drift simulation).
+
+### 4. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Complete closed loop connected: drift detection $\rightarrow$ uncertainty selection $\rightarrow$ review tasks $\rightarrow$ operator labeling $\rightarrow$ versioned dataset $\rightarrow$ offline candidate evaluation $\rightarrow$ human approve/reject.
+  2. Active learning selection yields higher Macro-F1 recovery per sample than random selection with non-overlapping 95% confidence intervals at sample sizes $N \in [10, 50]$.
+  3. Review batches strictly respect configured size limits preventing operator flooding.
+  4. All stages audit-logged with cryptographically hashed dataset versions and before/after evaluation deltas.
+  5. Role permissions strictly prevent `OPERATOR` or `VIEWER` roles from approving/rejecting candidate models.
+  6. Rejected candidates are retained in audit records and dashboard history.
+- **Failure Criteria**:
+  - Live model replaced automatically without human approval.
+  - Review queue flooded beyond configured batch size limits.
+  - Test set leakage between candidate training and evaluation splits.
+  - Incomplete audit trail missing actor, timestamps, or dataset version hash.
+
+
 
 
 

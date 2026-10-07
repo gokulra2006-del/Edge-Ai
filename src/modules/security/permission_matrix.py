@@ -147,6 +147,13 @@ ENDPOINT_PERMISSIONS: List[Tuple[str, str, Set[str], str]] = [
     ("POST", r"^/api/governance/proposals/generate$", TECH_ROLES, "Generate model retraining proposal"),
     ("POST", r"^/api/governance/proposals/[^/]+/approve$", TECH_ROLES, "Approve candidate model retraining proposal"),
     ("POST", r"^/api/governance/snapshots/create$", TECH_ROLES, "Create immutable dataset snapshot"),
+
+    # 13. Drift-to-Review Closed Loop Governance (Phase 6P)
+    ("GET", r"^/api/governance/drift-loops(/[^/]+)?$", ALL_ROLES, "Drift-to-review loop records and history"),
+    ("POST", r"^/api/governance/drift-loops/trigger$", TECH_ROLES, "Trigger drift review loop batch"),
+    ("POST", r"^/api/governance/drift-loops/evaluate$", TECH_ROLES, "Run offline candidate evaluation"),
+    ("POST", r"^/api/governance/drift-loops/decide$", TECH_ROLES, "Approve or reject candidate model"),
+    ("GET", r"^/api/governance/drift-loops/experiment$", ALL_ROLES, "Simulated drift recovery experiment metrics"),
 ]
 
 

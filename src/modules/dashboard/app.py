@@ -59,6 +59,8 @@ from src.modules.autonomous_response.safety_contract import GovernedResponseEngi
 GOVERNED_RESPONSE_ENGINE = GovernedResponseEngine(GOVERNED_REPOSITORY)
 from src.modules.decision.sensor_availability_matrix import SensorAvailabilityMatrixEngine
 SENSOR_AVAILABILITY_ENGINE = SensorAvailabilityMatrixEngine(repository=GOVERNED_REPOSITORY)
+from src.modules.governance.drift_review_loop import DriftReviewLoopEngine, run_simulated_drift_experiment
+DRIFT_LOOP_ENGINE = DriftReviewLoopEngine(repository=GOVERNED_REPOSITORY)
 
 SERVER_START_TIME = time.time()
 try:
@@ -1028,6 +1030,31 @@ class DashboardHandler(BaseHTTPRequestHandler):
         elif path == "/api/governance/proposals":
             self._json([p.to_dict() for p in PROPOSALS_STORE.values()])
             return
+        elif path == "/api/governance/drift-loops/experiment":
+            results = run_simulated_drift_experiment()
+            self._json([r.__dict__ for r in results])
+            return
+        elif path == "/api/governance/drift-loops":
+            model_filter = query.get("model", query.get("model_id", [None]))[0]
+            loops = DRIFT_LOOP_ENGINE.list_loops(model_id=model_filter)
+            self._json([l.to_dict() for l in loops])
+            return
+        elif path.startswith("/api/governance/drift-loops/"):
+            loop_id = path.removeprefix("/api/governance/drift-loops/").strip()
+            fmt = query.get("format", ["json"])[0]
+            loop = DRIFT_LOOP_ENGINE.get_loop(loop_id)
+            if not loop:
+                self._json({"error": "Drift review loop not found"}, 404)
+                return
+            if fmt == "html":
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(loop.to_html().encode("utf-8"))
+                return
+            self._json(loop.to_dict())
+            return
         else:
             self.send_response(404)
             self.end_headers()
@@ -1498,6 +1525,93 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 return
             snap = REVIEW_QUEUE.create_dataset_snapshot(operator_id=actor["operator_id"], operator_role=role)
             self._json(snap.to_dict())
+            return
+
+        if path == "/api/governance/drift-loops/trigger":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "ENGINEER"):
+                self._json({"error": "Only COMMANDER or ENGINEER can trigger drift review loops"}, 403)
+                return
+            payload = self._payload()
+            model_id = str(payload.get("model_id", "yolo11n-sentinel"))
+            snapshot_id = payload.get("drift_snapshot_id")
+            max_batch = payload.get("max_batch_size")
+            if max_batch is not None:
+                try: max_batch = int(max_batch)
+                except ValueError: max_batch = None
+            loop = DRIFT_LOOP_ENGINE.trigger_from_drift_snapshot(
+                model_id=model_id,
+                drift_snapshot_id=snapshot_id,
+                max_batch_size=max_batch,
+                actor_id=actor["operator_id"],
+                actor_role=role,
+            )
+            self._json(loop.to_dict())
+            return
+
+        if path == "/api/governance/drift-loops/evaluate":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "ENGINEER"):
+                self._json({"error": "Only COMMANDER or ENGINEER can trigger candidate evaluation"}, 403)
+                return
+            payload = self._payload()
+            loop_id = str(payload.get("loop_id", ""))
+            if not loop_id:
+                self._json({"error": "Missing loop_id"}, 400)
+                return
+            cand_id = payload.get("candidate_model_id")
+            cand_ver = payload.get("candidate_model_version")
+            try:
+                loop = DRIFT_LOOP_ENGINE.evaluate_candidate_offline(
+                    loop_id=loop_id,
+                    engineer_id=actor["operator_id"],
+                    role=role,
+                    candidate_model_id=cand_id,
+                    candidate_model_version=cand_ver,
+                )
+                self._json(loop.to_dict())
+            except Exception as e:
+                self._json({"error": str(e)}, 400)
+            return
+
+        if path == "/api/governance/drift-loops/decide":
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "ENGINEER"):
+                self._json({"error": "Only COMMANDER or ENGINEER can approve or reject candidate models"}, 403)
+                return
+            payload = self._payload()
+            loop_id = str(payload.get("loop_id", ""))
+            decision = str(payload.get("decision", "")).upper()
+            reason = str(payload.get("reason", ""))
+            if not loop_id or decision not in ("APPROVE", "REJECT"):
+                self._json({"error": "Missing loop_id or invalid decision (must be APPROVE or REJECT)"}, 400)
+                return
+            if not reason.strip():
+                self._json({"error": "Mandatory audit reason is required"}, 400)
+                return
+            try:
+                loop = DRIFT_LOOP_ENGINE.decide_candidate(
+                    loop_id=loop_id,
+                    decision=decision,  # type: ignore
+                    reason=reason,
+                    actor_id=actor["operator_id"],
+                    role=role,
+                )
+                self._json(loop.to_dict())
+            except Exception as e:
+                self._json({"error": str(e)}, 400)
             return
 
         # 1. Interactive Scenario Trigger

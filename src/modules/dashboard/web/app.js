@@ -1952,7 +1952,7 @@ function switchPage(pageId, updateHash = true) {
     if (pageId === "system-health") loadSystemHealth();
     if (pageId === "analytics") loadAnalytics();
     if (pageId === "logs") loadIncidents();
-    if (pageId === "review") loadReviewQueue();
+    if (pageId === "review") { loadReviewQueue(); loadDriftReviewLoops(); }
 
     // 5. Page-specific triggers
     if (pageId === "gis" && chartInstance) {
@@ -2531,6 +2531,216 @@ async function claimReview(id) {
 async function submitFeedback(id,label) {
     const response=await fetch(`/api/predictions/${id}/feedback`,{method:"POST",headers:authHeaders({"Content-Type":"application/json"}),body:JSON.stringify({label})});
     if(response.ok) loadReviewQueue(); else alert((await response.json()).error||"Feedback failed");
+}
+
+/* ------------------------------------------------------------------------- */
+/* Phase 6P: Audited Drift-to-Review Loop Functions                          */
+/* ------------------------------------------------------------------------- */
+async function loadDriftReviewLoops() {
+    const container = document.getElementById("driftLoopsList");
+    if (!container) return;
+    try {
+        const response = await fetch("/api/governance/drift-loops", { headers: authHeaders() });
+        if (!response.ok) {
+            container.innerHTML = `<p class="text-sm text-rose-500">Failed to load drift review loops (${response.status})</p>`;
+            return;
+        }
+        const loops = await response.json();
+        if (!loops || loops.length === 0) {
+            container.innerHTML = `<p class="text-sm text-slate-500">No active or historical drift review loops recorded.</p>`;
+            return;
+        }
+
+        const stateColors = {
+            "DRIFT_DETECTED": "bg-amber-100 text-amber-800 border-amber-300",
+            "BATCH_SELECTED": "bg-blue-100 text-blue-800 border-blue-300",
+            "OPERATORS_LABELED": "bg-indigo-100 text-indigo-800 border-indigo-300",
+            "DATASET_VERSIONED": "bg-purple-100 text-purple-800 border-purple-300",
+            "CANDIDATE_EVALUATED": "bg-cyan-100 text-cyan-800 border-cyan-300",
+            "APPROVED": "bg-emerald-100 text-emerald-800 border-emerald-300",
+            "REJECTED": "bg-rose-100 text-rose-800 border-rose-300"
+        };
+
+        const html = loops.map(loop => {
+            const state = loop.current_state || "UNKNOWN";
+            const badgeCls = stateColors[state] || "bg-slate-100 text-slate-800 border-slate-300";
+            const candidate = loop.candidate_model_version || "Pending candidate";
+            const baseF1 = loop.baseline_f1 !== null && loop.baseline_f1 !== undefined ? Number(loop.baseline_f1).toFixed(4) : "—";
+            const candF1 = loop.candidate_f1 !== null && loop.candidate_f1 !== undefined ? Number(loop.candidate_f1).toFixed(4) : "—";
+            const delta = loop.delta_f1 !== null && loop.delta_f1 !== undefined ? (loop.delta_f1 >= 0 ? `+${Number(loop.delta_f1).toFixed(4)}` : Number(loop.delta_f1).toFixed(4)) : "—";
+            const sampleCount = loop.uncertain_prediction_ids ? loop.uncertain_prediction_ids.length : 0;
+            const dsHash = loop.dataset_version_hash ? loop.dataset_version_hash.slice(0, 10) + "…" : "Pending";
+
+            let actionBtns = "";
+            if (state === "DATASET_VERSIONED") {
+                actionBtns = `<button onclick="evaluateDriftLoop('${escapeHtml(loop.loop_id)}')" class="btn-press px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold font-mono">Evaluate Candidate</button>`;
+            } else if (state === "CANDIDATE_EVALUATED") {
+                actionBtns = `
+                    <button onclick="decideDriftLoop('${escapeHtml(loop.loop_id)}', 'APPROVED')" class="btn-press px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold font-mono">Approve</button>
+                    <button onclick="decideDriftLoop('${escapeHtml(loop.loop_id)}', 'REJECTED')" class="btn-press px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold font-mono">Reject</button>
+                `;
+            } else if (state === "APPROVED") {
+                actionBtns = `<span class="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-1 rounded border border-emerald-200">APPROVED (SHADOW CANDIDATE)</span>`;
+            } else if (state === "REJECTED") {
+                actionBtns = `<span class="text-[10px] font-mono text-rose-700 font-bold bg-rose-50 px-2 py-1 rounded border border-rose-200">REJECTED (RETAINED IN AUDIT)</span>`;
+            }
+
+            return `
+                <article class="p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-slate-900 font-mono text-xs">${escapeHtml(loop.loop_id)}</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${badgeCls}">${escapeHtml(state)}</span>
+                            <span class="text-[10px] font-mono text-slate-500">${escapeHtml(loop.model_id)}</span>
+                        </div>
+                        <div class="text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
+                            <span>Samples: <b>${sampleCount}</b></span>
+                            <span>Dataset: <code class="bg-white px-1 py-0.5 rounded border border-slate-200 text-[10px]">${escapeHtml(dsHash)}</code></span>
+                            <span>Candidate: <b>${escapeHtml(candidate)}</b></span>
+                            <span>Baseline F1: <b>${baseF1}</b></span>
+                            <span>Candidate F1: <b>${candF1}</b> (${delta})</span>
+                        </div>
+                        ${loop.decision_reason ? `<div class="text-[11px] text-slate-500 italic mt-0.5">Decision Note: "${escapeHtml(loop.decision_reason)}" (by ${escapeHtml(loop.decision_actor_id || "unknown")})</div>` : ""}
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        ${actionBtns}
+                        <a href="/api/governance/drift-loops/${encodeURIComponent(loop.loop_id)}?format=html" target="_blank" class="px-2 py-1 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-mono font-bold">Printable Audit</a>
+                    </div>
+                </article>
+            `;
+        }).join("");
+
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = `<p class="text-sm text-rose-500">Error loading drift review loops: ${escapeHtml(String(e))}</p>`;
+    }
+}
+
+async function triggerNewDriftLoop() {
+    const modelId = prompt("Enter model ID to trigger drift review for (e.g. YOLO11n-Urban-v2):", "YOLO11n-Urban-v2");
+    if (!modelId) return;
+    const batchSizeStr = prompt("Enter maximum review batch size (max limit 50):", "20");
+    const batchSize = parseInt(batchSizeStr, 10) || 20;
+
+    try {
+        const res = await fetch("/api/governance/drift-loops/trigger", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({
+                model_id: modelId,
+                max_batch_size: batchSize,
+                selection_strategy: "UNCERTAINTY_MARGIN"
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert(`Drift review loop triggered successfully: ${data.loop_id}`);
+            loadDriftReviewLoops();
+        } else {
+            alert(`Trigger failed: ${data.error || "Unknown error"}`);
+        }
+    } catch (e) {
+        alert(`Request failed: ${e.message}`);
+    }
+}
+
+async function evaluateDriftLoop(loopId) {
+    if (!confirm(`Run offline evaluation for candidate in loop ${loopId}?`)) return;
+    try {
+        const res = await fetch("/api/governance/drift-loops/evaluate", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ loop_id: loopId })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert(`Offline evaluation complete!\nBaseline F1: ${data.baseline_f1.toFixed(4)}\nCandidate F1: ${data.candidate_f1.toFixed(4)}\nDelta: ${data.delta_f1 >= 0 ? '+' : ''}${data.delta_f1.toFixed(4)}`);
+            loadDriftReviewLoops();
+        } else {
+            alert(`Evaluation failed: ${data.error || "Unknown error"}`);
+        }
+    } catch (e) {
+        alert(`Evaluation error: ${e.message}`);
+    }
+}
+
+async function decideDriftLoop(loopId, decision) {
+    const reason = prompt(`Enter mandatory signoff reason for ${decision} of candidate model in loop ${loopId}:`);
+    if (!reason) {
+        alert("Action cancelled: Decision reason is mandatory.");
+        return;
+    }
+    try {
+        const res = await fetch("/api/governance/drift-loops/decide", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({
+                loop_id: loopId,
+                decision: decision,
+                reason: reason
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert(`Decision recorded successfully: ${decision}\nStatus: ${data.status}`);
+            loadDriftReviewLoops();
+        } else {
+            alert(`Decision rejected: ${data.error || "Unknown error"}`);
+        }
+    } catch (e) {
+        alert(`Decision request error: ${e.message}`);
+    }
+}
+
+async function runDriftExperiment() {
+    const panel = document.getElementById("driftExperimentResults");
+    if (!panel) return;
+    panel.classList.remove("hidden");
+    panel.innerHTML = `<p class="text-slate-500">Running simulated drift recovery experiment across active vs random sampling...</p>`;
+    try {
+        const res = await fetch("/api/governance/drift-loops/experiment", { headers: authHeaders() });
+        if (!res.ok) {
+            panel.innerHTML = `<p class="text-rose-500">Experiment failed (${res.status})</p>`;
+            return;
+        }
+        const data = await res.json();
+        panel.innerHTML = `
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200 mb-2">
+                <span class="font-bold text-slate-900">Active vs Random Recovery Evaluation (Experiment 6P-1)</span>
+                <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">DATA TAG: SYNTHETIC</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-[10px] text-slate-500 border-b border-slate-200">
+                            <th class="py-1">Strategy</th>
+                            <th class="py-1">Labeled Samples</th>
+                            <th class="py-1">Baseline F1</th>
+                            <th class="py-1">Drifted F1</th>
+                            <th class="py-1">Recovered F1</th>
+                            <th class="py-1">Recovery Rate</th>
+                            <th class="py-1">95% CI</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-700">
+                        ${data.map(r => `
+                            <tr>
+                                <td class="py-1 font-bold ${r.strategy === 'active_uncertainty' ? 'text-indigo-600' : 'text-slate-600'}">${escapeHtml(r.strategy)}</td>
+                                <td class="py-1">${r.samples_labeled}</td>
+                                <td class="py-1">${r.baseline_f1.toFixed(4)}</td>
+                                <td class="py-1 text-rose-600">${r.drifted_f1.toFixed(4)}</td>
+                                <td class="py-1 text-emerald-600 font-bold">${r.recovered_f1.toFixed(4)}</td>
+                                <td class="py-1">${(r.recovery_rate * 100).toFixed(1)}%</td>
+                                <td class="py-1 text-[10px] text-slate-500">[${r.ci_lower.toFixed(4)}, ${r.ci_upper.toFixed(4)}]</td>
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (e) {
+        panel.innerHTML = `<p class="text-rose-500">Error: ${escapeHtml(String(e))}</p>`;
+    }
 }
 
 async function setHardwareMode(mode, fault = "DISCONNECT") {

@@ -148,6 +148,43 @@ class ForensicReportGenerator:
             except Exception:
                 availability_matrix_html = ""
 
+        drift_loop_html = ""
+        dl_data = incident.get("drift_loop") or incident.get("drift_review_loop")
+        if dl_data:
+            if hasattr(dl_data, "to_html"):
+                drift_loop_html = dl_data.to_html()
+            elif isinstance(dl_data, dict):
+                from src.modules.governance.drift_review_loop import DriftReviewLoop, DriftLoopState, DriftLoopStageRecord
+                try:
+                    history = [DriftLoopStageRecord(**h) for h in dl_data.get("history", [])]
+                    loop_obj = DriftReviewLoop(
+                        loop_id=dl_data["loop_id"],
+                        drift_snapshot_id=dl_data.get("drift_snapshot_id"),
+                        model_id=dl_data.get("model_id", "yolo11n-sentinel"),
+                        state=DriftLoopState(dl_data.get("state", "DRIFT_DETECTED")),
+                        batch_size=dl_data.get("batch_size", 0),
+                        max_batch_limit=dl_data.get("max_batch_limit", 25),
+                        selected_prediction_ids=dl_data.get("selected_prediction_ids", []),
+                        labeled_samples_count=dl_data.get("labeled_samples_count", 0),
+                        dataset_version_hash=dl_data.get("dataset_version_hash"),
+                        candidate_model_id=dl_data.get("candidate_model_id"),
+                        candidate_model_version=dl_data.get("candidate_model_version"),
+                        before_metrics=dl_data.get("before_metrics"),
+                        after_metrics=dl_data.get("after_metrics"),
+                        decision=dl_data.get("decision"),
+                        decision_reason=dl_data.get("decision_reason"),
+                        decision_by=dl_data.get("decision_by"),
+                        decision_role=dl_data.get("decision_role"),
+                        decision_at=dl_data.get("decision_at"),
+                        created_at=dl_data.get("created_at", ""),
+                        updated_at=dl_data.get("updated_at", ""),
+                        history=history,
+                        metadata=dl_data.get("metadata", {}),
+                    )
+                    drift_loop_html = loop_obj.to_html()
+                except Exception:
+                    drift_loop_html = f"<div class='card'><h4>Drift-to-Review Loop</h4><pre>{html.escape(json.dumps(dl_data, indent=2))}</pre></div>"
+
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -419,6 +456,12 @@ class ForensicReportGenerator:
   <div class="card" style="margin-bottom: 20px; border-left: 4px solid #3b82f6;">
     <h3 style="margin-bottom: 8px;">Sensor-Availability Matrix &amp; Degradation Robustness</h3>
     {availability_matrix_html}
+  </div>
+
+  <!-- Drift-to-Review Closed Loop Governance (Phase 6P) -->
+  <div class="card" style="margin-bottom: 20px; border-left: 4px solid #8b5cf6;">
+    <h3 style="margin-bottom: 8px;">Drift-to-Review Closed Loop Audit History</h3>
+    {drift_loop_html or "<p style='color:#64748b;font-size:12px;margin:0;'>No drift-to-review loop actions recorded for this evaluation slice.</p>"}
   </div>
 
   <!-- Blackbox Evidence & Custody Sign-Off -->

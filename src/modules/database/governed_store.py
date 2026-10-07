@@ -293,6 +293,33 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     );
     CREATE INDEX IF NOT EXISTS idx_matrix_incident ON incident_availability_matrices(incident_id);
     """),
+    (13, """
+    CREATE TABLE IF NOT EXISTS drift_review_loops (
+      loop_id TEXT PRIMARY KEY,
+      drift_snapshot_id TEXT,
+      model_id TEXT NOT NULL,
+      state TEXT NOT NULL,
+      batch_size INTEGER NOT NULL,
+      max_batch_limit INTEGER NOT NULL,
+      selected_prediction_ids_json TEXT NOT NULL,
+      labeled_samples_count INTEGER DEFAULT 0,
+      dataset_version_hash TEXT,
+      candidate_model_id TEXT,
+      candidate_model_version TEXT,
+      before_metrics_json TEXT,
+      after_metrics_json TEXT,
+      decision TEXT,
+      decision_reason TEXT,
+      decision_by TEXT,
+      decision_role TEXT,
+      decision_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      history_json TEXT NOT NULL,
+      metadata_json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_drift_loops_model ON drift_review_loops(model_id, created_at);
+    """),
 )
 
 
@@ -453,13 +480,60 @@ class IncidentRepository:
                 (incident_id, ts, baseline_outcome, baseline_risk, stability_score, matrix_json),
             )
         )
+    def store_drift_review_loop(
+        self,
+        loop_id: str,
+        drift_snapshot_id: str | None,
+        model_id: str,
+        state: str,
+        batch_size: int,
+        max_batch_limit: int,
+        selected_prediction_ids_json: str,
+        labeled_samples_count: int,
+        dataset_version_hash: str | None,
+        candidate_model_id: str | None,
+        candidate_model_version: str | None,
+        before_metrics_json: str | None,
+        after_metrics_json: str | None,
+        decision: str | None,
+        decision_reason: str | None,
+        decision_by: str | None,
+        decision_role: str | None,
+        decision_at: str | None,
+        created_at: str,
+        updated_at: str,
+        history_json: str,
+        metadata_json: str,
+    ) -> bool:
+        self.writer.submit_wait(
+            lambda c: c.execute(
+                """
+                INSERT OR REPLACE INTO drift_review_loops (
+                  loop_id, drift_snapshot_id, model_id, state, batch_size, max_batch_limit,
+                  selected_prediction_ids_json, labeled_samples_count, dataset_version_hash,
+                  candidate_model_id, candidate_model_version, before_metrics_json, after_metrics_json,
+                  decision, decision_reason, decision_by, decision_role, decision_at,
+                  created_at, updated_at, history_json, metadata_json
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    loop_id, drift_snapshot_id, model_id, state, batch_size, max_batch_limit,
+                    selected_prediction_ids_json, labeled_samples_count, dataset_version_hash,
+                    candidate_model_id, candidate_model_version, before_metrics_json, after_metrics_json,
+                    decision, decision_reason, decision_by, decision_role, decision_at,
+                    created_at, updated_at, history_json, metadata_json
+                ),
+            )
+        )
+        return True
+
     def rows(self, table: str, incident_id: str | None = None) -> list[dict[str, Any]]:
-        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes","device_health_events","sync_outbox","drift_snapshots","model_baselines","safety_contracts","response_plans","incident_availability_matrices"}
+        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes","device_health_events","sync_outbox","drift_snapshots","model_baselines","safety_contracts","response_plans","incident_availability_matrices","drift_review_loops"}
         if table not in allowed: raise ValueError("invalid table")
         if incident_id is None:
-            order_col = "created_at" if table in ("incidents", "model_baselines", "response_plans") else "id"
+            order_col = "created_at" if table in ("incidents", "model_baselines", "response_plans", "drift_review_loops") else "id"
             return [dict(r) for r in self._read(f"SELECT * FROM {table} ORDER BY {order_col} DESC")]
-        key = "incident_id"; return [dict(r) for r in self._read(f"SELECT * FROM {table} WHERE {key}=? ORDER BY {('created_at' if table == 'response_plans' else 'id')}" if table != "incidents" else "SELECT * FROM incidents WHERE incident_id=?", (incident_id,))]
+        key = "incident_id"; return [dict(r) for r in self._read(f"SELECT * FROM {table} WHERE {key}=? ORDER BY {('created_at' if table in ('response_plans','drift_review_loops') else 'id')}" if table != "incidents" else "SELECT * FROM incidents WHERE incident_id=?", (incident_id,))]
     def close(self) -> None: self.writer.close()
 
 
