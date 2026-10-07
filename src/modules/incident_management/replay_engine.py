@@ -119,6 +119,9 @@ class SandboxedReplayEngine:
         network_outage: bool = False,
         conflicting_sensors: bool = False,
         operator_action: OperatorAction = "NONE",
+        zone_id: Optional[str] = None,
+        time_bucket: Optional[str] = None,
+        use_zone_priors: bool = True,
     ) -> ReplayRunResult:
         """
         Runs the incident trace with optional counterfactual perturbations.
@@ -242,7 +245,11 @@ class SandboxedReplayEngine:
                 evidence_duration_sec=step.timestamp_offset_sec,
                 zone_reliability=1.0,
                 calibration_quality=1.0,
+                zone_id=zone_id or "ZONE_A",
+                time_bucket=time_bucket,
+                use_zone_priors=use_zone_priors,
             )
+
 
             # Response plan synthesis
             if dec.predicted_class == "FIRE":

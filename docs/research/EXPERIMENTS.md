@@ -499,10 +499,49 @@ For each condition subgroup:
   7. Audit logging of every decryption attempt and every denied role action.
   8. Retention manager (5D) and Merkle evidence packaging (5C) updated for encrypted files.
 - **Failure Criteria**:
-  - Plaintext hash mismatch after decryption.
-  - Ciphertext tampering undetected.
-  - Decryption allowed for unauthorized roles (e.g. VIEWER).
-  - Missing audit record on decryption or authorization denial.
+---
+
+## Experiment 6L-1: Zone-Aware Risk Scoring with Contextual Priors and Critical Safety Floor
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-07
+- **Status**: PRE-REGISTERED (Criteria locked prior to code execution)
+
+### 2. Hypothesis
+- **Hypothesis**: "Zone-specific priors (accident base rate, time of day, noise level, traffic density) reduce false alarms in quiet zones and improve detection in high-risk zones versus a zone-agnostic baseline."
+
+### 3. Safety Invariants & Guardrails
+1. **Critical Safety Floor**:
+   - Priors may adjust alert priority/thresholds but **can never suppress a high-confidence critical event**.
+   - If an event is evaluated with high confidence (e.g. `raw_confidence >= 0.85` or severe physical signature like `CRITICAL` / `FIRE` / `ACCIDENT`), a low zone prior CANNOT downgrade it to `NORMAL` or dismiss it; it must route to `REVIEW_REQUIRED` or maintain alerting priority.
+2. **Leakage-Free Estimation**:
+   - Zone-specific and time-bucket priors are estimated strictly from training/historical data partitions with frozen snapshots; zero test-set leakage.
+3. **Auditability & Ablation**:
+   - The zone factor (prior adjustment delta, base rate, bucket) is explicitly logged in the prediction payload with every decision.
+   - The zone prior is fully ablatable (`use_zone_priors=False` reverts identically to the zone-agnostic baseline).
+
+### 4. Primary Metrics & Target Thresholds
+1. **False-Alarm Reduction in Quiet Zones**:
+   - False-alarm rate (FAR) in low-risk/quiet zones drops by $\ge 15\%$ relative to zone-agnostic baseline without reducing critical recall.
+2. **Recall in High-Risk Zones**:
+   - Detection sensitivity / macro-F1 in high-risk zones improves or remains $\ge 0.90$.
+3. **Safety Invariant Enforcement**:
+   - 100% of high-confidence critical events in low-risk zones remain detected or routed to `REVIEW_REQUIRED` (0% suppressed).
+4. **Statistical Rigor**:
+   - Evaluated across zones using the Phase 6A evaluation framework with 95% bootstrap confidence intervals and explicit data tagging (`SYNTHETIC` / `REPLAYED_REAL`).
+
+### 5. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Versioned, leakage-free prior tables estimated across zones and time buckets.
+  2. Integration into uncertainty/decision pipeline with ablatable configuration flag.
+  3. Safety policy floor strictly enforced (verified by property-based and regression tests).
+  4. Decision logging includes `zone_prior`, `adjusted_risk`, `baseline_risk`, and rationale.
+  5. Per-zone comparative evaluation report generated with confidence intervals and honest limitations.
+- **Failure Criteria**:
+  - A high-confidence critical event is suppressed or demoted to `NORMAL` due to low prior.
+  - Evaluation test data is used to calculate priors (data leakage).
+  - Suppression of real anomalies in quiet zones.
+
 
 
 

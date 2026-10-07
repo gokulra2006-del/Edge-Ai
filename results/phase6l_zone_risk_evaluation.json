@@ -1,0 +1,261 @@
+{
+  "experiment": "Phase 6L: Zone-Aware Risk Scoring vs Zone-Agnostic Baseline",
+  "data_tag": "SYNTHETIC",
+  "seed": 42,
+  "zones_evaluated": [
+    "ZONE_A",
+    "ZONE_B",
+    "ZONE_SCHOOL",
+    "ZONE_HIGHWAY"
+  ],
+  "scenarios_per_zone": 15,
+  "total_scenarios": 48,
+  "results": {
+    "zone_aware_system": {
+      "ZONE_A": {
+        "samples": 240,
+        "macro_f1": 0.7762,
+        "ci_macro_f1": [
+          0.7246,
+          0.8286
+        ],
+        "false_alarm_rate": 0.0,
+        "ci_false_alarm_rate": [
+          0.0,
+          0.0
+        ],
+        "miss_rate": 0.3136,
+        "ci_miss_rate": [
+          0.2288,
+          0.3814
+        ],
+        "accuracy": 0.8458,
+        "per_class_f1": {
+          "NORMAL": 0.8683,
+          "ACCIDENT": 0.25,
+          "FIRE": 0.9867,
+          "AMBULANCE": 1.0
+        }
+      },
+      "ZONE_B": {
+        "samples": 240,
+        "macro_f1": 0.7577,
+        "ci_macro_f1": [
+          0.7116,
+          0.8061
+        ],
+        "false_alarm_rate": 0.0,
+        "ci_false_alarm_rate": [
+          0.0,
+          0.0
+        ],
+        "miss_rate": 0.33899999999999997,
+        "ci_miss_rate": [
+          0.2458,
+          0.4322
+        ],
+        "accuracy": 0.8332999999999999,
+        "per_class_f1": {
+          "NORMAL": 0.8592,
+          "ACCIDENT": 0.2128,
+          "FIRE": 0.9589,
+          "AMBULANCE": 1.0
+        }
+      },
+      "ZONE_SCHOOL": {
+        "samples": 240,
+        "macro_f1": 0.7762,
+        "ci_macro_f1": [
+          0.7246,
+          0.8286
+        ],
+        "false_alarm_rate": 0.0,
+        "ci_false_alarm_rate": [
+          0.0,
+          0.0
+        ],
+        "miss_rate": 0.3136,
+        "ci_miss_rate": [
+          0.2288,
+          0.3814
+        ],
+        "accuracy": 0.8458,
+        "per_class_f1": {
+          "NORMAL": 0.8683,
+          "ACCIDENT": 0.25,
+          "FIRE": 0.9867,
+          "AMBULANCE": 1.0
+        }
+      },
+      "ZONE_HIGHWAY": {
+        "samples": 240,
+        "macro_f1": 0.7721,
+        "ci_macro_f1": [
+          0.7222,
+          0.8248
+        ],
+        "false_alarm_rate": 0.0,
+        "ci_false_alarm_rate": [
+          0.0,
+          0.0
+        ],
+        "miss_rate": 0.322,
+        "ci_miss_rate": [
+          0.2373,
+          0.3898
+        ],
+        "accuracy": 0.8417,
+        "per_class_f1": {
+          "NORMAL": 0.8652,
+          "ACCIDENT": 0.25,
+          "FIRE": 0.973,
+          "AMBULANCE": 1.0
+        }
+      }
+    },
+    "zone_agnostic_baseline": {
+      "ZONE_A": {
+        "samples": 240,
+        "macro_f1": 0.7514,
+        "ci_macro_f1": [
+          0.7111,
+          0.7977
+        ],
+        "false_alarm_rate": 0.1148,
+        "ci_false_alarm_rate": [
+          0.0574,
+          0.18030000000000002
+        ],
+        "miss_rate": 0.30510000000000004,
+        "ci_miss_rate": [
+          0.22030000000000002,
+          0.3814
+        ],
+        "accuracy": 0.7917000000000001,
+        "per_class_f1": {
+          "NORMAL": 0.812,
+          "ACCIDENT": 0.1935,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        }
+      },
+      "ZONE_B": {
+        "samples": 240,
+        "macro_f1": 0.7362,
+        "ci_macro_f1": [
+          0.7025,
+          0.7734
+        ],
+        "false_alarm_rate": 0.1475,
+        "ci_false_alarm_rate": [
+          0.0902,
+          0.21309999999999998
+        ],
+        "miss_rate": 0.3136,
+        "ci_miss_rate": [
+          0.2288,
+          0.3898
+        ],
+        "accuracy": 0.7707999999999999,
+        "per_class_f1": {
+          "NORMAL": 0.7909,
+          "ACCIDENT": 0.1538,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        }
+      },
+      "ZONE_SCHOOL": {
+        "samples": 240,
+        "macro_f1": 0.7552,
+        "ci_macro_f1": [
+          0.716,
+          0.7957
+        ],
+        "false_alarm_rate": 0.0984,
+        "ci_false_alarm_rate": [
+          0.0492,
+          0.1557
+        ],
+        "miss_rate": 0.30510000000000004,
+        "ci_miss_rate": [
+          0.22030000000000002,
+          0.3814
+        ],
+        "accuracy": 0.8,
+        "per_class_f1": {
+          "NORMAL": 0.8209,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        }
+      },
+      "ZONE_HIGHWAY": {
+        "samples": 240,
+        "macro_f1": 0.7552,
+        "ci_macro_f1": [
+          0.7157,
+          0.7966
+        ],
+        "false_alarm_rate": 0.0984,
+        "ci_false_alarm_rate": [
+          0.0574,
+          0.1557
+        ],
+        "miss_rate": 0.30510000000000004,
+        "ci_miss_rate": [
+          0.22030000000000002,
+          0.3814
+        ],
+        "accuracy": 0.8,
+        "per_class_f1": {
+          "NORMAL": 0.8209,
+          "ACCIDENT": 0.2,
+          "FIRE": 1.0,
+          "AMBULANCE": 1.0
+        }
+      }
+    }
+  },
+  "zone_comparisons": {
+    "ZONE_A": {
+      "baseline_far": 0.1148,
+      "prior_far": 0.0,
+      "far_reduction_pct": 100.0,
+      "baseline_macro_f1": 0.7514,
+      "prior_macro_f1": 0.7762,
+      "f1_improvement_pct": 3.3,
+      "quiet_zone_far_improved": true,
+      "high_risk_f1_maintained": true
+    },
+    "ZONE_B": {
+      "baseline_far": 0.1475,
+      "prior_far": 0.0,
+      "far_reduction_pct": 100.0,
+      "baseline_macro_f1": 0.7362,
+      "prior_macro_f1": 0.7577,
+      "f1_improvement_pct": 2.92,
+      "quiet_zone_far_improved": true,
+      "high_risk_f1_maintained": true
+    },
+    "ZONE_SCHOOL": {
+      "baseline_far": 0.0984,
+      "prior_far": 0.0,
+      "far_reduction_pct": 100.0,
+      "baseline_macro_f1": 0.7552,
+      "prior_macro_f1": 0.7762,
+      "f1_improvement_pct": 2.78,
+      "quiet_zone_far_improved": true,
+      "high_risk_f1_maintained": true
+    },
+    "ZONE_HIGHWAY": {
+      "baseline_far": 0.0984,
+      "prior_far": 0.0,
+      "far_reduction_pct": 100.0,
+      "baseline_macro_f1": 0.7552,
+      "prior_macro_f1": 0.7721,
+      "f1_improvement_pct": 2.24,
+      "quiet_zone_far_improved": true,
+      "high_risk_f1_maintained": true
+    }
+  }
+}

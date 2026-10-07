@@ -96,11 +96,23 @@ class UncertaintyAwareFusion:
         strong_evidence_threshold: float = 0.65,
         target_window_steps: int = 5,
         enabled_factors: Optional[Set[str]] = None,
+        zone_scorer: Optional[Any] = None,
     ):
         self.alert_threshold = alert_threshold
         self.strong_evidence_threshold = strong_evidence_threshold
         self.target_window_steps = target_window_steps
         self.enabled_factors = enabled_factors
+        if zone_scorer is not None:
+            self.zone_scorer = zone_scorer
+        else:
+            try:
+                from src.modules.decision.zone_priors import ZoneAwareRiskScorer
+                self.zone_scorer = ZoneAwareRiskScorer(
+                    strong_evidence_threshold=strong_evidence_threshold,
+                )
+            except Exception:
+                self.zone_scorer = None
+
 
     def evaluate(
         self,
@@ -113,9 +125,12 @@ class UncertaintyAwareFusion:
         evidence_duration_sec: float = 2.0,
         zone_reliability: float = 1.0,
         calibration_quality: float = 1.0,
+        zone_id: Optional[str] = None,
+        time_bucket: Optional[str] = None,
+        use_zone_priors: bool = True,
     ) -> UncertaintyDecision:
         """
-        Evaluates full multi-factor uncertainty risk.
+        Evaluates full multi-factor uncertainty risk, with optional zone-aware prior adjustment (Phase 6L).
         """
         # 1. Temporal consistency
         temporal = self.compute_temporal_consistency(predicted_class, window_history)
@@ -145,26 +160,56 @@ class UncertaintyAwareFusion:
             zone_reliability_penalty=round(zone_pen, 4),
         )
 
-        final_risk = factors.compute_final_risk(self.enabled_factors)
+        baseline_risk = factors.compute_final_risk(self.enabled_factors)
+        final_risk = baseline_risk
+        zone_adjustment_dict = None
 
-        # Safety Guard Decision Logic
-        if predicted_class == "NORMAL":
-            action: DecisionAction = "SUPPRESS_NOISE"
-            reason = "Nominal state classification"
-        elif final_risk >= self.alert_threshold:
-            action = "DISPATCH_ALERT"
-            reason = f"High-confidence verified event (risk={final_risk:.2f} >= {self.alert_threshold:.2f})"
-        elif raw_confidence >= self.strong_evidence_threshold:
-            # SAFETY GUARD: Raw evidence was strong, but risk was attenuated by uncertainty/health.
-            # Route to human review instead of silently dropping the potential incident.
-            action = "REVIEW_REQUIRED"
-            reason = (
-                f"Safety guard triggered: raw confidence ({raw_confidence:.2f}) exceeds threshold, "
-                f"but uncertainty factors attenuated risk to {final_risk:.2f}. Human review required."
+        # 6. Phase 6L: Zone-Aware Risk Scoring Integration
+        if zone_id and hasattr(self, "zone_scorer") and self.zone_scorer:
+            from src.modules.decision.zone_priors import TimeBucket  # type: ignore
+            adj = self.zone_scorer.adjust_risk(
+                predicted_class=predicted_class,
+                raw_confidence=raw_confidence,
+                baseline_risk=baseline_risk,
+                zone_id=zone_id,
+                time_bucket=time_bucket,  # type: ignore
+                alert_threshold=self.alert_threshold,
+                enabled=use_zone_priors,
             )
+            final_risk = adj.adjusted_risk
+            action = adj.action
+            reason = adj.explanation
+            zone_adjustment_dict = adj.to_dict()
         else:
-            action = "SUPPRESS_NOISE"
-            reason = f"Low risk ({final_risk:.2f} < {self.alert_threshold:.2f}) suppressed as noise"
+            # Standard Zone-Agnostic Decision Logic
+            if predicted_class == "NORMAL":
+                action: DecisionAction = "SUPPRESS_NOISE"
+                reason = "Nominal state classification"
+            elif final_risk >= self.alert_threshold:
+                action = "DISPATCH_ALERT"
+                reason = f"High-confidence verified event (risk={final_risk:.2f} >= {self.alert_threshold:.2f})"
+            elif raw_confidence >= self.strong_evidence_threshold:
+                # SAFETY GUARD: Raw evidence was strong, but risk was attenuated by uncertainty/health.
+                action = "REVIEW_REQUIRED"
+                reason = (
+                    f"Safety guard triggered: raw confidence ({raw_confidence:.2f}) exceeds threshold, "
+                    f"but uncertainty factors attenuated risk to {final_risk:.2f}. Human review required."
+                )
+            else:
+                action = "SUPPRESS_NOISE"
+                reason = f"Low risk ({final_risk:.2f} < {self.alert_threshold:.2f}) suppressed as noise"
+
+        metadata = {
+            "is_ood": is_ood,
+            "evidence_duration_sec": evidence_duration_sec,
+            "enabled_factors": list(self.enabled_factors) if self.enabled_factors else "all",
+            "zone_id": zone_id,
+            "time_bucket": time_bucket,
+            "baseline_risk": baseline_risk,
+            "final_risk": final_risk,
+        }
+        if zone_adjustment_dict:
+            metadata["zone_prior_factor"] = zone_adjustment_dict
 
         return UncertaintyDecision(
             predicted_class=predicted_class,
@@ -173,12 +218,9 @@ class UncertaintyAwareFusion:
             action=action,
             factors=factors,
             reason=reason,
-            metadata={
-                "is_ood": is_ood,
-                "evidence_duration_sec": evidence_duration_sec,
-                "enabled_factors": list(self.enabled_factors) if self.enabled_factors else "all",
-            },
+            metadata=metadata,
         )
+
 
     def compute_temporal_consistency(self, target_class: str, history: List[str]) -> float:
         """

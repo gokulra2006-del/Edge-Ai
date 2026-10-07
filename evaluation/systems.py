@@ -298,7 +298,8 @@ class UncertaintyAwareFusionSystem(BaseSystemUnderTest):
         class_votes[s_inf.predicted_class] += s_inf.confidence
 
         candidate_class = max(class_votes, key=class_votes.get)  # type: ignore
-        raw_conf = min(1.0, max(a_inf.confidence, v_inf.confidence, s_inf.confidence))
+        candidate_confs = [inf.confidence for inf in (a_inf, v_inf, s_inf) if inf.predicted_class == candidate_class]
+        raw_conf = min(1.0, max(candidate_confs)) if candidate_confs else 0.5
 
         self.window_history.append(candidate_class)
         if len(self.window_history) > 10:
@@ -311,7 +312,14 @@ class UncertaintyAwareFusionSystem(BaseSystemUnderTest):
 
         is_ood = step.metadata.get("fault") == "conflicting_sensors" or len({c for c in active_sensor_classes.values() if c != "NORMAL"}) > 1
 
-        # 4. Evaluate explicit uncertainty decision
+        # 4. Evaluate explicit uncertainty decision with zone priors
+        zone_id = getattr(step, "zone", None) or step.metadata.get("zone_id") or "ZONE_A"
+        time_b = step.conditions.time_of_day.upper() if hasattr(step, "conditions") and step.conditions else "MIDDAY"
+        bucket_map = {"DAY": "MIDDAY", "NIGHT": "NIGHT"}
+        time_bucket = bucket_map.get(time_b, "MIDDAY")
+
+        use_priors = getattr(self, "use_zone_priors", True)
+
         dec = self.fusion_engine.evaluate(
             predicted_class=candidate_class,
             raw_confidence=raw_conf,
@@ -322,15 +330,20 @@ class UncertaintyAwareFusionSystem(BaseSystemUnderTest):
             evidence_duration_sec=step.timestamp_offset,
             zone_reliability=1.0,
             calibration_quality=1.0,
+            zone_id=zone_id,
+            time_bucket=time_bucket,
+            use_zone_priors=use_priors,
         )
 
-        # If action is DISPATCH_ALERT or REVIEW_REQUIRED, treat as active for evaluation
-        is_alert = dec.action in ("DISPATCH_ALERT", "REVIEW_REQUIRED") and (dec.predicted_class != "NORMAL")
+        # If action is SUPPRESS_NOISE, the event was attenuated or suppressed to noise (nominal)
+        effective_pred = "NORMAL" if dec.action == "SUPPRESS_NOISE" else dec.predicted_class
+        is_alert = dec.action in ("DISPATCH_ALERT", "REVIEW_REQUIRED") and (effective_pred != "NORMAL")
 
         return SystemInference(
-            predicted_class=dec.predicted_class,  # type: ignore
+            predicted_class=effective_pred,  # type: ignore
             confidence=dec.final_risk,
             is_alert=is_alert,
+
             ood_detected=is_ood,
             assurance_mode="UNCERTAINTY_AWARE",
             modality_weights={"audio": 0.4, "vision": 0.4, "sensors": 0.2},
@@ -340,6 +353,30 @@ class UncertaintyAwareFusionSystem(BaseSystemUnderTest):
                 "reason": dec.reason,
             },
         )
+
+
+class ZoneAwareRiskSystem(UncertaintyAwareFusionSystem):
+    """
+    Phase 6L: Zone-aware risk scoring utilizing empirical zone-specific priors
+    and safety floor guardrails.
+    """
+    name = "zone-aware-risk"
+    def __init__(self, prior_table: Optional[Any] = None):
+        super().__init__(name="zone-aware-risk")
+        self.use_zone_priors = True
+        if prior_table:
+            from src.modules.decision.zone_priors import ZoneAwareRiskScorer
+            self.fusion_engine.zone_scorer = ZoneAwareRiskScorer(prior_table=prior_table)
+
+
+class ZoneAwareRiskAblatedSystem(UncertaintyAwareFusionSystem):
+    """
+    Phase 6L Ablation: Zone-agnostic baseline where zone priors are disabled.
+    """
+    name = "zone-risk-ablated"
+    def __init__(self):
+        super().__init__(name="zone-risk-ablated")
+        self.use_zone_priors = False
 
 
 class UncertaintyAblationNoTemporal(UncertaintyAwareFusionSystem):
@@ -367,8 +404,11 @@ ALL_SYSTEMS = [
     StaticFusionSystem,
     TemporalOodFusionSystem,
     UncertaintyAwareFusionSystem,
+    ZoneAwareRiskSystem,
+    ZoneAwareRiskAblatedSystem,
     UncertaintyAblationNoTemporal,
     UncertaintyAblationNoAgreement,
     UncertaintyAblationNoHealth,
 ]
+
 
