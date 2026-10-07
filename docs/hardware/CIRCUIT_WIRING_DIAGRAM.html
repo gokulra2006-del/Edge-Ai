@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edge-AI Multi-Sensor Urban Emergency Detection – Raspberry Pi 4 Hardware Wiring Diagram</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @media print {
+      body { background: white !important; color: black !important; }
+      .no-print { display: none !important; }
+    }
+    .wire-pwr { stroke: #ef4444; stroke-width: 2.5; stroke-linecap: round; }
+    .wire-5v  { stroke: #ea580c; stroke-width: 2.5; stroke-linecap: round; }
+    .wire-gnd { stroke: #334155; stroke-width: 2.5; stroke-linecap: round; }
+    .wire-i2c { stroke: #8b5cf6; stroke-width: 2; stroke-dasharray: 4,3; }
+    .wire-i2s { stroke: #06b6d4; stroke-width: 2; }
+    .wire-uart{ stroke: #10b981; stroke-width: 2; }
+    .wire-gpio{ stroke: #3b82f6; stroke-width: 2; }
+    .wire-analog{ stroke: #f59e0b; stroke-width: 2; stroke-dasharray: 5,3; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased p-6">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header Block -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-200 mb-2">
+          <span>HARDWARE SCHEMATIC & WIRING MATRIX</span>
+          <span>•</span>
+          <span>RASPBERRY PI 4 MODEL B</span>
+        </div>
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+          Edge-AI Multi-Sensor Urban Emergency Detection – Raspberry Pi 4 Hardware Wiring Diagram
+        </h1>
+        <p class="text-slate-600 text-sm mt-1">
+          Complete electrical schematic, 40-pin GPIO pinout mapping, shared I2C & I2S bus architecture, and safety isolation guardrails.
+        </p>
+      </div>
+      <div class="flex items-center gap-2 no-print">
+        <button onclick="window.print()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+          Print / Export PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Electrical Architecture Legend -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
+      <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center gap-2">
+        <span class="w-4 h-1 bg-red-500 rounded"></span>
+        <span class="text-xs font-mono font-medium">3.3V DC Rail</span>
+      </div>
+      <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center gap-2">
+        <span class="w-4 h-1 bg-amber-600 rounded"></span>
+        <span class="text-xs font-mono font-medium">5.0V DC Rail</span>
+      </div>
+      <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center gap-2">
+        <span class="w-4 h-1 bg-slate-700 rounded"></span>
+        <span class="text-xs font-mono font-medium">Common GND</span>
+      </div>
+      <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center gap-2">
+        <span class="w-4 h-1 bg-purple-500 rounded border-dashed"></span>
+        <span class="text-xs font-mono font-medium">I2C (SDA/SCL)</span>
+      </div>
+      <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center gap-2">
+        <span class="w-4 h-1 bg-cyan-500 rounded"></span>
+        <span class="text-xs font-mono font-medium">I2S PCM Audio</span>
+      </div>
+      <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center gap-2">
+        <span class="w-4 h-1 bg-emerald-500 rounded"></span>
+        <span class="text-xs font-mono font-medium">UART (GPS)</span>
+      </div>
+      <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center gap-2">
+        <span class="w-4 h-1 bg-blue-500 rounded"></span>
+        <span class="text-xs font-mono font-medium">GPIO / PWM</span>
+      </div>
+    </div>
+
+    <!-- Visual Circuit Schematic SVG -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm overflow-x-auto">
+      <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <span>Architectural Schematic Diagram</span>
+        <span class="text-xs font-normal text-slate-500">(All 13 project components with physical pin and bus routing)</span>
+      </h2>
+
+      <svg viewBox="0 0 1150 780" class="w-full min-w-[950px] font-sans">
+        <defs>
+          <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feDropShadow dx="1" dy="2" stdDeviation="3" flood-opacity="0.08" />
+          </filter>
+        </defs>
+
+        <rect width="1150" height="780" fill="#f8fafc" rx="12" />
+
+        <!-- CENTER BLOCK: RASPBERRY PI 4 MODEL B 40-PIN HEADER -->
+        <g transform="translate(370, 70)" filter="url(#shadow)">
+          <rect width="410" height="660" rx="16" fill="#ffffff" stroke="#0f172a" stroke-width="2.5" />
+          <rect x="15" y="15" width="380" height="40" rx="8" fill="#1e293b" />
+          <text x="205" y="38" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="bold" letter-spacing="1">
+            RASPBERRY PI 4 MODEL B (40-PIN GPIO)
+          </text>
+
+          <rect x="40" y="70" width="330" height="565" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5" />
+          <text x="110" y="88" text-anchor="middle" font-size="11" font-weight="bold" fill="#475569">PIN (ODD)</text>
+          <text x="290" y="88" text-anchor="middle" font-size="11" font-weight="bold" fill="#475569">PIN (EVEN)</text>
+
+          <!-- Pin 1 & 2 -->
+          <g transform="translate(50, 100)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#ef4444" />
+            <text x="10" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 1: 3.3V Power</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#ea580c" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 2: 5.0V Power</text>
+          </g>
+
+          <!-- Pin 3 & 4 -->
+          <g transform="translate(50, 126)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#8b5cf6" />
+            <text x="10" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 3: GPIO2 (SDA1)</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#ea580c" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 4: 5.0V Power</text>
+          </g>
+
+          <!-- Pin 5 & 6 -->
+          <g transform="translate(50, 152)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#8b5cf6" />
+            <text x="10" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 5: GPIO3 (SCL1)</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#334155" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 6: GND</text>
+          </g>
+
+          <!-- Pin 7 & 8 -->
+          <g transform="translate(50, 178)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#0284c7" />
+            <text x="10" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 7: GPIO4 (DATA)</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#10b981" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 8: GPIO14 (TXD)</text>
+          </g>
+
+          <!-- Pin 9 & 10 -->
+          <g transform="translate(50, 204)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#334155" />
+            <text x="10" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 9: GND</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#10b981" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 10: GPIO15 (RXD)</text>
+          </g>
+
+          <!-- Pin 11 & 12 -->
+          <g transform="translate(50, 230)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#94a3b8" />
+            <text x="10" y="15" fill="#fff" font-size="11">Pin 11: GPIO17</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#06b6d4" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 12: GPIO18 (SCK)</text>
+          </g>
+
+          <!-- Pin 13 & 14 -->
+          <g transform="translate(50, 256)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#94a3b8" />
+            <text x="10" y="15" fill="#fff" font-size="11">Pin 13: GPIO27</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#334155" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 14: GND</text>
+          </g>
+
+          <!-- Indicator for middle pins -->
+          <g transform="translate(50, 282)">
+            <rect x="0" y="0" width="310" height="20" rx="4" fill="#e2e8f0" />
+            <text x="155" y="14" text-anchor="middle" font-size="10" fill="#64748b" font-mono>Pins 15 to 28 (SPI / General GPIO / EEPROM)</text>
+          </g>
+
+          <!-- Pin 29 & 30 -->
+          <g transform="translate(50, 306)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#ef4444" />
+            <text x="10" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 29: GPIO5 (Red)</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#334155" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 30: GND</text>
+          </g>
+
+          <!-- Pin 31 & 32 -->
+          <g transform="translate(50, 332)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#eab308" />
+            <text x="10" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 31: GPIO6 (Yel)</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#3b82f6" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 32: GPIO12 (PWM0)</text>
+          </g>
+
+          <!-- Pin 33 & 34 -->
+          <g transform="translate(50, 358)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#22c55e" />
+            <text x="10" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 33: GPIO13 (Grn)</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#334155" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 34: GND</text>
+          </g>
+
+          <!-- Pin 35 & 36 -->
+          <g transform="translate(50, 384)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#06b6d4" />
+            <text x="10" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 35: GPIO19 (WS)</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#3b82f6" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 36: GPIO16 (Buz)</text>
+          </g>
+
+          <!-- Pin 37 & 38 -->
+          <g transform="translate(50, 410)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#cbd5e1" stroke="#94a3b8" stroke-dasharray="2,2" />
+            <text x="10" y="15" fill="#475569" font-size="11" font-weight="bold">Pin 37: GPIO26 [UNUSED]</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#06b6d4" />
+            <text x="175" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 38: GPIO20 (SD)</text>
+          </g>
+
+          <!-- Pin 39 & 40 -->
+          <g transform="translate(50, 436)">
+            <rect x="0" y="0" width="145" height="22" rx="4" fill="#334155" />
+            <text x="10" y="15" fill="#fff" font-size="11" font-weight="bold">Pin 39: GND</text>
+            <rect x="165" y="0" width="145" height="22" rx="4" fill="#94a3b8" />
+            <text x="175" y="15" fill="#fff" font-size="11">Pin 40: GPIO21</text>
+          </g>
+
+          <!-- USB Ports indicator on Raspberry Pi Bottom -->
+          <g transform="translate(40, 520)">
+            <rect width="330" height="100" rx="8" fill="#e2e8f0" stroke="#cbd5e1" />
+            <text x="165" y="25" text-anchor="middle" font-size="12" font-weight="bold" fill="#334155">USB 3.0 / 2.0 PORT ARRAY</text>
+            <rect x="60" y="40" width="90" height="40" rx="4" fill="#0284c7" />
+            <text x="105" y="65" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">USB Cam</text>
+            <rect x="180" y="40" width="90" height="40" rx="4" fill="#64748b" />
+            <text x="225" y="65" text-anchor="middle" fill="#fff" font-size="11">Auxiliary</text>
+          </g>
+        </g>
+
+        <!-- LEFT SIDE COMPONENTS: SENSORS -->
+        <!-- 1. DHT22 Sensor -->
+        <g transform="translate(30, 40)" filter="url(#shadow)">
+          <rect width="250" height="95" rx="10" fill="#ffffff" stroke="#0284c7" stroke-width="2" />
+          <text x="15" y="24" font-size="13" font-weight="bold" fill="#0284c7">DHT22 Temp & Humidity</text>
+          <text x="15" y="42" font-size="11" fill="#64748b">1-Wire Digital Telemetry</text>
+          <line x1="15" y1="52" x2="235" y2="52" stroke="#e2e8f0" />
+          <text x="15" y="72" font-size="11" font-mono fill="#ef4444">VCC → Pin 1 (3.3V)</text>
+          <text x="15" y="88" font-size="11" font-mono fill="#0284c7">DATA → Pin 7 (GPIO4)</text>
+          <text x="145" y="88" font-size="11" font-mono fill="#334155">GND → Pin 9</text>
+        </g>
+
+        <!-- 2. GY-87 (MPU6050) IMU -->
+        <g transform="translate(30, 155)" filter="url(#shadow)">
+          <rect width="250" height="115" rx="10" fill="#ffffff" stroke="#8b5cf6" stroke-width="2" />
+          <text x="15" y="24" font-size="13" font-weight="bold" fill="#8b5cf6">GY-87 (MPU6050 IMU)</text>
+          <text x="15" y="42" font-size="11" fill="#64748b">Shared I2C Bus (Addr: 0x68)</text>
+          <line x1="15" y1="50" x2="235" y2="50" stroke="#e2e8f0" />
+          <text x="15" y="68" font-size="11" font-mono fill="#ef4444">VCC → Pin 1 (3.3V)</text>
+          <text x="135" y="68" font-size="11" font-mono fill="#334155">GND → Pin 6</text>
+          <text x="15" y="86" font-size="11" font-mono fill="#8b5cf6">SDA → Pin 3 (GPIO2)</text>
+          <text x="135" y="86" font-size="11" font-mono fill="#8b5cf6">SCL → Pin 5 (GPIO3)</text>
+          <text x="15" y="104" font-size="10" fill="#94a3b8 italic">FSYNC, INTA: Unconnected</text>
+        </g>
+
+        <!-- 3. ADS1115 ADC & 4. MQ-2 Sensor Sub-System -->
+        <g transform="translate(30, 290)" filter="url(#shadow)">
+          <rect width="250" height="175" rx="10" fill="#ffffff" stroke="#f59e0b" stroke-width="2" />
+          <text x="15" y="24" font-size="13" font-weight="bold" fill="#d97706">ADS1115 16-Bit ADC</text>
+          <text x="15" y="40" font-size="11" fill="#64748b">I2C Address: 0x48 (ADDR → GND)</text>
+          <line x1="15" y1="48" x2="235" y2="48" stroke="#e2e8f0" />
+          <text x="15" y="66" font-size="11" font-mono fill="#ef4444">VDD → 3.3V Rail</text>
+          <text x="135" y="66" font-size="11" font-mono fill="#334155">GND → Common</text>
+          <text x="15" y="84" font-size="11" font-mono fill="#8b5cf6">SDA → Pin 3 (GPIO2)</text>
+          <text x="135" y="84" font-size="11" font-mono fill="#8b5cf6">SCL → Pin 5 (GPIO3)</text>
+          <text x="15" y="102" font-size="11" font-mono fill="#334155">ADDR → Common GND</text>
+
+          <rect x="10" y="112" width="230" height="52" rx="6" fill="#fef3c7" stroke="#fde68a" />
+          <text x="18" y="128" font-size="11" font-weight="bold" fill="#92400e">MQ-2 Gas / Smoke Sensor</text>
+          <text x="18" y="144" font-size="10" font-mono fill="#b45309">VCC → 5V Rail | GND → Common GND</text>
+          <text x="18" y="157" font-size="10" font-mono font-weight="bold" fill="#d97706">AO → ADS1115 Analog Pin A0</text>
+        </g>
+
+        <!-- 5. INMP441 I2S MEMS Microphone -->
+        <g transform="translate(30, 485)" filter="url(#shadow)">
+          <rect width="250" height="125" rx="10" fill="#ffffff" stroke="#06b6d4" stroke-width="2" />
+          <text x="15" y="24" font-size="13" font-weight="bold" fill="#0891b2">INMP441 MEMS Microphone</text>
+          <text x="15" y="42" font-size="11" fill="#64748b">Digital I2S Audio Telemetry</text>
+          <line x1="15" y1="50" x2="235" y2="50" stroke="#e2e8f0" />
+          <text x="15" y="68" font-size="11" font-mono fill="#ef4444">VDD → 3.3V</text>
+          <text x="110" y="68" font-size="11" font-mono fill="#334155">GND, L/R → GND</text>
+          <text x="15" y="86" font-size="11" font-mono fill="#06b6d4">SCK → Pin 12 (GPIO18)</text>
+          <text x="15" y="104" font-size="11" font-mono fill="#06b6d4">WS → Pin 35 (GPIO19)</text>
+          <text x="15" y="120" font-size="11" font-mono fill="#06b6d4">SD → Pin 38 (GPIO20)</text>
+        </g>
+
+        <!-- 6. NEO-6M GPS Module -->
+        <g transform="translate(30, 630)" filter="url(#shadow)">
+          <rect width="250" height="100" rx="10" fill="#ffffff" stroke="#10b981" stroke-width="2" />
+          <text x="15" y="24" font-size="13" font-weight="bold" fill="#059669">NEO-6M GPS Module</text>
+          <text x="15" y="42" font-size="11" fill="#64748b">UART Serial NMEA Stream</text>
+          <line x1="15" y1="50" x2="235" y2="50" stroke="#e2e8f0" />
+          <text x="15" y="68" font-size="11" font-mono fill="#ef4444">VCC → 3.3V/5V Rail</text>
+          <text x="145" y="68" font-size="11" font-mono fill="#334155">GND → GND</text>
+          <text x="15" y="86" font-size="11" font-mono fill="#10b981">TX → Pin 10 (GPIO15 RX)</text>
+          <text x="15" y="99" font-size="10" font-mono fill="#059669">RX → Pin 8 (GPIO14 TX)</text>
+        </g>
+
+        <!-- RIGHT SIDE COMPONENTS: ACTUATORS & INDICATORS -->
+        <!-- 7. Tri-Color Status Indicator LEDs -->
+        <g transform="translate(860, 50)" filter="url(#shadow)">
+          <rect width="260" height="230" rx="10" fill="#ffffff" stroke="#3b82f6" stroke-width="2" />
+          <text x="15" y="24" font-size="13" font-weight="bold" fill="#1d4ed8">Tri-Color Status LEDs</text>
+          <text x="15" y="42" font-size="11" fill="#64748b">Current Limited (220Ω–330Ω Series)</text>
+          <line x1="15" y1="52" x2="245" y2="52" stroke="#e2e8f0" />
+
+          <circle cx="28" cy="74" r="8" fill="#ef4444" />
+          <text x="44" y="78" font-size="12" font-bold fill="#991b1b">RED (Emergency/Crash)</text>
+          <text x="44" y="94" font-size="11" font-mono fill="#ef4444">Anode → 330Ω → Pin 29 (GPIO5)</text>
+          <text x="44" y="108" font-size="11" font-mono fill="#334155">Cathode → Pin 30 (GND)</text>
+
+          <circle cx="28" cy="132" r="8" fill="#eab308" />
+          <text x="44" y="136" font-size="12" font-bold fill="#854d0e">YELLOW (Warning/Review)</text>
+          <text x="44" y="152" font-size="11" font-mono fill="#ca8a04">Anode → 330Ω → Pin 31 (GPIO6)</text>
+          <text x="44" y="166" font-size="11" font-mono fill="#334155">Cathode → Pin 30/34 (GND)</text>
+
+          <circle cx="28" cy="190" r="8" fill="#22c55e" />
+          <text x="44" y="194" font-size="12" font-bold fill="#166534">GREEN (Nominal Traffic)</text>
+          <text x="44" y="210" font-size="11" font-mono fill="#16a34a">Anode → 330Ω → Pin 33 (GPIO13)</text>
+          <text x="44" y="224" font-size="11" font-mono fill="#334155">Cathode → Pin 34 (GND)</text>
+        </g>
+
+        <!-- 8. Buzzer Module -->
+        <g transform="translate(860, 305)" filter="url(#shadow)">
+          <rect width="260" height="120" rx="10" fill="#ffffff" stroke="#6366f1" stroke-width="2" />
+          <text x="15" y="24" font-size="13" font-weight="bold" fill="#4f46e5">3-Pin Active Buzzer Module</text>
+          <text x="15" y="42" font-size="11" fill="#64748b">Acoustic Emergency Alarm</text>
+          <line x1="15" y1="52" x2="245" y2="52" stroke="#e2e8f0" />
+          <text x="15" y="74" font-size="11" font-mono fill="#4f46e5">I/O → Pin 36 (GPIO16 PWM)</text>
+          <text x="15" y="92" font-size="11" font-mono fill="#ef4444">VCC → Pin 1 / 17 (3.3V)</text>
+          <text x="15" y="110" font-size="11" font-mono fill="#334155">GND → Pin 34 (Common GND)</text>
+        </g>
+
+        <!-- 9. SG90 Micro Servo -->
+        <g transform="translate(860, 450)" filter="url(#shadow)">
+          <rect width="260" height="145" rx="10" fill="#ffffff" stroke="#f97316" stroke-width="2" />
+          <text x="15" y="24" font-size="13" font-weight="bold" fill="#c2410c">SG90 Servo Motor</text>
+          <text x="15" y="42" font-size="11" fill="#64748b">Corridor Pre-emption Barrier</text>
+          <line x1="15" y1="52" x2="245" y2="52" stroke="#e2e8f0" />
+          <text x="15" y="74" font-size="11" font-mono fill="#3b82f6">Signal → Pin 32 (GPIO12 PWM0)</text>
+          <text x="15" y="92" font-size="11" font-mono fill="#ea580c">VCC (Red) → 5.0V Power Rail</text>
+          <text x="15" y="110" font-size="11" font-mono fill="#334155">GND (Brown) → Common GND</text>
+          <rect x="10" y="118" width="240" height="22" rx="4" fill="#ffedd5" />
+          <text x="15" y="133" font-size="9.5" fill="#9a3412" font-weight="semibold">Safety Note: Dedicated 5V or &ge;2.5A supply</text>
+        </g>
+
+        <!-- 10. USB Camera Direct Connection -->
+        <g transform="translate(860, 620)" filter="url(#shadow)">
+          <rect width="260" height="110" rx="10" fill="#ffffff" stroke="#0f172a" stroke-width="2" />
+          <text x="15" y="24" font-size="13" font-weight="bold" fill="#0f172a">USB Video Camera (Webcam)</text>
+          <text x="15" y="42" font-size="11" fill="#64748b">V4L2 Video Streaming (/dev/video0)</text>
+          <line x1="15" y1="52" x2="245" y2="52" stroke="#e2e8f0" />
+          <text x="15" y="74" font-size="11" font-mono font-weight="bold" fill="#0284c7">Interface: USB 3.0 / 2.0 Port</text>
+          <text x="15" y="92" font-size="10.5" fill="#475569">Direct Plug-and-Play (Zero GPIO usage)</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Technical Connection Table & Pinout Matrix -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm overflow-x-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-bold text-slate-900">
+          Hardware Pin Assignment & Signal Specification Matrix
+        </h2>
+        <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-mono font-bold rounded-lg border border-emerald-200">
+          100% Verified Pin Mapping (BCM + Physical Header)
+        </span>
+      </div>
+
+      <table class="w-full text-left text-xs font-sans border-collapse">
+        <thead>
+          <tr class="bg-slate-100 text-slate-700 uppercase font-mono text-[11px] border-b border-slate-200">
+            <th class="py-3 px-4">Component</th>
+            <th class="py-3 px-4">Component Pin</th>
+            <th class="py-3 px-4">Raspberry Pi Pin</th>
+            <th class="py-3 px-4">GPIO / Signal Name</th>
+            <th class="py-3 px-4">Purpose & Electrical Characteristic</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          <!-- DHT22 -->
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-bold text-slate-900" rowspan="3">DHT22 Module</td>
+            <td class="py-2.5 px-4 font-mono text-red-600 font-semibold">VCC</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 1</td>
+            <td class="py-2.5 px-4 font-mono">3.3V DC</td>
+            <td class="py-2.5 px-4 text-slate-600">3.3V System Power Rail</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-blue-600 font-semibold">DATA</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 7</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-blue-700">GPIO4</td>
+            <td class="py-2.5 px-4 text-slate-600">Bidirectional 1-Wire Single-Bus Temperature/Humidity Telemetry</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-slate-700 font-semibold">GND</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 9</td>
+            <td class="py-2.5 px-4 font-mono">GND</td>
+            <td class="py-2.5 px-4 text-slate-600">Common Ground Reference</td>
+          </tr>
+
+          <!-- GY-87 MPU6050 -->
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-bold text-slate-900" rowspan="4">GY-87 (MPU6050)</td>
+            <td class="py-2.5 px-4 font-mono text-red-600 font-semibold">3.3V / VCC</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 1</td>
+            <td class="py-2.5 px-4 font-mono">3.3V DC</td>
+            <td class="py-2.5 px-4 text-slate-600">Logic & Core Sensor Power (Onboard 3.3V LDO)</td>
+          </tr>
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-mono text-slate-700 font-semibold">GND</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 6</td>
+            <td class="py-2.5 px-4 font-mono">GND</td>
+            <td class="py-2.5 px-4 text-slate-600">Common Ground Reference</td>
+          </tr>
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-mono text-purple-600 font-semibold">SDA</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 3</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-purple-700">GPIO2 / I2C1_SDA</td>
+            <td class="py-2.5 px-4 text-slate-600">Shared I2C Serial Data Bus (MPU6050 Address: 0x68)</td>
+          </tr>
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-mono text-purple-600 font-semibold">SCL</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 5</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-purple-700">GPIO3 / I2C1_SCL</td>
+            <td class="py-2.5 px-4 text-slate-600">Shared I2C Serial Clock Bus (100/400 kHz)</td>
+          </tr>
+
+          <!-- ADS1115 ADC -->
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-bold text-slate-900" rowspan="6">ADS1115 16-Bit ADC</td>
+            <td class="py-2.5 px-4 font-mono text-red-600 font-semibold">VDD</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 1</td>
+            <td class="py-2.5 px-4 font-mono">3.3V DC</td>
+            <td class="py-2.5 px-4 text-slate-600">Powers ADC at 3.3V ensuring 3.3V safe I2C logic levels</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-slate-700 font-semibold">GND</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 9 / 14</td>
+            <td class="py-2.5 px-4 font-mono">GND</td>
+            <td class="py-2.5 px-4 text-slate-600">Common Ground Reference</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-purple-600 font-semibold">SDA</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 3</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-purple-700">GPIO2 / I2C1_SDA</td>
+            <td class="py-2.5 px-4 text-slate-600">Shared I2C Data Bus (ADS1115 Address: 0x48)</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-purple-600 font-semibold">SCL</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 5</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-purple-700">GPIO3 / I2C1_SCL</td>
+            <td class="py-2.5 px-4 text-slate-600">Shared I2C Clock Bus</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-slate-700 font-semibold">ADDR</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Common GND</td>
+            <td class="py-2.5 px-4 font-mono">GND Rail</td>
+            <td class="py-2.5 px-4 text-slate-600">Tied to GND to set I2C address to 0x48 (prevents collision with MPU6050 0x68)</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-amber-600 font-bold">A0 (Analog In)</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-amber-700">MQ-2 AO Pin</td>
+            <td class="py-2.5 px-4 font-mono">Analog Signal</td>
+            <td class="py-2.5 px-4 text-slate-600">Measures smoke/gas analog voltage with 16-bit precision</td>
+          </tr>
+
+          <!-- MQ-2 Gas/Smoke -->
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-bold text-slate-900" rowspan="3">MQ-2 Smoke/Gas</td>
+            <td class="py-2.5 px-4 font-mono text-amber-600 font-semibold">VCC</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 4</td>
+            <td class="py-2.5 px-4 font-mono">5.0V DC Rail</td>
+            <td class="py-2.5 px-4 text-slate-600">Internal heater coil requires 5.0V (~150 mA draw)</td>
+          </tr>
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-mono text-slate-700 font-semibold">GND</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 6 / 9</td>
+            <td class="py-2.5 px-4 font-mono">GND</td>
+            <td class="py-2.5 px-4 text-slate-600">Common Ground Reference</td>
+          </tr>
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-mono text-amber-600 font-bold">AO (Analog Out)</td>
+            <td class="py-2.5 px-4 font-mono font-bold">ADS1115 Pin A0</td>
+            <td class="py-2.5 px-4 font-mono">Analog Signal</td>
+            <td class="py-2.5 px-4 text-slate-600">Analog output connected to ADC (NEVER directly to Pi GPIO)</td>
+          </tr>
+
+          <!-- INMP441 Microphone -->
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-bold text-slate-900" rowspan="5">INMP441 MEMS Mic</td>
+            <td class="py-2.5 px-4 font-mono text-red-600 font-semibold">VDD</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 17</td>
+            <td class="py-2.5 px-4 font-mono">3.3V DC</td>
+            <td class="py-2.5 px-4 text-slate-600">3.3V Power Rail</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-slate-700 font-semibold">GND & L/R</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 39</td>
+            <td class="py-2.5 px-4 font-mono">GND</td>
+            <td class="py-2.5 px-4 text-slate-600">Ground; L/R tied to GND selects Left audio channel</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-cyan-600 font-semibold">SCK</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 12</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-cyan-700">GPIO18 / PCM_CLK</td>
+            <td class="py-2.5 px-4 text-slate-600">I2S Continuous Serial Bit Clock</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-cyan-600 font-semibold">WS / LRCLK</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 35</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-cyan-700">GPIO19 / PCM_FS</td>
+            <td class="py-2.5 px-4 text-slate-600">I2S Word Select / Frame Sync (Sample Rate Clock)</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-cyan-600 font-semibold">SD / DOUT</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 38</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-cyan-700">GPIO20 / PCM_DIN</td>
+            <td class="py-2.5 px-4 text-slate-600">I2S Serial Audio Data Stream (24-bit raw audio samples)</td>
+          </tr>
+
+          <!-- NEO-6M GPS -->
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-bold text-slate-900" rowspan="4">NEO-6M GPS</td>
+            <td class="py-2.5 px-4 font-mono text-red-600 font-semibold">VCC</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 1 / 2</td>
+            <td class="py-2.5 px-4 font-mono">3.3V / 5.0V</td>
+            <td class="py-2.5 px-4 text-slate-600">Module supply (onboard LDO converts to 3.3V)</td>
+          </tr>
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-mono text-slate-700 font-semibold">GND</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 9 / 14</td>
+            <td class="py-2.5 px-4 font-mono">GND</td>
+            <td class="py-2.5 px-4 text-slate-600">Common Ground Reference</td>
+          </tr>
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-mono text-emerald-600 font-semibold">TX</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 10</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-emerald-700">GPIO15 / UART_RXD</td>
+            <td class="py-2.5 px-4 text-slate-600">GPS Transmits NMEA sentences ($GPRMC, $GPGGA) to Pi (3.3V logic)</td>
+          </tr>
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-mono text-emerald-600 font-semibold">RX</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 8</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-emerald-700">GPIO14 / UART_TXD</td>
+            <td class="py-2.5 px-4 text-slate-600">Pi Transmits configuration commands to GPS</td>
+          </tr>
+
+          <!-- Status LEDs -->
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-bold text-slate-900" rowspan="3">Tri-Color Status LEDs</td>
+            <td class="py-2.5 px-4 font-mono text-red-600 font-bold">Red Anode (+ 330Ω)</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 29</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-red-700">GPIO5</td>
+            <td class="py-2.5 px-4 text-slate-600">CRITICAL Alarm State (Fire / Accident / High Hazard)</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-amber-600 font-bold">Yellow Anode (+ 330Ω)</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 31</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-amber-700">GPIO6</td>
+            <td class="py-2.5 px-4 text-slate-600">REVIEW_REQUIRED / Cautionary Uncertainty Trigger</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-green-600 font-bold">Green Anode (+ 330Ω)</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 33</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-green-700">GPIO13 / PWM1</td>
+            <td class="py-2.5 px-4 text-slate-600">NOMINAL Traffic / System Healthy Indicator</td>
+          </tr>
+
+          <!-- Buzzer -->
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-bold text-slate-900" rowspan="3">Active/Passive Buzzer</td>
+            <td class="py-2.5 px-4 font-mono text-indigo-600 font-bold">I/O (Signal)</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 36</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-indigo-700">GPIO16</td>
+            <td class="py-2.5 px-4 text-slate-600">Software PWM Tone Siren / Audio Warning Siren Activation</td>
+          </tr>
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-mono text-red-600 font-semibold">VCC</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 1 / 17</td>
+            <td class="py-2.5 px-4 font-mono">3.3V DC</td>
+            <td class="py-2.5 px-4 text-slate-600">Module Power Supply</td>
+          </tr>
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-mono text-slate-700 font-semibold">GND</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 34</td>
+            <td class="py-2.5 px-4 font-mono">GND</td>
+            <td class="py-2.5 px-4 text-slate-600">Common Ground Reference</td>
+          </tr>
+
+          <!-- SG90 Servo -->
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-bold text-slate-900" rowspan="3">SG90 Micro Servo</td>
+            <td class="py-2.5 px-4 font-mono text-blue-600 font-bold">PWM Signal (Orange)</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 32</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-blue-700">GPIO12 / PWM0</td>
+            <td class="py-2.5 px-4 text-slate-600">Hardware PWM Channel 0 for Corridor Emergency Barrier Gate</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-amber-600 font-bold">VCC (Red)</td>
+            <td class="py-2.5 px-4 font-mono font-bold">5.0V External Supply</td>
+            <td class="py-2.5 px-4 font-mono">5.0V Rail</td>
+            <td class="py-2.5 px-4 text-slate-600">Servo power (External 5V supply strongly advised; common GND tied to Pi)</td>
+          </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-mono text-slate-700 font-bold">GND (Brown)</td>
+            <td class="py-2.5 px-4 font-mono font-bold">Physical Pin 14 / 34</td>
+            <td class="py-2.5 px-4 font-mono">GND</td>
+            <td class="py-2.5 px-4 text-slate-600">Tied to Raspberry Pi ground to establish common PWM reference</td>
+          </tr>
+
+          <!-- USB Webcam -->
+          <tr class="hover:bg-slate-50 bg-slate-50/50">
+            <td class="py-2.5 px-4 font-bold text-slate-900">USB Video Camera</td>
+            <td class="py-2.5 px-4 font-mono text-slate-900 font-bold">USB Type-A Connector</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-blue-700">USB 3.0 / 2.0 Port</td>
+            <td class="py-2.5 px-4 font-mono">UVC Protocol</td>
+            <td class="py-2.5 px-4 text-slate-600">Real-time edge frame acquisition for YOLO11n object/fire detection (No GPIO used)</td>
+          </tr>
+
+          <!-- Reserved Pin 37 -->
+          <tr class="bg-amber-50/40">
+            <td class="py-2.5 px-4 font-bold text-amber-900">Dedicated Reserved Pin</td>
+            <td class="py-2.5 px-4 font-mono text-amber-700 font-bold">N/A</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-amber-900">Physical Pin 37</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-amber-800">GPIO26</td>
+            <td class="py-2.5 px-4 text-amber-900 font-semibold">STRICTLY UNUSED (Guaranteed open for system expansion / safety interlock)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Critical Electrical Engineering & Safety Invariants -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <div class="flex items-center gap-2 text-rose-600 font-bold text-xs uppercase font-mono mb-2">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+          Electrical Level Invariant
+        </div>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Raspberry Pi GPIO pins are strictly <strong>3.3V CMOS logic</strong> (not 5V tolerant). The 5V MQ-2 analog output is routed strictly to the <strong>ADS1115 ADC</strong> and never directly to a Raspberry Pi GPIO. The ADS1115 is powered from 3.3V, keeping its I2C lines safely clamped to 3.3V.
+        </p>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <div class="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase font-mono mb-2">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" clip-rule="evenodd"></path></svg>
+          Shared I2C Bus Non-Collision
+        </div>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Both the GY-87 (MPU6050) and ADS1115 ADC share <strong>GPIO2 (SDA)</strong> and <strong>GPIO3 (SCL)</strong>. Address collision is physically prevented: ADS1115 ADDR is tied to GND (<span class="font-mono text-slate-900 font-bold">0x48</span>), while MPU6050 uses default address <span class="font-mono text-slate-900 font-bold">0x68</span>.
+        </p>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <div class="flex items-center gap-2 text-amber-600 font-bold text-xs uppercase font-mono mb-2">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+          Power Isolation & Common Ground
+        </div>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          High-draw inductive loads (SG90 servo motor & MQ-2 heater) have dedicated 5V power routing. All components share a common ground reference with the Raspberry Pi to eliminate ground loop voltage offsets.
+        </p>
+      </div>
+    </div>
+
+    <!-- College Project Presentation Footnote -->
+    <div class="bg-slate-100 rounded-xl p-4 text-center border border-slate-200 text-slate-500 text-xs font-mono">
+      Sentinel-AI Platform • Electrical Engineering Architecture • Verified Physical Pinout for Raspberry Pi 4 Model B
+    </div>
+
+  </div>
+</body>
+</html>
