@@ -17,8 +17,16 @@ import sys
 import random
 import csv
 from pathlib import Path
+from typing import Optional, List
 import numpy as np
-import librosa
+try:
+    import librosa
+    HAS_LIBROSA = True
+except ImportError:
+    HAS_LIBROSA = False
+    import soundfile as sf
+    import torch
+    from scipy.signal import resample_poly
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 DATA_OUT_PATH = BASE_DIR / "data" / "audio_processed.npz"
@@ -26,11 +34,11 @@ DATA_OUT_PATH = BASE_DIR / "data" / "audio_processed.npz"
 # Canonical target emergency audio classes
 CLASSES = [
     "normal_traffic",
-    "ambulance_siren",
-    "firetruck_siren",
-    "police_siren",
+    "ambulance",
+    "fire_engine",
+    "crash",
     "breaking_glass",
-    "car_horn"
+    "horn"
 ]
 TARGET_SR = 16000          # 16 kHz sample rate
 DURATION_SEC = 2.0         # 2 seconds window
@@ -42,36 +50,66 @@ HOP_LENGTH = 512           # Yields ~63 time frames
 
 def extract_mel_spectrogram(file_path: str) -> np.ndarray:
     """
-    Loads audio with Librosa, pads/trims to 2.0s, and computes Log-Mel Spectrogram [64, 63].
+    Loads audio (via Librosa or Soundfile/Torch fallback), pads/trims to 2.0s,
+    and computes Log-Mel Spectrogram [64, 63].
     """
     try:
-        # 1. Load audio with librosa (automatically converts stereo to mono and resamples)
-        y, sr = librosa.load(file_path, sr=TARGET_SR, mono=True)
+        if HAS_LIBROSA:
+            # 1. Load audio with librosa (automatically converts stereo to mono and resamples)
+            y, sr = librosa.load(file_path, sr=TARGET_SR, mono=True)
 
-        # 2. Pad with silence if too short, or trim if too long
-        if len(y) < TOTAL_SAMPLES:
-            y = np.pad(y, (0, TOTAL_SAMPLES - len(y)), mode="constant")
+            # 2. Pad with silence if too short, or trim if too long
+            if len(y) < TOTAL_SAMPLES:
+                y = np.pad(y, (0, TOTAL_SAMPLES - len(y)), mode="constant")
+            else:
+                y = y[:TOTAL_SAMPLES]
+
+            # 3. Compute Mel Spectrogram using Librosa
+            mel_spec = librosa.feature.melspectrogram(
+                y=y,
+                sr=TARGET_SR,
+                n_fft=N_FFT,
+                hop_length=HOP_LENGTH,
+                n_mels=N_MELS,
+                fmin=50,
+                fmax=7500
+            )
+
+            # 4. Convert power to decibels (log scale, matching human hearing)
+            log_mel = librosa.power_to_db(mel_spec, ref=np.max)
+
+            # 5. Normalize values between 0.0 and 1.0
+            norm_mel = (log_mel - log_mel.min()) / (log_mel.max() - log_mel.min() + 1e-6)
+            return norm_mel.astype(np.float32)
         else:
-            y = y[:TOTAL_SAMPLES]
+            # Fallback when librosa is not installed: use soundfile + torch STFT
+            data, sr = sf.read(file_path, dtype='float32')
+            if data.ndim > 1:
+                data = data.mean(axis=1)
+            if sr != TARGET_SR:
+                factor = np.gcd(int(sr), TARGET_SR)
+                data = resample_poly(data, TARGET_SR // factor, int(sr) // factor)
+            if len(data) < TOTAL_SAMPLES:
+                data = np.pad(data, (0, TOTAL_SAMPLES - len(data)), mode="constant")
+            else:
+                data = data[:TOTAL_SAMPLES]
 
-        # 3. Compute Mel Spectrogram using Librosa
-        mel_spec = librosa.feature.melspectrogram(
-            y=y,
-            sr=TARGET_SR,
-            n_fft=N_FFT,
-            hop_length=HOP_LENGTH,
-            n_mels=N_MELS,
-            fmin=50,
-            fmax=7500
-        )
-
-        # 4. Convert power to decibels (log scale, matching human hearing)
-        log_mel = librosa.power_to_db(mel_spec, ref=np.max)
-
-        # 5. Normalize values between 0.0 and 1.0
-        norm_mel = (log_mel - log_mel.min()) / (log_mel.max() - log_mel.min() + 1e-6)
-
-        return norm_mel.astype(np.float32)
+            t_data = torch.from_numpy(data.astype(np.float32))
+            stft = torch.stft(
+                t_data,
+                n_fft=N_FFT,
+                hop_length=HOP_LENGTH,
+                window=torch.hann_window(N_FFT),
+                return_complex=True
+            )
+            mag = stft.abs().square()
+            pooled = torch.nn.functional.adaptive_avg_pool2d(
+                mag.unsqueeze(0).unsqueeze(0),
+                (N_MELS, 63)
+            ).squeeze().numpy()
+            log_spec = 10 * np.log10(pooled + 1e-6)
+            norm_spec = (log_spec - log_spec.min()) / (log_spec.max() - log_spec.min() + 1e-6)
+            return norm_spec.astype(np.float32)
     except Exception as e:
         print(f"Error processing {file_path}: {e}")
         return np.zeros((N_MELS, 63), dtype=np.float32)
