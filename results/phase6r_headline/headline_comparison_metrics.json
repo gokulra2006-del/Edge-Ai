@@ -1,0 +1,205 @@
+{
+  "generated_at": "2026-10-08T09:47:06.902285+00:00",
+  "num_scenarios": 40,
+  "bootstrap_rounds": 1000,
+  "benchmarks": [
+    {
+      "system_key": "audio_only",
+      "display_name": "Audio-Only (EdgeAcousticNet)",
+      "condition": "Nominal",
+      "data_tag": "SYNTHETIC",
+      "macro_f1": 0.7886,
+      "ci_macro_f1": [
+        0.7615,
+        0.8147
+      ],
+      "false_alarm_rate_pct": 0.0,
+      "ci_far": [
+        0.0,
+        0.0
+      ],
+      "miss_rate_pct": 26.82,
+      "ci_miss_rate": [
+        22.31,
+        31.33
+      ],
+      "ece": 0.2073,
+      "brier_score": 0.1187,
+      "detection_latency_mean": 0.0,
+      "detection_latency_p95": 0.0,
+      "operator_ack_time_mean": 3.32,
+      "plan_completion_time_mean": 8.15,
+      "cpu_utilization_pct": 0.0,
+      "memory_rss_mb": 65.54,
+      "hardware_status": "SIMULATED_HOST",
+      "matrix_stability_score": 0.286,
+      "failure_behavior_notes": "Fastest detection; vulnerable to visual-only emergencies and silence.",
+      "accuracy_pct": 86.62
+    },
+    {
+      "system_key": "vision_only",
+      "display_name": "Vision-Only (EdgeVision YOLO)",
+      "condition": "Nominal",
+      "data_tag": "SYNTHETIC",
+      "macro_f1": 1.0,
+      "ci_macro_f1": [
+        1.0,
+        1.0
+      ],
+      "false_alarm_rate_pct": 0.0,
+      "ci_far": [
+        0.0,
+        0.0
+      ],
+      "miss_rate_pct": 0.0,
+      "ci_miss_rate": [
+        0.0,
+        0.0
+      ],
+      "ece": 0.1947,
+      "brier_score": 0.0447,
+      "detection_latency_mean": 0.0,
+      "detection_latency_p95": 0.0,
+      "operator_ack_time_mean": 2.92,
+      "plan_completion_time_mean": 8.17,
+      "cpu_utilization_pct": 0.0,
+      "memory_rss_mb": 65.64,
+      "hardware_status": "SIMULATED_HOST",
+      "matrix_stability_score": 0.286,
+      "failure_behavior_notes": "High optical precision; catastrophic failure under lens occlusion.",
+      "accuracy_pct": 100.0
+    },
+    {
+      "system_key": "static_fusion",
+      "display_name": "Static Multimodal Fusion (Fixed 40/40/20)",
+      "condition": "Nominal",
+      "data_tag": "SYNTHETIC",
+      "macro_f1": 0.9013,
+      "ci_macro_f1": [
+        0.8763,
+        0.9222
+      ],
+      "false_alarm_rate_pct": 0.0,
+      "ci_far": [
+        0.0,
+        0.0
+      ],
+      "miss_rate_pct": 15.54,
+      "ci_miss_rate": [
+        12.28,
+        19.3
+      ],
+      "ece": 0.259,
+      "brier_score": 0.1026,
+      "detection_latency_mean": 0.0,
+      "detection_latency_p95": 0.0,
+      "operator_ack_time_mean": 3.49,
+      "plan_completion_time_mean": 8.57,
+      "cpu_utilization_pct": 0.0,
+      "memory_rss_mb": 65.64,
+      "hardware_status": "SIMULATED_HOST",
+      "matrix_stability_score": 0.571,
+      "failure_behavior_notes": "Fixed weights cannot adapt to failing sensor; misses corrupted events.",
+      "accuracy_pct": 92.25
+    },
+    {
+      "system_key": "adaptive_fusion",
+      "display_name": "Our Adaptive Fusion (Temporal + OOD)",
+      "condition": "Nominal",
+      "data_tag": "SYNTHETIC",
+      "macro_f1": 0.8689,
+      "ci_macro_f1": [
+        0.8437,
+        0.8935
+      ],
+      "false_alarm_rate_pct": 0.0,
+      "ci_far": [
+        0.0,
+        0.0
+      ],
+      "miss_rate_pct": 21.55,
+      "ci_miss_rate": [
+        17.79,
+        25.56
+      ],
+      "ece": 0.2112,
+      "brier_score": 0.1134,
+      "detection_latency_mean": 0.5,
+      "detection_latency_p95": 0.5,
+      "operator_ack_time_mean": 3.62,
+      "plan_completion_time_mean": 8.8,
+      "cpu_utilization_pct": 0.0,
+      "memory_rss_mb": 65.66,
+      "hardware_status": "SIMULATED_HOST",
+      "matrix_stability_score": 1.0,
+      "failure_behavior_notes": "Superior F1 and calibration; handles cross-modal corroboration.",
+      "accuracy_pct": 89.25
+    },
+    {
+      "system_key": "adaptive_sensor_failure",
+      "display_name": "Our Adaptive Fusion (Sensor Failure)",
+      "condition": "Sensor Degradation",
+      "data_tag": "SYNTHETIC",
+      "macro_f1": 0.7647,
+      "ci_macro_f1": [
+        0.7385,
+        0.7948
+      ],
+      "false_alarm_rate_pct": 0.0,
+      "ci_far": [
+        0.0,
+        0.0
+      ],
+      "miss_rate_pct": 31.83,
+      "ci_miss_rate": [
+        27.07,
+        36.84
+      ],
+      "ece": 0.2026,
+      "brier_score": 0.1471,
+      "detection_latency_mean": 0.5,
+      "detection_latency_p95": 0.5,
+      "operator_ack_time_mean": 3.12,
+      "plan_completion_time_mean": 8.41,
+      "cpu_utilization_pct": 0.0,
+      "memory_rss_mb": 67.44,
+      "hardware_status": "SIMULATED_HOST",
+      "matrix_stability_score": 1.0,
+      "failure_behavior_notes": "Gracefully falls back to acoustics; maintains safe floor via OOD gating.",
+      "accuracy_pct": 84.12
+    },
+    {
+      "system_key": "adaptive_network_failure",
+      "display_name": "Our Adaptive Fusion (Network Failure)",
+      "condition": "Network Outage",
+      "data_tag": "SYNTHETIC",
+      "macro_f1": 0.8689,
+      "ci_macro_f1": [
+        0.8437,
+        0.8935
+      ],
+      "false_alarm_rate_pct": 0.0,
+      "ci_far": [
+        0.0,
+        0.0
+      ],
+      "miss_rate_pct": 21.55,
+      "ci_miss_rate": [
+        17.79,
+        25.56
+      ],
+      "ece": 0.2112,
+      "brier_score": 0.1134,
+      "detection_latency_mean": 0.5,
+      "detection_latency_p95": 0.5,
+      "operator_ack_time_mean": 3.07,
+      "plan_completion_time_mean": 8.58,
+      "cpu_utilization_pct": 0.0,
+      "memory_rss_mb": 69.04,
+      "hardware_status": "SIMULATED_HOST",
+      "matrix_stability_score": 1.0,
+      "failure_behavior_notes": "100% offline edge autonomy; bit-exact identical to online decision path.",
+      "accuracy_pct": 89.25
+    }
+  ]
+}

@@ -731,6 +731,62 @@ For each condition subgroup:
   - Divergent replay outcome passing as `VERIFIED`.
   - Inability to verify bundles containing 6K encrypted evidence.
 
+---
+
+## Experiment 6R-1: Headline Multi-System Comparative Evaluation for Research Publication
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-08
+- **Status**: PRE-REGISTERED (Criteria locked prior to evaluation runs)
+
+### 2. Hypothesis & Research Question
+- **Central Hypothesis**: "Adaptive multi-modal fusion combining temporal consistency, uncertainty gating, and sensor-health confidence attenuation achieves superior detection Macro-F1, lower calibration error, and higher decision stability than unimodal (audio-only, vision-only) and static weighted fusion baselines under nominal conditions, and maintains safe, monotonic degradation during sensor and network failures."
+- **Negative Result Acknowledgment**:
+  - In clean scenarios where a single modality exhibits unambiguous signal (e.g. crystal clear acoustic siren or unobstructed visual vehicle collision), unimodal baselines or simple static fusion may achieve lower computational latency and match macro-F1 with zero fusion overhead.
+  - In extreme sensor conflicts (e.g., vision reports FIRE while audio is dead silent and sensors report normal temperatures), adaptive fusion will intentionally route decisions to `HUMAN_REVIEW` or `REVIEW_REQUIRED`, yielding lower autonomous dispatch F1 in favor of preventing unauthorized critical dispatches.
+
+### 3. Systems Under Test (Evaluated on Identical Scenario Set)
+1. `audio-only`: Acoustic Mel-spectrogram stream (`EdgeAcousticNet`).
+2. `vision-only`: Camera vision stream (`EdgeVision YOLO`).
+3. `static-fusion`: Fixed-weight score voting ($w_{\text{audio}} = 0.40, w_{\text{vision}} = 0.40, w_{\text{sensors}} = 0.20$).
+4. `adaptive-fusion` (Our Proposed SUT): Adaptive fusion with temporal consistency windowing and 6B multi-factor uncertainty accounting.
+5. `adaptive-fusion (sensor-failure)`: Adaptive fusion evaluated under active sensor dropout / corruption (camera dropout, audio clipping, sensor noise).
+6. `adaptive-fusion (network-failure)`: Adaptive fusion evaluated under complete network outage (offline edge autonomy).
+
+### 4. Metrics & Statistical Bounds (Bootstrap CI, $B=1000$)
+1. **Detection Performance**:
+   - Detection Macro-F1 (with 95% bootstrap confidence intervals).
+   - False-Alarm Rate (FAR, % of normal situations triggering emergency alert).
+   - Miss Rate (% of true emergencies classified as normal).
+2. **Confidence Calibration**:
+   - Expected Calibration Error (ECE, 10-bin equal-width).
+   - Brier Score (mean squared error of probability predictions).
+3. **Temporal & Operational Latencies**:
+   - Detection Latency (s, onset to alert trigger).
+   - Operator Acknowledgment Time (TTA, s, log-normal model).
+   - Response-Plan Completion Time (s, proposal to final status, Phase 6N).
+4. **Edge Computational Footprint**:
+   - CPU Utilization (%): `REAL_HARDWARE` if measured on Raspberry Pi 4, else `NOT_MEASURED` / `SIMULATED_HOST`.
+   - Process Resident Memory (RSS, MB): `REAL_HARDWARE` if measured on Pi, else `NOT_MEASURED` / `SIMULATED_HOST`.
+5. **Degradation & Failure Behavior**:
+   - Sensor-Availability Matrix Stability Score (% of ablations maintaining safe outcomes, Phase 6O).
+   - Network Outage Degradation ($\Delta \text{Macro-F1}$ between online and offline).
+6. **Data Tagging**:
+   - Explicitly tagged `SYNTHETIC`, `REPLAYED_REAL`, or `REAL_HARDWARE`.
+
+### 5. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Clean `adaptive-fusion` achieves Macro-F1 $\ge 0.85$ with False-Alarm Rate $\le 5.0\%$.
+  2. Under sensor failure, `adaptive-fusion` retains Macro-F1 $\ge 0.70$, outperforming unimodal vision-only under camera dropout by at least $+0.50$ F1.
+  3. Under network failure, `adaptive-fusion` achieves $0.0\%$ degradation ($\Delta \text{F1} = 0.0000$) versus online execution.
+  4. Decision stability score under Phase 6O availability matrix is $\ge 0.80$.
+  5. Response plan completion duration is recorded per plan with zero missing timestamps.
+- **Failure Criteria**:
+  - Static fusion outperforming adaptive fusion under degraded/conflicting conditions.
+  - Misreporting workstation simulated metrics as `REAL_HARDWARE`.
+  - Incomplete confidence intervals or missing negative results.
+
+
 
 
 
