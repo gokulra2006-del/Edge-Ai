@@ -63,17 +63,7 @@ class HardwareConfiguration:
         # Actuator: Emergency Barrier Servo
         "servo_barrier": PinDefinition(bcm=12, physical=32, role="PWM0", desc="SG90 Access Barrier Servo (Hardware PWM0, 50Hz)"),
 
-        # LCD 16x2 in 4-bit mode (Physical Pins 40, 15, 16, 18, 22, 37)
-        # WARNING: LCD is 5V powered. Raspberry Pi GPIO is 3.3V logic.
-        # Direct wiring works on MOST LCDs because they accept 3.3V as logic HIGH,
-        # but this is NOT electrically ideal. For production, use a level-shifter
-        # (e.g., 74HC245 or TXS0108E) between Pi GPIOs and LCD data/control pins.
-        "lcd_rs": PinDefinition(bcm=21, physical=40, role="OUTPUT", desc="LCD Register Select", voltage="3.3V->5V"),
-        "lcd_e": PinDefinition(bcm=22, physical=15, role="OUTPUT", desc="LCD Enable strobe", voltage="3.3V->5V"),
-        "lcd_d4": PinDefinition(bcm=23, physical=16, role="OUTPUT", desc="LCD Data bit 4", voltage="3.3V->5V"),
-        "lcd_d5": PinDefinition(bcm=24, physical=18, role="OUTPUT", desc="LCD Data bit 5", voltage="3.3V->5V"),
-        "lcd_d6": PinDefinition(bcm=25, physical=22, role="OUTPUT", desc="LCD Data bit 6", voltage="3.3V->5V"),
-        "lcd_d7": PinDefinition(bcm=26, physical=37, role="OUTPUT", desc="LCD Data bit 7", voltage="3.3V->5V"),
+        # Auxiliary LCD is disabled to guarantee GPIO26 / physical pin 37 remains strictly UNUSED
     })
 
     # I2C Addresses
@@ -93,7 +83,6 @@ class HardwareConfiguration:
         "ads1115_gas": 0.2,   # 5 Hz Gas/Smoke monitoring
         "audio": 0.5,         # 2 Hz acoustic SPL & classifier window
         "camera": 0.066,      # ~15 FPS video pipeline
-        "lcd": 1.0,           # 1 Hz LCD display update
     })
 
     # MQ-2 Gas/Smoke Sensor Configuration
@@ -130,12 +119,21 @@ class HardwareConfiguration:
     enable_lcd: bool = False
 
     def validate_pin_assignments(self) -> List[str]:
-        """Checks for duplicate physical or BCM pin assignments."""
+        """Checks for duplicate physical or BCM pin assignments and prohibited pins."""
         errors = []
         seen_bcm = {}
         seen_phys = {}
 
+        # Reserved hardware buses:
+        # I2C: BCM 2 (Pin 3), BCM 3 (Pin 5)
+        # UART: BCM 14 (Pin 8), BCM 15 (Pin 10)
+        # I2S: BCM 18 (Pin 12), BCM 19 (Pin 35), BCM 20 (Pin 38)
+        # Strictly Prohibited: BCM 26 (Physical Pin 37) must NEVER be used
+
         for name, pin in self.PINS.items():
+            if pin.bcm == 26 or pin.physical == 37:
+                errors.append(f"SAFETY VIOLATION: GPIO26 / Physical Pin 37 is allocated to '{name}' (must remain strictly unused)!")
+
             if pin.bcm in seen_bcm:
                 errors.append(f"BCM GPIO conflict: {pin.bcm} assigned to both '{seen_bcm[pin.bcm]}' and '{name}'")
             seen_bcm[pin.bcm] = name

@@ -12,6 +12,7 @@ Generates comprehensive, high-resolution styled HTML/PDF forensic reports:
 import hashlib
 import html
 import json
+from pathlib import Path
 import time
 from typing import Any, Dict, Optional
 

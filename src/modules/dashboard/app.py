@@ -65,6 +65,8 @@ from src.modules.evidence.bundle import EvidenceBundleBuilder
 from src.modules.evidence.verifier import EvidenceBundleVerifier
 EVIDENCE_BUNDLE_BUILDER = EvidenceBundleBuilder(repository=GOVERNED_REPOSITORY)
 EVIDENCE_BUNDLE_VERIFIER = EvidenceBundleVerifier(repository=GOVERNED_REPOSITORY)
+from src.modules.edge_agent.device_registry import DeviceRegistry
+DEVICE_REGISTRY = DeviceRegistry(repository=GOVERNED_REPOSITORY)
 
 SERVER_START_TIME = time.time()
 try:
@@ -1082,6 +1084,66 @@ class DashboardHandler(BaseHTTPRequestHandler):
             res = EVIDENCE_BUNDLE_VERIFIER.verify_bundle(incident_id)
             self._json(res.to_dict())
             return
+
+        # Stage I1: Edge Device Telemetry & Health Queries
+        elif path == "/api/devices":
+            devices = DEVICE_REGISTRY.list_devices()
+            self._json({"devices": devices, "count": len(devices)})
+            return
+
+        elif path.startswith("/api/devices/") and path.endswith("/health"):
+            # /api/devices/{device_id}/health
+            dev_id = path.removeprefix("/api/devices/").removesuffix("/health").strip()
+            dev = DEVICE_REGISTRY.get_device(dev_id)
+            if not dev:
+                self._json({"error": f"Device {dev_id} not found"}, 404)
+                return
+            latest = DEVICE_REGISTRY.get_latest_telemetry(dev_id)
+            health = latest.get("health", {}) if latest else {}
+            self._json({
+                "device_id": dev_id,
+                "status": dev["status"],
+                "last_seen_at": dev["last_seen_at"],
+                "data_source": dev["data_source"],
+                "health": health,
+            })
+            return
+
+        elif path.startswith("/api/devices/") and path.endswith("/telemetry/latest"):
+            # /api/devices/{device_id}/telemetry/latest
+            dev_id = path.removeprefix("/api/devices/").removesuffix("/telemetry/latest").strip()
+            latest = DEVICE_REGISTRY.get_latest_telemetry(dev_id)
+            if not latest:
+                self._json({"error": f"No telemetry recorded for device {dev_id}"}, 404)
+                return
+            self._json(latest)
+            return
+
+        elif path.startswith("/api/devices/") and path.endswith("/telemetry/history"):
+            # /api/devices/{device_id}/telemetry/history?limit=50&offset=0
+            dev_id = path.removeprefix("/api/devices/").removesuffix("/telemetry/history").strip()
+            limit = int(query.get("limit", [50])[0])
+            offset = int(query.get("offset", [0])[0])
+            history = DEVICE_REGISTRY.get_telemetry_history(dev_id, limit=limit, offset=offset)
+            self._json({"device_id": dev_id, "telemetry": history, "count": len(history)})
+            return
+
+        elif path.startswith("/api/stream/"):
+            # SSE streaming endpoint: /api/stream/{device_id}
+            dev_id = path.removeprefix("/api/stream/").strip()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+
+            # Stream immediate initial packet if present
+            latest = DEVICE_REGISTRY.get_latest_telemetry(dev_id)
+            if latest:
+                self.wfile.write(f"data: {json.dumps(latest)}\n\n".encode("utf-8"))
+                self.wfile.flush()
+            return
         else:
             self.send_response(404)
             self.end_headers()
@@ -1092,10 +1154,76 @@ class DashboardHandler(BaseHTTPRequestHandler):
         query = urllib.parse.parse_qs(parsed.query)
 
         # CSRF Protection on all state-changing actions
-        if path not in ("/api/auth/login", "/api/auth/setup-admin", "/api/trigger_scenario"):
+        # Exempt authentication, scenario triggers, and authenticated edge device telemetry ingestion
+        if path not in ("/api/auth/login", "/api/auth/setup-admin", "/api/trigger_scenario") and not path.startswith("/api/devices/"):
             if not self._validate_csrf():
                 self._json({"error": "CSRF validation failed"}, 403)
                 return
+
+        # Edge Device Ingestion: POST /api/devices/{device_id}/telemetry
+        if path.startswith("/api/devices/") and path.endswith("/telemetry"):
+            dev_id = path.removeprefix("/api/devices/").removesuffix("/telemetry").strip()
+            # Authenticate device token
+            dev_token = self.headers.get("X-Device-Token") or self.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+            if not dev_token:
+                self._json({"error": "Missing device token in X-Device-Token or Authorization header"}, 401)
+                return
+
+            if not DEVICE_REGISTRY.verify_device_token(dev_id, dev_token):
+                self._json({"error": f"Invalid token for device '{dev_id}'"}, 403)
+                return
+
+            try:
+                payload = self._payload()
+            except Exception as e:
+                self._json({"error": f"Invalid JSON payload: {e}"}, 400)
+                return
+
+            try:
+                client_ip = self.client_address[0] if hasattr(self, "client_address") else None
+                result = DEVICE_REGISTRY.ingest_telemetry(payload, client_ip=client_ip)
+                self._json(result, 200)
+            except ValueError as e:
+                self._json({"error": str(e)}, 400)
+            except Exception as e:
+                self._json({"error": f"Server ingestion error: {e}"}, 500)
+            return
+
+        # Edge Device Command Dispatch: POST /api/devices/{device_id}/commands
+        if path.startswith("/api/devices/") and path.endswith("/commands"):
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "OPERATOR"):
+                self._json({"error": f"{role} is not permitted to dispatch edge commands"}, 403)
+                return
+
+            dev_id = path.removeprefix("/api/devices/").removesuffix("/commands").strip()
+            dev = DEVICE_REGISTRY.get_device(dev_id)
+            if not dev:
+                self._json({"error": f"Device {dev_id} not found"}, 404)
+                return
+
+            payload = self._payload()
+            cmd_id = payload.get("command_id", f"cmd-{secrets.token_hex(8)}")
+            nonce = payload.get("nonce", secrets.token_hex(16))
+            cmd_type = payload.get("command_type", "ACTUATOR_COMMAND")
+            expires_at = payload.get("expires_at", "")
+
+            with GOVERNED_REPOSITORY.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO edge_commands (
+                        command_id, device_id, command_type, payload_json, nonce, expires_at, status, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?)
+                    """,
+                    (cmd_id, dev_id, cmd_type, json.dumps(payload), nonce, expires_at, utc_now()),
+                )
+
+            self._json({"status": "QUEUED", "command_id": cmd_id, "device_id": dev_id})
+            return
 
         if path == "/api/auth/setup-admin":
             if not USER_MANAGER.is_first_run():

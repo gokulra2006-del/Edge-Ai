@@ -160,6 +160,15 @@ ENDPOINT_PERMISSIONS: List[Tuple[str, str, Set[str], str]] = [
     ("POST", r"^/api/evidence/bundle/[^/]+/build$", TECH_ROLES, "Build incident evidence bundle"),
     ("GET", r"^/api/evidence/verify/[^/]+$", ALL_ROLES, "Verify incident evidence bundle status"),
     ("POST", r"^/api/evidence/verify/[^/]+$", ALL_ROLES, "Verify incident evidence bundle with options"),
+
+    # 15. Edge Devices, Ingestion & Live Streams (Stage I1)
+    ("GET", r"^/api/devices$", ALL_ROLES, "List registered edge devices"),
+    ("GET", r"^/api/devices/[^/]+/health$", ALL_ROLES, "Edge device health snapshot"),
+    ("GET", r"^/api/devices/[^/]+/telemetry/latest$", ALL_ROLES, "Latest edge device telemetry packet"),
+    ("GET", r"^/api/devices/[^/]+/telemetry/history$", ALL_ROLES, "Historical edge device telemetry"),
+    ("POST", r"^/api/devices/[^/]+/telemetry$", PUBLIC, "Edge device telemetry ingestion (device token authenticated)"),
+    ("POST", r"^/api/devices/[^/]+/commands$", OPS_ROLES, "Send command to edge device"),
+    ("GET", r"^/api/stream/[^/]+$", ALL_ROLES, "Live SSE / WebSocket telemetry stream"),
 ]
 
 

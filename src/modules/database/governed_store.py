@@ -332,6 +332,53 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     );
     CREATE INDEX IF NOT EXISTS idx_evidence_bundles_chain ON evidence_bundles(chain_index, created_at);
     """),
+    (15, """
+    CREATE TABLE IF NOT EXISTS edge_devices (
+      device_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'OFFLINE',
+      last_seen_at TEXT,
+      last_boot_id TEXT,
+      last_sequence INTEGER DEFAULT 0,
+      ip_address TEXT,
+      software_version TEXT,
+      hardware_model TEXT,
+      data_source TEXT NOT NULL DEFAULT 'SIMULATED',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS edge_telemetry_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      device_id TEXT NOT NULL,
+      event_id TEXT NOT NULL UNIQUE,
+      boot_id TEXT NOT NULL,
+      sequence INTEGER NOT NULL,
+      timestamp_utc TEXT NOT NULL,
+      received_at_utc TEXT NOT NULL,
+      clock_status TEXT NOT NULL,
+      connectivity TEXT NOT NULL,
+      data_source TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      FOREIGN KEY(device_id) REFERENCES edge_devices(device_id)
+    );
+    CREATE TABLE IF NOT EXISTS edge_commands (
+      command_id TEXT PRIMARY KEY,
+      device_id TEXT NOT NULL,
+      command_type TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      nonce TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      outcome_json TEXT,
+      created_at TEXT NOT NULL,
+      completed_at TEXT,
+      FOREIGN KEY(device_id) REFERENCES edge_devices(device_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_edge_telem_dev_seq ON edge_telemetry_history(device_id, sequence);
+    CREATE INDEX IF NOT EXISTS idx_edge_telem_dev_ts ON edge_telemetry_history(device_id, timestamp_utc);
+    CREATE INDEX IF NOT EXISTS idx_edge_commands_dev ON edge_commands(device_id, status);
+    """),
 )
 
 

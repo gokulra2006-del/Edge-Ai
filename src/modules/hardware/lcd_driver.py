@@ -75,13 +75,13 @@ class LCDDriver(BaseHardwareDriver):
         self.columns = columns
         self.rows = rows
 
-        # Read pin assignments from config
-        self.pin_rs = HARDWARE_CONFIG.PINS["lcd_rs"].bcm
-        self.pin_e = HARDWARE_CONFIG.PINS["lcd_e"].bcm
-        self.pin_d4 = HARDWARE_CONFIG.PINS["lcd_d4"].bcm
-        self.pin_d5 = HARDWARE_CONFIG.PINS["lcd_d5"].bcm
-        self.pin_d6 = HARDWARE_CONFIG.PINS["lcd_d6"].bcm
-        self.pin_d7 = HARDWARE_CONFIG.PINS["lcd_d7"].bcm
+        # Read pin assignments from config if present (or fallback to defaults if disabled)
+        self.pin_rs = HARDWARE_CONFIG.PINS["lcd_rs"].bcm if "lcd_rs" in HARDWARE_CONFIG.PINS else 21
+        self.pin_e = HARDWARE_CONFIG.PINS["lcd_e"].bcm if "lcd_e" in HARDWARE_CONFIG.PINS else 22
+        self.pin_d4 = HARDWARE_CONFIG.PINS["lcd_d4"].bcm if "lcd_d4" in HARDWARE_CONFIG.PINS else 23
+        self.pin_d5 = HARDWARE_CONFIG.PINS["lcd_d5"].bcm if "lcd_d5" in HARDWARE_CONFIG.PINS else 24
+        self.pin_d6 = HARDWARE_CONFIG.PINS["lcd_d6"].bcm if "lcd_d6" in HARDWARE_CONFIG.PINS else 25
+        self.pin_d7 = HARDWARE_CONFIG.PINS["lcd_d7"].bcm if "lcd_d7" in HARDWARE_CONFIG.PINS else 26
         self.data_pins = [self.pin_d4, self.pin_d5, self.pin_d6, self.pin_d7]
 
         self.initialize()
