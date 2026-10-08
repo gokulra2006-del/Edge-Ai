@@ -210,6 +210,21 @@ def main():
     assert smoke_exp[0].data_tag == "SYNTHETIC"
     log_step(timeline, "PHASE_6P", "Drift-to-review loop verified: 6-stage lifecycle, zero auto-deploy, SYNTHETIC active vs random gain confirmed.")
 
+    # 12. Phase 6Q: Tamper-Evident Evidence Bundle & Cryptographic Verification
+    from src.modules.evidence.bundle import EvidenceBundleBuilder
+    from src.modules.evidence.verifier import EvidenceBundleVerifier
+    bundle_builder = EvidenceBundleBuilder(repository=repo, base_bundles_dir="data/evidence_bundles")
+    bundle_verifier = EvidenceBundleVerifier(repository=repo)
+    bundle_dir, manifest = bundle_builder.build_bundle("INC-SMOKE-6Q", signing_key="smoke_secret_key_123")
+    assert (bundle_dir / "manifest.json").exists()
+    assert manifest.signature is not None
+    v_res = bundle_verifier.verify_bundle("INC-SMOKE-6Q", signing_key="smoke_secret_key_123", require_signature=True)
+    assert v_res.overall_status == "VERIFIED"
+    assert v_res.replay_result.status == "MATCH"
+    assert v_res.chain_result.status == "VALID"
+    assert v_res.signature_status == "VALID"
+    log_step(timeline, "PHASE_6Q", f"Tamper-evident evidence bundle verified: VERIFIED status, replay verified, manifest hash {manifest.manifest_hash[:12]}..., chain index #{manifest.chain_index}.")
+
     # Cleanup
     repo.close()
 

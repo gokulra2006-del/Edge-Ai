@@ -320,6 +320,18 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     );
     CREATE INDEX IF NOT EXISTS idx_drift_loops_model ON drift_review_loops(model_id, created_at);
     """),
+    (14, """
+    CREATE TABLE IF NOT EXISTS evidence_bundles (
+      incident_id TEXT PRIMARY KEY,
+      manifest_hash TEXT NOT NULL,
+      prev_bundle_hash TEXT,
+      chain_index INTEGER NOT NULL,
+      verification_status TEXT NOT NULL,
+      manifest_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_evidence_bundles_chain ON evidence_bundles(chain_index, created_at);
+    """),
 )
 
 
@@ -527,13 +539,44 @@ class IncidentRepository:
         )
         return True
 
+    def store_evidence_bundle(
+        self,
+        incident_id: str,
+        manifest_hash: str,
+        prev_bundle_hash: str | None,
+        chain_index: int,
+        verification_status: str,
+        manifest_json: str,
+        created_at: str,
+    ) -> bool:
+        self.writer.submit_wait(
+            lambda c: c.execute(
+                """
+                INSERT OR REPLACE INTO evidence_bundles (
+                  incident_id, manifest_hash, prev_bundle_hash, chain_index,
+                  verification_status, manifest_json, created_at
+                ) VALUES (?,?,?,?,?,?,?)
+                """,
+                (incident_id, manifest_hash, prev_bundle_hash, chain_index, verification_status, manifest_json, created_at),
+            )
+        )
+        return True
+
+    def get_latest_evidence_bundle(self) -> dict[str, Any] | None:
+        rows = self._read("SELECT * FROM evidence_bundles ORDER BY chain_index DESC, created_at DESC LIMIT 1")
+        return dict(rows[0]) if rows else None
+
+    def get_evidence_bundle(self, incident_id: str) -> dict[str, Any] | None:
+        rows = self._read("SELECT * FROM evidence_bundles WHERE incident_id=?", (incident_id,))
+        return dict(rows[0]) if rows else None
+
     def rows(self, table: str, incident_id: str | None = None) -> list[dict[str, Any]]:
-        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes","device_health_events","sync_outbox","drift_snapshots","model_baselines","safety_contracts","response_plans","incident_availability_matrices","drift_review_loops"}
+        allowed = {"incidents","incident_events","predictions","operator_actions","evidence","assurance_states","incident_notes","device_health_events","sync_outbox","drift_snapshots","model_baselines","safety_contracts","response_plans","incident_availability_matrices","drift_review_loops","evidence_bundles"}
         if table not in allowed: raise ValueError("invalid table")
         if incident_id is None:
-            order_col = "created_at" if table in ("incidents", "model_baselines", "response_plans", "drift_review_loops") else "id"
+            order_col = "created_at" if table in ("incidents", "model_baselines", "response_plans", "drift_review_loops", "evidence_bundles") else "id"
             return [dict(r) for r in self._read(f"SELECT * FROM {table} ORDER BY {order_col} DESC")]
-        key = "incident_id"; return [dict(r) for r in self._read(f"SELECT * FROM {table} WHERE {key}=? ORDER BY {('created_at' if table in ('response_plans','drift_review_loops') else 'id')}" if table != "incidents" else "SELECT * FROM incidents WHERE incident_id=?", (incident_id,))]
+        key = "incident_id"; return [dict(r) for r in self._read(f"SELECT * FROM {table} WHERE {key}=? ORDER BY {('created_at' if table in ('response_plans','drift_review_loops','evidence_bundles') else 'id')}" if table != "incidents" else "SELECT * FROM incidents WHERE incident_id=?", (incident_id,))]
     def close(self) -> None: self.writer.close()
 
 

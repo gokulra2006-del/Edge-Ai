@@ -683,6 +683,55 @@ For each condition subgroup:
   - Test set leakage between candidate training and evaluation splits.
   - Incomplete audit trail missing actor, timestamps, or dataset version hash.
 
+---
+
+## Experiment 6Q-1: Tamper-Evident Incident Evidence Bundle with Replay Verification
+
+### 1. Pre-Registration Timestamp
+- **Date**: 2026-10-07
+- **Status**: PRE-REGISTERED (Criteria locked prior to evaluation runs)
+
+### 2. Hypothesis
+- **Hypothesis**: "An incident evidence bundle can be independently verified, and any modification to raw multi-sensor evidence, decision records, response plans, or forensic reports is detected deterministically through cryptographic manifests, sequential hash chains, and sandboxed deterministic replay."
+- **Core Invariant**:
+  $$\forall a \in \mathcal{A}_{\text{bundle}}, \quad \text{SHA256}(a) \equiv \mathcal{M}.\text{hash}(a) \quad \land \quad \text{Chain}(H_i, H_{i-1}) = \text{Valid} \quad \land \quad \text{Replay}(\mathcal{I}) \equiv \mathcal{D}_{\text{stored}}$$
+- **Honest Limitations & Threats to Validity**:
+  - Cryptographic manifests and hash chains detect tampering *after the fact* upon verification; they do *not* physically prevent an adversary with root storage access from modifying files.
+  - Replay verification confirms that recorded decisions followed deterministically from recorded sensor inputs; it does not protect against malicious sensor spoofing at the physical edge transducer prior to ingestion.
+
+### 3. Verification Status Specification
+1. `VERIFIED`: All item hashes match, manifest hash matches, sequential audit hash chain is unbroken, sandboxed 6D replay reproduces stored decisions exactly, and signature (if present) is valid.
+2. `REPLAY_MISMATCH`: Stored inputs when replayed through the unified fusion pipeline produce an outcome, risk score, or response plan that diverges from the stored decision record.
+3. `HASH_MISMATCH`: Any single-byte modification in evidence media, telemetry, decision records, response plans, report HTML, or audit hash chain links.
+4. `MISSING_ITEM`: Any required artifact referenced in the manifest is absent from the bundle.
+5. `UNSIGNED`: Bundle is valid in content and replay, but lacks a cryptographic digital signature when signature enforcement is requested.
+
+### 4. Primary Metrics & Target Thresholds
+1. **Tamper Detection Recall**:
+   $$\text{Recall}_{\text{Tamper}} = 100.0\% \quad (p < 0.001)$$
+   Evaluated across single-byte bit flips in raw audio, optical keyframes, telemetry JSON, decision records, safety contracts, and report HTML.
+2. **Replay Divergence Detection**:
+   $$\text{Accuracy}_{\text{ReplayDivergence}} = 100.0\%$$
+   Any synthetic mutation of risk scores ($|\Delta \text{Risk}| > 10^{-4}$) or altered alert decisions triggers `REPLAY_MISMATCH`.
+3. **Chain Deletion & Reordering Detection**:
+   $$\text{Recall}_{\text{ChainBreak}} = 100.0\%$$
+   Removing or reordering intermediate bundles breaks $H_{i-1}$ linkage and triggers `HASH_MISMATCH`.
+4. **Verification Latency**:
+   - Total bundle hash, chain, and replay verification completes in $< 200$ ms on a Raspberry Pi 4 CPU budget.
+
+### 5. Success & Failure Criteria (Locked Pre-Experiment)
+- **Success Criteria**:
+  1. Every incident bundle packages sensor timeline, audio clip, camera keyframes, model versions/confidences/OOD/risk, response plan and safety contract, operator actions, report HTML, and SHA-256 manifest.
+  2. Sequential hash chain links each bundle to the previous incident audit entry.
+  3. `python -m evidence verify --incident <id>` reports exact item-level status, chain status, replay verification, and overall status (`VERIFIED`, `REPLAY_MISMATCH`, `HASH_MISMATCH`, `MISSING_ITEM`, `UNSIGNED`).
+  4. Compatible with Phase 6K encrypted evidence (hashes are computed over plaintext).
+  5. Standalone zero-dependency verifier script (`scripts/verify_bundle.py`) enables external third-party verification without project dependencies.
+- **Failure Criteria**:
+  - Undetected alteration of any evidence or decision file.
+  - Divergent replay outcome passing as `VERIFIED`.
+  - Inability to verify bundles containing 6K encrypted evidence.
+
+
 
 
 

@@ -154,6 +154,12 @@ ENDPOINT_PERMISSIONS: List[Tuple[str, str, Set[str], str]] = [
     ("POST", r"^/api/governance/drift-loops/evaluate$", TECH_ROLES, "Run offline candidate evaluation"),
     ("POST", r"^/api/governance/drift-loops/decide$", TECH_ROLES, "Approve or reject candidate model"),
     ("GET", r"^/api/governance/drift-loops/experiment$", ALL_ROLES, "Simulated drift recovery experiment metrics"),
+
+    # 14. Tamper-Evident Evidence Bundles & Verification (Phase 6Q)
+    ("GET", r"^/api/evidence/bundle/[^/]+$", ALL_ROLES, "Get incident evidence bundle manifest"),
+    ("POST", r"^/api/evidence/bundle/[^/]+/build$", TECH_ROLES, "Build incident evidence bundle"),
+    ("GET", r"^/api/evidence/verify/[^/]+$", ALL_ROLES, "Verify incident evidence bundle status"),
+    ("POST", r"^/api/evidence/verify/[^/]+$", ALL_ROLES, "Verify incident evidence bundle with options"),
 ]
 
 

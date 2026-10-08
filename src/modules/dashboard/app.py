@@ -61,6 +61,10 @@ from src.modules.decision.sensor_availability_matrix import SensorAvailabilityMa
 SENSOR_AVAILABILITY_ENGINE = SensorAvailabilityMatrixEngine(repository=GOVERNED_REPOSITORY)
 from src.modules.governance.drift_review_loop import DriftReviewLoopEngine, run_simulated_drift_experiment
 DRIFT_LOOP_ENGINE = DriftReviewLoopEngine(repository=GOVERNED_REPOSITORY)
+from src.modules.evidence.bundle import EvidenceBundleBuilder
+from src.modules.evidence.verifier import EvidenceBundleVerifier
+EVIDENCE_BUNDLE_BUILDER = EvidenceBundleBuilder(repository=GOVERNED_REPOSITORY)
+EVIDENCE_BUNDLE_VERIFIER = EvidenceBundleVerifier(repository=GOVERNED_REPOSITORY)
 
 SERVER_START_TIME = time.time()
 try:
@@ -1055,6 +1059,29 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 return
             self._json(loop.to_dict())
             return
+        elif path.startswith("/api/evidence/bundle/"):
+            incident_id = path.removeprefix("/api/evidence/bundle/").strip()
+            bundle_dir = Path("data/evidence_bundles") / incident_id
+            manifest_file = bundle_dir / "manifest.json"
+            if not manifest_file.exists():
+                try:
+                    _, manifest = EVIDENCE_BUNDLE_BUILDER.build_bundle(incident_id)
+                    self._json(manifest.to_dict())
+                    return
+                except Exception as e:
+                    self._json({"error": f"Failed generating evidence bundle: {e}"}, 500)
+                    return
+            try:
+                data = json.loads(manifest_file.read_text(encoding="utf-8"))
+                self._json(data)
+            except Exception as e:
+                self._json({"error": f"Failed reading bundle manifest: {e}"}, 500)
+            return
+        elif path.startswith("/api/evidence/verify/"):
+            incident_id = path.removeprefix("/api/evidence/verify/").strip()
+            res = EVIDENCE_BUNDLE_VERIFIER.verify_bundle(incident_id)
+            self._json(res.to_dict())
+            return
         else:
             self.send_response(404)
             self.end_headers()
@@ -1612,6 +1639,41 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._json(loop.to_dict())
             except Exception as e:
                 self._json({"error": str(e)}, 400)
+            return
+
+        if path.startswith("/api/evidence/bundle/") and path.endswith("/build"):
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            role = actor["role"].upper()
+            if role not in ("COMMANDER", "ENGINEER"):
+                self._json({"error": "Only COMMANDER or ENGINEER can build evidence bundles"}, 403)
+                return
+            incident_id = path.removeprefix("/api/evidence/bundle/").removesuffix("/build").strip("/")
+            payload = self._payload()
+            sign_key = payload.get("sign_key") or payload.get("key")
+            try:
+                bundle_dir, manifest = EVIDENCE_BUNDLE_BUILDER.build_bundle(incident_id, sign_key=sign_key)
+                self._json({"status": "SUCCESS", "incident_id": incident_id, "bundle_dir": str(bundle_dir), "manifest": manifest.to_dict()})
+            except Exception as e:
+                self._json({"error": f"Failed to build evidence bundle: {e}"}, 500)
+            return
+
+        if path.startswith("/api/evidence/verify/"):
+            actor = self._actor()
+            if not actor:
+                self._json({"error": "Authentication required"}, 401)
+                return
+            incident_id = path.removeprefix("/api/evidence/verify/").strip("/")
+            payload = self._payload()
+            key = payload.get("key") or payload.get("sign_key")
+            req_sig = bool(payload.get("require_signature", False))
+            try:
+                res = EVIDENCE_BUNDLE_VERIFIER.verify_bundle(incident_id, key=key, require_signature=req_sig)
+                self._json(res.to_dict())
+            except Exception as e:
+                self._json({"error": f"Verification error: {e}"}, 500)
             return
 
         # 1. Interactive Scenario Trigger
