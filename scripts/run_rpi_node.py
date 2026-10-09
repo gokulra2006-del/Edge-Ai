@@ -89,8 +89,22 @@ class RaspberryPiEdgeNode:
         # GPS Telemetry (NEO-6M)
         gps_data = self.hardware_hub.gps.read() if hasattr(self.hardware_hub, "gps") else {}
 
-        # 4. Deep Inference Evaluation
+        # Capture physical microphone audio and camera frame without blocking
+        raw_audio_pred = None
+        if hasattr(self.hardware_hub, "inmp441") and not self.hardware_hub.inmp441.is_simulated:
+            pcm = self.hardware_hub.inmp441.capture_audio(duration_seconds=0.3)
+            if pcm:
+                pred = DEEP_RULE_ENGINE.audio_classifier.predict_pcm(pcm)
+                raw_audio_pred = {
+                    "class": pred.class_name,
+                    "confidence": round(pred.confidence, 4),
+                    "source_file": "live_inmp441_i2s_mic",
+                    "dataset": "Physical INMP441 Microphone"
+                }
+
+        # 4. Deep Inference Evaluation (Using real microphone prediction if available)
         decision = DEEP_RULE_ENGINE.evaluate(
+            raw_audio=raw_audio_pred,
             accel_g=accel_g,
             impact_detected=impact_detected,
             smoke_ppm=smoke_val,
