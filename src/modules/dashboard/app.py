@@ -1206,6 +1206,39 @@ class DashboardHandler(BaseHTTPRequestHandler):
             try:
                 client_ip = self.client_address[0] if hasattr(self, "client_address") else None
                 result = DEVICE_REGISTRY.ingest_telemetry(payload, client_ip=client_ip)
+
+                # Mirror into live telemetry cache so dashboard UI immediately updates
+                sensors = payload.get("sensors", {})
+                audio = payload.get("audio_prediction", {})
+                vision = payload.get("vision_prediction", {})
+                live_telem = {
+                    "temperature": sensors.get("temperature_c", 25.0),
+                    "smoke_level": sensors.get("gas_relative_index", 0.0) * 100.0,
+                    "impact_detected": bool(sensors.get("impact_detected", False)),
+                    "acceleration_g": max(abs(sensors.get("acceleration_g", {}).get("x", 0)), abs(sensors.get("acceleration_g", {}).get("y", 0)), abs(sensors.get("acceleration_g", {}).get("z", 1.0) - 1.0)),
+                    "audio_prediction": {
+                        "class": audio.get("class", "ambient"),
+                        "confidence": audio.get("confidence", 0.9),
+                        "source_file": "live_microphone_inmp441",
+                        "dataset": "Physical INMP441 Microphone"
+                    },
+                    "vision_prediction": {
+                        "class": vision.get("classes", ["vehicle"])[0] if isinstance(vision.get("classes"), list) and vision.get("classes") else "vehicle",
+                        "confidence": vision.get("confidence", 0.85),
+                        "hazard": "NONE",
+                        "detected_classes": vision.get("classes", []),
+                        "bounding_boxes": [],
+                        "source_frame": "live_usb_camera",
+                        "dataset": "Physical USB Camera"
+                    },
+                    "cpu_temp": payload.get("health", {}).get("temperature_c", 42.0),
+                    "fps": 15.0,
+                    "timestamp": payload.get("timestamp_utc", utc_now()),
+                    "gps": sensors.get("gps", {}),
+                    "data_source": payload.get("data_source", "REAL_HARDWARE")
+                }
+                FIREBASE_SYNC.sync_live_telemetry(live_telem)
+
                 self._json(result, 200)
             except ValueError as e:
                 self._json({"error": str(e)}, 400)
