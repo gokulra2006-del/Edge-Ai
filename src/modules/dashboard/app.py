@@ -1155,10 +1155,34 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         # CSRF Protection on all state-changing actions
         # Exempt authentication, scenario triggers, and authenticated edge device telemetry ingestion
-        if path not in ("/api/auth/login", "/api/auth/setup-admin", "/api/trigger_scenario") and not path.startswith("/api/devices/"):
+        if path not in ("/api/auth/login", "/api/auth/setup-admin", "/api/trigger_scenario") and not path.startswith("/api/devices"):
             if not self._validate_csrf():
                 self._json({"error": "CSRF validation failed"}, 403)
                 return
+
+        # Edge Device Registration: POST /api/devices
+        if path == "/api/devices":
+            try:
+                payload = self._payload()
+                dev_id = payload.get("device_id")
+                name = payload.get("name", dev_id)
+                token = payload.get("token", "default-edge-token-2026")
+                hardware_model = payload.get("hardware_model", "Raspberry Pi 4 Model B")
+                data_source = payload.get("data_source", "SIMULATED")
+                if not dev_id:
+                    self._json({"error": "Missing device_id in request"}, 400)
+                    return
+                res = DEVICE_REGISTRY.register_device(
+                    device_id=dev_id,
+                    name=name,
+                    token=token,
+                    hardware_model=hardware_model,
+                    data_source=data_source,
+                )
+                self._json(res, 200)
+            except Exception as e:
+                self._json({"error": f"Failed to register device: {e}"}, 500)
+            return
 
         # Edge Device Ingestion: POST /api/devices/{device_id}/telemetry
         if path.startswith("/api/devices/") and path.endswith("/telemetry"):
