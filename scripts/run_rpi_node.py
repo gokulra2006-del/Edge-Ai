@@ -63,64 +63,31 @@ class RaspberryPiEdgeNode:
         LOGGER.info(f"Host Model: {probe.get('rpi_model', 'Unknown')}")
         LOGGER.info(f"Operating Mode: {probe.get('operational_mode')}")
 
-        try:
-            import smbus2
-            self.i2c_bus = smbus2.SMBus(1)
-            # Check MPU-6050
-            try:
-                self.i2c_bus.write_byte_data(0x68, 0x6B, 0x00)  # Wake up MPU-6050
-                self.has_mpu6050 = True
-                LOGGER.info("[Hardware] MPU-6050 IMU initialized at 0x68 [ONLINE]")
-            except Exception:
-                LOGGER.warning("[Hardware] MPU-6050 not detected at 0x68 (Using baseline).")
-
-            # Check ADS1115
-            try:
-                self.i2c_bus.read_byte(0x48)
-                self.has_ads1115 = True
-                LOGGER.info("[Hardware] ADS1115 ADC initialized at 0x48 [ONLINE]")
-            except Exception:
-                LOGGER.warning("[Hardware] ADS1115 not detected at 0x48 (Using baseline).")
-
-        except Exception as e:
-            LOGGER.warning(f"[Hardware] I2C bus not available: {e}")
+        from src.modules.hardware.hardware_hub import HARDWARE_HUB
+        self.hardware_hub = HARDWARE_HUB
+        LOGGER.info("[Hardware] Hardware Hub unified drivers successfully attached.")
 
     def read_physical_telemetry(self):
         now_iso = time.strftime("%Y-%m-%dT%H:%M:%S")
 
-        # 1. IMU Telemetry (MPU-6050)
-        accel_g = 0.02
-        impact_detected = False
-        if self.has_mpu6050 and self.i2c_bus:
-            try:
-                data = self.i2c_bus.read_i2c_block_data(0x68, 0x3B, 6)
-                rx = (data[0] << 8) | data[1]
-                ry = (data[2] << 8) | data[3]
-                rz = (data[4] << 8) | data[5]
-                ax = (rx - 65536 if rx > 32767 else rx) / 16384.0
-                ay = (ry - 65536 if ry > 32767 else ry) / 16384.0
-                az = (rz - 65536 if rz > 32767 else rz) / 16384.0
-                composite = math.sqrt(ax**2 + ay**2 + az**2) - 1.0
-                accel_g = round(max(0.0, composite), 3)
-                impact_detected = accel_g > 2.5
-            except Exception:
-                pass
+        # 1. Read unified physical sensor values from HardwareHub
+        hw = self.hardware_hub.get_unified_telemetry()
+        
+        # Temperature & Humidity from DHT-22
+        temp_val = hw.get("temperature") or 28.5
+        humidity_val = hw.get("humidity") or 55.0
 
-        # 2. Smoke / Gas Telemetry (MQ-2 via ADS1115 or baseline)
-        smoke_val = 14.2
-        if self.has_ads1115 and self.i2c_bus:
-            try:
-                self.i2c_bus.write_i2c_block_data(0x48, 0x01, [0xC1, 0x83])
-                time.sleep(0.01)
-                res = self.i2c_bus.read_i2c_block_data(0x48, 0x00, 2)
-                raw_adc = (res[0] << 8) | res[1]
-                voltage = (raw_adc * 4.096) / 32768.0
-                smoke_val = round(max(5.0, voltage * 80.0), 1)
-            except Exception:
-                pass
+        # IMU Telemetry (MPU-6050 / GY-87)
+        imu = hw.get("imu", {})
+        accel_g = imu.get("composite_g", 0.02)
+        impact_detected = imu.get("impact_detected", False)
 
-        # 3. Ambient Temperature
-        temp_val = 28.5
+        # Smoke / Gas Telemetry (MQ-2 via ADS1115)
+        gas = hw.get("gas", {})
+        smoke_val = (gas.get("relative_gas_level", 0.15) * 100.0) if gas.get("relative_gas_level") is not None else 14.2
+
+        # GPS Telemetry (NEO-6M)
+        gps_data = self.hardware_hub.gps.read() if hasattr(self.hardware_hub, "gps") else {}
 
         # 4. Deep Inference Evaluation
         decision = DEEP_RULE_ENGINE.evaluate(
@@ -136,6 +103,7 @@ class RaspberryPiEdgeNode:
         # 6. Build consolidated state
         telemetry = {
             "temperature": temp_val,
+            "humidity": humidity_val,
             "smoke_level": smoke_val,
             "impact_detected": impact_detected,
             "acceleration_g": accel_g,
