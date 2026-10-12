@@ -4,36 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENTINEL-AI | Municipal Emergency Command Platform</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (Served locally for instantaneous zero-latency offline loading) -->
+    <script src="/tailwind.cdn.js"></script>
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brandBg: '#f8fafc',
-                        cardSurface: '#ffffff',
-                        cardBorder: '#e2e8f0',
-                        textMain: '#0f172a',
-                        textMuted: '#64748b',
-                        brandBlue: '#2563eb',
-                        brandBlueLight: '#eff6ff',
-                        brandEmerald: '#059669',
-                        brandEmeraldLight: '#ecfdf5',
-                        brandAmber: '#d97706',
-                        brandAmberLight: '#fffbeb',
-                        brandRose: '#dc2626',
-                        brandRoseLight: '#fff1f2'
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            brandBg: '#f8fafc',
+                            cardSurface: '#ffffff',
+                            cardBorder: '#e2e8f0',
+                            textMain: '#0f172a',
+                            textMuted: '#64748b',
+                            brandBlue: '#2563eb',
+                            brandBlueLight: '#eff6ff',
+                            brandEmerald: '#059669',
+                            brandEmeraldLight: '#ecfdf5',
+                            brandAmber: '#d97706',
+                            brandAmberLight: '#fffbeb',
+                            brandRose: '#dc2626',
+                            brandRoseLight: '#fff1f2'
+                        }
                     }
                 }
-            }
+            };
         }
     </script>
     <!-- Chart.js -->
     <script src="/chart.min.js"></script>
-    <!-- Firebase Web SDK (Compat v10) -->
-    <script async src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script async src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <!-- Firebase Web SDK (Served locally) -->
+    <script async src="/firebase-app-compat.js"></script>
+    <script async src="/firebase-database-compat.js"></script>
     <link id="appStyles" rel="stylesheet" href="/style.css">
 </head>
 <body class="bg-brandBg text-textMain min-h-screen flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900 antialiased overflow-x-hidden">

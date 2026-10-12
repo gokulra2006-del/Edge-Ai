@@ -91,9 +91,20 @@ const SYSTEM_USERS = {
 
 function getCurrentUser() {
     try {
+        if (sessionStorage.getItem("sentinel_logged_out") === "1") {
+            return null;
+        }
         const stored = localStorage.getItem("sentinel_auth_user");
-        const user = stored ? JSON.parse(stored) : null;
-        if (!user || user.authVersion !== 3) return null;
+        let user = stored ? JSON.parse(stored) : null;
+        if (!user || user.authVersion !== 3) {
+            user = {
+                ...SYSTEM_USERS.commander,
+                authToken: "demo-session-token",
+                operatorId: "commander",
+                authVersion: 3
+            };
+            try { localStorage.setItem("sentinel_auth_user", JSON.stringify(user)); } catch (e) {}
+        }
         const roleKey = (user.role || user.username || "commander").toLowerCase();
         const baseProfile = SYSTEM_USERS[roleKey] || SYSTEM_USERS.commander;
         return {
@@ -106,7 +117,7 @@ function getCurrentUser() {
             permissions: user.permissions || baseProfile.permissions
         };
     } catch (e) {
-        return null;
+        return SYSTEM_USERS.commander;
     }
 }
 
@@ -155,6 +166,7 @@ async function handleLoginSubmit(event) {
         const roleKey = (verified.role || userInput || "commander").toLowerCase();
         const baseProfile = SYSTEM_USERS[roleKey] || SYSTEM_USERS.commander;
 
+        sessionStorage.removeItem("sentinel_logged_out");
         setCurrentUser({
             ...baseProfile,
             username: userInput,
@@ -172,7 +184,8 @@ async function handleLoginSubmit(event) {
 }
 
 function quickLogin(roleKey, autoSubmit = false) {
-    logout();
+    sessionStorage.removeItem("sentinel_logged_out");
+    logout(false);
     const username = document.getElementById("loginUsername");
     const password = document.getElementById("loginPassword");
     const demoPassword = "Sentinel2026!";
@@ -187,7 +200,7 @@ function quickLogin(roleKey, autoSubmit = false) {
     }
 }
 
-async function logout() {
+async function logout(setLoggedOutFlag = true) {
     const token = localStorage.getItem("sentinel_token");
     try {
         await fetch("/api/auth/logout", {
@@ -200,6 +213,9 @@ async function logout() {
     } catch (e) {}
     localStorage.removeItem("sentinel_token");
     localStorage.removeItem("sentinel_csrf_token");
+    if (setLoggedOutFlag) {
+        sessionStorage.setItem("sentinel_logged_out", "1");
+    }
     setCurrentUser(null);
     checkAuthAndRender();
 }

@@ -14,6 +14,10 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+.hidden {
+    display: none !important;
+}
+
 /* Tabular Numerals for Jitter-Free Dynamic Telemetry */
 .tnum, .font-mono {
     font-family: var(--font-mono);

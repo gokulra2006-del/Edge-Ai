@@ -580,6 +580,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._serve_file(WEB_DIR / "index.html", "text/html; charset=utf-8")
         elif path == "/app.js":
             self._serve_file(WEB_DIR / "app.js", "application/javascript")
+        elif path == "/tailwind.cdn.js":
+            self._serve_file(WEB_DIR / "tailwind.cdn.js", "application/javascript")
+        elif path == "/firebase-app-compat.js":
+            self._serve_file(WEB_DIR / "firebase-app-compat.js", "application/javascript")
+        elif path == "/firebase-database-compat.js":
+            self._serve_file(WEB_DIR / "firebase-database-compat.js", "application/javascript")
         elif path == "/chart.min.js":
             self._serve_file(WEB_DIR / "chart.min.js", "application/javascript")
         elif path == "/style.css":
