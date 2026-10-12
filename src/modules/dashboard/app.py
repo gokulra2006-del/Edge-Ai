@@ -584,6 +584,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._serve_file(WEB_DIR / "chart.min.js", "application/javascript")
         elif path == "/style.css":
             self._serve_file(WEB_DIR / "style.css", "text/css")
+        elif path == "/ambulance_siren.mp3":
+            self._serve_file(WEB_DIR / "ambulance_siren.mp3", "audio/mpeg")
+        elif path == "/ambulance_siren.wav":
+            self._serve_file(WEB_DIR / "ambulance_siren.wav", "audio/wav")
 
         elif path.startswith("/api/analytics/"):
             now = time.monotonic()

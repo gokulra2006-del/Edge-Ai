@@ -16,7 +16,7 @@ def main():
     os.environ['FIREBASE_DATABASE_URL'] = ''
     from src.modules.dashboard.app import run_dashboard_server, STREAMER
     print('SYNTHETIC MODEL DEMO: generated-data accuracy is not real-world validation.', flush=True)
-    server = run_dashboard_server(host='127.0.0.1', port=args.port)
+    server = run_dashboard_server(host='0.0.0.0', port=args.port)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

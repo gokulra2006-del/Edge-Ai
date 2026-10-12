@@ -1,0 +1,9 @@
+# Patent attorney verification note
+
+**Subject:** SENTINEL-AI reliability-gated urban emergency assessment and governed response.
+
+The draft identifies one candidate inventive combination: an offline edge node uses multimodal evidence to form emergency risk, reduces both confidence and response authority when sensor/model/connectivity reliability degrades, routes conflict to human review, and records a verifiable incident package. Three independent draft claims cover system, method and computer-readable medium, with 19 dependent fallbacks. These are technical drafting candidates, not a patentability opinion.
+
+Before filing, counsel should verify: (1) inventorship and ownership; (2) priority and public-disclosure dates; (3) novelty and inventive step against a full patent and literature search, especially the close multimodal accident-analysis reference US20250166434A1; (4) written-description support for every claimed function, especially linked hash chain, replay-verification status, sensor-failure caps and model-review workflow; (5) whether “response authorization” distinguishes existing preemption systems; (6) clarity and antecedent basis of each claim; (7) eligibility and jurisdiction-specific treatment of software and computer-readable-medium claims; (8) freedom to operate, which differs from patentability; and (9) whether alternative embodiments are enabled beyond the Raspberry Pi prototype.
+
+The engineering record currently supports software and synthetic/replayed validation, but not a verified end-to-end physical Pi 4 junction deployment. The MQ-2 divider values conflict with the stated ratio, and optional LCD code assigns the otherwise unused GPIO26. Correct these before placing circuit details in a filing. Remove or narrow any claim feature whose implementation and enabling description cannot be demonstrated.

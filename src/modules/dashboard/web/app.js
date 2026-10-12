@@ -1641,6 +1641,14 @@ async function triggerScenario(name) {
         return;
     }
 
+    if (name === "AMBULANCE") {
+        try {
+            const siren = new Audio("/ambulance_siren.mp3");
+            siren.volume = 0.9;
+            siren.play().catch(err => console.log("Audio play note:", err));
+        } catch (e) {}
+    }
+
     try {
         const res = await fetch(`/api/trigger_scenario?scenario=${name}`, { method: "POST" });
         if (res.ok) {

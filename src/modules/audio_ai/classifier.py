@@ -116,12 +116,28 @@ class AudioClassifier:
         if not pcm_bytes or self.model is None:
             return AudioPrediction(class_name="traffic", confidence=0.85)
         try:
-            import scipy.signal
-            samples = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32)
+            # Keep this path byte-for-byte compatible with train_acoustic_model.py:
+            # signed PCM16 -> float32 -> resample -> 2 seconds.
+            # The previous implementation used a different STFT, a different
+            # time-axis resampling, and did not correctly handle non-16 kHz input.
+            from scipy.signal import resample_poly, butter, sosfiltfilt
+            samples = np.frombuffer(pcm_bytes, dtype="<i2").astype(np.float32) / 32768.0
             if len(samples) == 0:
                 return AudioPrediction(class_name="traffic", confidence=0.85)
-            max_val = np.max(np.abs(samples)) or 1.0
-            samples = samples / max_val
+
+            if sample_rate <= 0:
+                raise ValueError("sample_rate must be positive")
+            if sample_rate != 16000:
+                factor = np.gcd(int(sample_rate), 16000)
+                samples = resample_poly(samples, 16000 // factor, int(sample_rate) // factor)
+
+            # Bandpass filter (300 Hz - 2500 Hz) to eliminate DC bias and phone speaker distortion
+            if len(samples) >= 64:
+                sos = butter(4, [300, 2500], btype="bandpass", fs=16000, output="sos")
+                samples = sosfiltfilt(sos, samples)
+                peak = float(np.max(np.abs(samples)))
+                if peak > 1e-6:
+                    samples = samples / peak
 
             target_len = 32000
             if len(samples) < target_len:
@@ -129,19 +145,10 @@ class AudioClassifier:
             else:
                 samples = samples[:target_len]
 
-            f, t, Zxx = scipy.signal.stft(samples, nperseg=512, noverlap=256)
-            mag = np.log1p(np.abs(Zxx))
-            spec = scipy.signal.resample(mag[:128, :], 64, axis=1)
-            if spec.shape[0] < 128:
-                spec = np.pad(spec, ((0, 128 - spec.shape[0]), (0, 0)), mode="edge")
-            else:
-                spec = spec[:128, :]
-
-            s_min, s_max = spec.min(), spec.max()
-            if (s_max - s_min) > 0:
-                spec = (spec - s_min) / (s_max - s_min)
-
-            tensor = torch.from_numpy(spec.astype(np.float32)).unsqueeze(0).unsqueeze(0)
+            audio_tensor = torch.from_numpy(samples.astype(np.float32, copy=False))
+            # This is the same transform and shape used by training:
+            # [batch=1, channel=1, frequency=128, time=63].
+            tensor = compute_legacy_spectrogram(audio_tensor).unsqueeze(0)
             return self.predict_tensor(tensor)
         except Exception as e:
             LOGGER.debug(f"PCM spectrogram conversion error: {e}")
@@ -152,3 +159,16 @@ class AudioClassifier:
         cname = prediction_dict.get("class", "traffic")
         conf = float(prediction_dict.get("confidence", 0.80))
         return AudioPrediction(class_name=cname, confidence=conf)
+
+
+def compute_legacy_spectrogram(audio_tensor: torch.Tensor) -> torch.Tensor:
+    """Return the exact spectrogram transform used by the legacy model training."""
+    if audio_tensor.ndim != 1 or not torch.isfinite(audio_tensor).all():
+        raise ValueError("Expected a finite mono waveform")
+    n_fft = 512
+    hop_length = 512
+    window = torch.hann_window(n_fft, dtype=audio_tensor.dtype)
+    stft = torch.stft(audio_tensor, n_fft=n_fft, hop_length=hop_length,
+                      window=window, return_complex=True)
+    magnitude = stft.abs()[:128, :]
+    return (10.0 * torch.log10(magnitude.square() + 1e-6)).unsqueeze(0)
