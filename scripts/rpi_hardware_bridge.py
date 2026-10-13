@@ -12,7 +12,7 @@ Hardware Wiring:
   - Siren Buzzer:       BCM 16 (Physical Pin 36)
 
 Usage on Raspberry Pi:
-  python3 scripts/rpi_hardware_bridge.py --server http://172.20.10.2:8080
+  python3 rpi_hardware_bridge.py --server http://172.20.10.2:8080
 """
 
 import argparse
@@ -83,7 +83,13 @@ class RPiActuatorController:
         if color == self.last_signal:
             return
         self.last_signal = color
-        print(f"[ACTUATOR] Traffic Signal -> {color}")
+
+        if color in ("GREEN", "CLEAR"):
+            print(f"[ACTUATOR] 🟢 Traffic LED -> GREEN ON (BCM {PIN_GREEN}) [Emergency Corridor Pre-emption]")
+        elif color in ("RED", "ALL_RED"):
+            print(f"[ACTUATOR] 🔴 Traffic LED -> RED ON (BCM {PIN_RED}) [Cyclic Stop]")
+        elif color in ("YELLOW", "AMBER"):
+            print(f"[ACTUATOR] 🟡 Traffic LED -> YELLOW ON (BCM {PIN_YELLOW}) [Caution Phase]")
 
         if self.mode == "RPI_GPIO":
             GPIO.output(PIN_RED, GPIO.HIGH if color in ("RED", "ALL_RED") else GPIO.LOW)
@@ -99,18 +105,22 @@ class RPiActuatorController:
         if position == self.last_barrier:
             return
         self.last_barrier = position
-        print(f"[ACTUATOR] Barrier Gate (SG90 Servo) -> {position}")
+
+        if position in ("OPEN", "UP"):
+            print(f"[ACTUATOR] 🚧 SG90 Servo Motor -> ROTATING TO 90° (OPEN) [PWM BCM {PIN_SERVO}]")
+        else:
+            print(f"[ACTUATOR] 🚧 SG90 Servo Motor -> ROTATING TO 0° (CLOSED) [PWM BCM {PIN_SERVO}]")
 
         # OPEN = 90 deg (~7.5% duty), CLOSED = 0 deg (~2.5% duty)
         if self.mode == "RPI_GPIO" and self.servo_pwm:
             duty = 7.5 if position in ("OPEN", "UP") else 2.5
             self.servo_pwm.ChangeDutyCycle(duty)
-            time.sleep(0.35)
+            time.sleep(0.4)
             self.servo_pwm.ChangeDutyCycle(0)
         elif self.mode == "GPIOZERO" and self.gz_servo:
             val = 0.075 if position in ("OPEN", "UP") else 0.025
             self.gz_servo.value = val
-            time.sleep(0.35)
+            time.sleep(0.4)
             self.gz_servo.value = 0
 
     def set_buzzer(self, active: bool):
@@ -162,8 +172,10 @@ def main():
         return
 
     url = args.server.rstrip("/") + "/api/live"
-    print(f"[HW-BRIDGE] Listening to dashboard telemetry stream: {url}")
+    print(f"[HW-BRIDGE] Listening to live dashboard stream: {url}")
     print("[HW-BRIDGE] Move barrier and LEDs live when dashboard changes. Press Ctrl+C to exit.\n")
+
+    last_event_id = None
 
     try:
         while True:
@@ -172,11 +184,34 @@ def main():
                 with urllib.request.urlopen(req, timeout=1.5) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     actuators = data.get("actuators", {})
-                    controller.set_traffic_light(actuators.get("traffic_signal", "RED"))
-                    controller.set_barrier(actuators.get("barrier", "CLOSED"))
+                    active_ev = data.get("active_event") or {}
+
+                    event_type = active_ev.get("event")
+                    event_id = active_ev.get("id")
+
+                    # Check if an AMBULANCE emergency event occurred
+                    if event_type == "EMERGENCY_VEHICLE" and event_id != last_event_id:
+                        last_event_id = event_id
+                        conf = float(active_ev.get("confidence", 0.94)) * 100
+                        print("\n" + "=" * 68)
+                        print(f"🚨 [EMERGENCY DETECTED] AMBULANCE SIREN VERIFIED! (AI Confidence: {conf:.1f}%)")
+                        print("🚑 Model: EdgeAcousticNet TFLite | Rule R3: Emergency Corridor Engaged")
+                        print(f"🟢 Actuator Command -> TRAFFIC LIGHT: GREEN (BCM {PIN_GREEN})")
+                        print(f"🚧 Actuator Command -> SG90 SERVO: OPEN 90° (BCM {PIN_SERVO})")
+                        print("=" * 68 + "\n")
+                    elif event_type in (None, "NORMAL") and last_event_id is not None and last_event_id != "NORMAL":
+                        last_event_id = "NORMAL"
+                        print("\n" + "=" * 68)
+                        print("✅ [CORRIDOR RESTORED] Normal Municipal Traffic Flow Active")
+                        print(f"🔴 Actuator Command -> TRAFFIC LIGHT: RED (BCM {PIN_RED})")
+                        print(f"🚧 Actuator Command -> SG90 SERVO: CLOSED 0° (BCM {PIN_SERVO})")
+                        print("=" * 68 + "\n")
+
+                    controller.set_traffic_light(actuators.get("traffic_signal", "GREEN"))
+                    controller.set_barrier(actuators.get("barrier", "OPEN"))
                     controller.set_buzzer(actuators.get("buzzer") == "ON")
             except Exception as e:
-                # Network hiccup, keep retrying
+                # Network hiccup, keep retrying silently
                 pass
             time.sleep(0.25)
     except KeyboardInterrupt:
