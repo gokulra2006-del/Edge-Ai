@@ -531,11 +531,13 @@ document.addEventListener("DOMContentLoaded", () => {
 /* ========================================================================= */
 
 function initFirebaseOrFallback() {
+    // ALWAYS activate high-speed local polling so any local or remote trigger instantly updates the UI
+    startLocalPolling();
+
     const DEFAULT_DB_URL = "https://edge-ai-524d4-default-rtdb.asia-southeast1.firebasedatabase.app";
     const savedDbUrl = localStorage.getItem("sentinel_firebase_db_url") || DEFAULT_DB_URL;
 
     if (!window.firebase) {
-        startLocalPolling();
         return;
     }
     if (savedDbUrl && savedDbUrl.startsWith("https://")) {
@@ -546,10 +548,6 @@ function initFirebaseOrFallback() {
                 });
             }
             firebaseDb = firebase.database();
-            isUsingFirebase = true;
-
-            updateCloudStatus(true, "Firebase Realtime DB");
-
             const nodeRef = firebaseDb.ref("nodes/NODE_B");
             nodeRef.on("value", (snapshot) => {
                 const data = snapshot.val();
@@ -561,18 +559,13 @@ function initFirebaseOrFallback() {
                     });
                 }
             }, (error) => {
-                console.warn("[Firebase] Listener note, falling back to Local Bridge:", error);
-                startLocalPolling();
+                console.warn("[Firebase] Listener note, staying on Local Bridge:", error);
             });
-
-            console.log("[Sentinel] Connected to Firebase Realtime Database:", savedDbUrl);
-            return;
+            console.log("[Sentinel] Synchronized with Firebase Realtime Database:", savedDbUrl);
         } catch (e) {
-            console.error("[Firebase] Initialization error:", e);
+            console.error("[Firebase] Initialization note:", e);
         }
     }
-
-    startLocalPolling();
 }
 
 function startLocalPolling() {
@@ -581,7 +574,7 @@ function startLocalPolling() {
 
     if (pollingTimer) clearInterval(pollingTimer);
     fetchLiveEdgeData();
-    pollingTimer = setInterval(fetchLiveEdgeData, 1200);
+    pollingTimer = setInterval(fetchLiveEdgeData, 600);
 }
 
 async function fetchLiveEdgeData() {
