@@ -594,6 +594,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._serve_file(WEB_DIR / "ambulance_siren.mp3", "audio/mpeg")
         elif path == "/ambulance_siren.wav":
             self._serve_file(WEB_DIR / "ambulance_siren.wav", "audio/wav")
+        elif path == "/rpi_hardware_bridge.py":
+            self._serve_file(WEB_DIR / "rpi_hardware_bridge.py", "text/plain; charset=utf-8")
 
         elif path.startswith("/api/analytics/"):
             now = time.monotonic()

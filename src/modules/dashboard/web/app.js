@@ -1481,7 +1481,7 @@ function updateSensors(t) {
 }
 
 function updateActuators(a) {
-    const signalState = a.traffic_signal || "GREEN";
+    const signalState = (a.traffic_signal || "GREEN").toUpperCase();
     const sigText = document.getElementById("trafficSignalText");
     const lRed = document.getElementById("lightRed");
     const lYellow = document.getElementById("lightYellow");
@@ -1491,51 +1491,55 @@ function updateActuators(a) {
     if (lYellow) lYellow.className = "w-8 h-8 rounded-full bg-slate-900 border border-slate-700 transition-all duration-300";
     if (lGreen) lGreen.className = "w-8 h-8 rounded-full bg-slate-900 border border-slate-700 transition-all duration-300";
 
-    if (signalState === "RED") {
-        if (sigText) { sigText.innerText = "RED (HALT)"; sigText.className = "text-2xl font-black text-rose-600 mt-1 font-mono"; }
+    if (signalState === "RED" || signalState === "ALL_RED") {
+        if (sigText) { sigText.innerText = "RED (BCM 5 ACTIVE)"; sigText.className = "text-xl sm:text-2xl font-black text-rose-600 mt-1 font-mono"; }
         if (lRed) lRed.className = "w-8 h-8 rounded-full bulb-glow-red transition-all duration-300";
-    } else if (signalState === "YELLOW") {
-        if (sigText) { sigText.innerText = "YELLOW (CAUTION)"; sigText.className = "text-2xl font-black text-amber-600 mt-1 font-mono"; }
+    } else if (signalState === "YELLOW" || signalState === "AMBER") {
+        if (sigText) { sigText.innerText = "YELLOW (BCM 6 ACTIVE)"; sigText.className = "text-xl sm:text-2xl font-black text-amber-600 mt-1 font-mono"; }
         if (lYellow) lYellow.className = "w-8 h-8 rounded-full bulb-glow-yellow transition-all duration-300";
     } else {
-        if (sigText) { sigText.innerText = "GREEN (FLOW)"; sigText.className = "text-2xl font-black text-emerald-600 mt-1 font-mono"; }
+        if (sigText) { sigText.innerText = "GREEN (BCM 13 ACTIVE)"; sigText.className = "text-xl sm:text-2xl font-black text-emerald-600 mt-1 font-mono"; }
         if (lGreen) lGreen.className = "w-8 h-8 rounded-full bulb-glow-green transition-all duration-300";
     }
 
-    // Barrier
-    const barrierState = a.barrier_gate || "OPEN";
+    // Barrier (SG90 Servo BCM 12)
+    const barrierState = (a.barrier || a.barrier_gate || "OPEN").toUpperCase();
     const barText = document.getElementById("barrierText");
     const barIcon = document.getElementById("barrierIcon");
-    if (barText) barText.innerText = barrierState;
 
     if (barrierState === "CLOSED") {
-        if (barText) barText.className = "text-2xl font-black text-rose-600 mt-1 font-mono";
+        if (barText) {
+            barText.innerText = "CLOSED (0° - LOCKED)";
+            barText.className = "text-xl sm:text-2xl font-black text-rose-600 mt-1 font-mono";
+        }
         if (barIcon) {
-            barIcon.innerText = "LOCK";
+            barIcon.innerText = "0° LOCK";
             barIcon.className = "h-12 w-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center font-mono font-black text-xs text-rose-700 shadow-sm";
         }
     } else {
-        if (barText) barText.className = "text-2xl font-black text-emerald-600 mt-1 font-mono";
+        if (barText) {
+            barText.innerText = "OPEN (90° - SERVO BCM 12)";
+            barText.className = "text-xl sm:text-2xl font-black text-emerald-600 mt-1 font-mono";
+        }
         if (barIcon) {
-            barIcon.innerText = "OPEN";
-            barIcon.className = "h-12 w-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center font-mono font-black text-xs text-emerald-700 shadow-sm";
+            barIcon.innerText = "90° OPEN";
+            barIcon.className = "h-12 w-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center font-mono font-black text-xs text-emerald-700 shadow-sm animate-pulse";
         }
     }
 
-    // Buzzer
-    const buzzerState = a.buzzer || "OFF";
+    // Buzzer (BCM 16)
+    const buzzerState = (a.buzzer || "OFF").toUpperCase();
     const buzText = document.getElementById("buzzerText");
     const buzIcon = document.getElementById("buzzerIcon");
-    if (buzText) buzText.innerText = buzzerState;
 
     if (buzzerState === "ON") {
-        if (buzText) buzText.className = "text-2xl font-black text-rose-600 mt-1 font-mono";
+        if (buzText) { buzText.innerText = "SIREN (BCM 16 ON)"; buzText.className = "text-xl sm:text-2xl font-black text-rose-600 mt-1 font-mono"; }
         if (buzIcon) {
             buzIcon.innerText = "SIREN";
             buzIcon.className = "h-12 w-12 rounded-xl bg-rose-100 border border-rose-300 flex items-center justify-center font-mono font-black text-xs text-rose-800 shadow-sm animate-pulse";
         }
     } else {
-        if (buzText) buzText.className = "text-2xl font-black text-slate-400 mt-1 font-mono";
+        if (buzText) { buzText.innerText = "STANDBY (BCM 16 OFF)"; buzText.className = "text-xl sm:text-2xl font-black text-slate-400 mt-1 font-mono"; }
         if (buzIcon) {
             buzIcon.innerText = "MUTE";
             buzIcon.className = "h-12 w-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-mono font-black text-xs text-slate-400 shadow-sm";
